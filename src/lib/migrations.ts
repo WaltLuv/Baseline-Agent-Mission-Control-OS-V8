@@ -1445,6 +1445,179 @@ const migrations: Migration[] = [
       db.exec(`ALTER TABLE mcp_call_log ADD COLUMN signature TEXT DEFAULT NULL`)
       db.exec(`ALTER TABLE mcp_call_log ADD COLUMN public_key TEXT DEFAULT NULL`)
     }
+  },
+  {
+    id: '030_billing',
+    up(db: Database.Database) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS billing_plans (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          setup_fee_cents INTEGER NOT NULL DEFAULT 0,
+          monthly_price_cents INTEGER NOT NULL DEFAULT 0,
+          included_credits INTEGER NOT NULL DEFAULT 0,
+          max_agents INTEGER,
+          status TEXT NOT NULL DEFAULT 'active',
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+        );
+
+        CREATE TABLE IF NOT EXISTS customer_subscriptions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL,
+          plan_id INTEGER NOT NULL,
+          stripe_customer_id TEXT,
+          stripe_subscription_id TEXT,
+          status TEXT NOT NULL DEFAULT 'inactive',
+          current_period_start INTEGER,
+          current_period_end INTEGER,
+          included_credits_granted INTEGER NOT NULL DEFAULT 0,
+          auto_recharge_enabled INTEGER NOT NULL DEFAULT 0,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+          FOREIGN KEY (plan_id) REFERENCES billing_plans(id) ON DELETE RESTRICT
+        );
+
+        CREATE TABLE IF NOT EXISTS credit_ledger (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL,
+          subscription_id INTEGER,
+          type TEXT NOT NULL CHECK (type IN ('grant', 'usage', 'refund', 'adjustment', 'purchase')),
+          amount INTEGER NOT NULL,
+          balance_after INTEGER NOT NULL,
+          source_type TEXT,
+          source_id TEXT,
+          description TEXT,
+          idempotency_key TEXT UNIQUE,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS usage_events (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL,
+          agent_id INTEGER,
+          task_id INTEGER,
+          workflow_run_id TEXT,
+          event_type TEXT NOT NULL,
+          provider TEXT,
+          model TEXT,
+          raw_cost_cents INTEGER NOT NULL DEFAULT 0,
+          retail_cost_cents INTEGER NOT NULL DEFAULT 0,
+          credits_charged INTEGER NOT NULL DEFAULT 0,
+          metadata_json TEXT,
+          idempotency_key TEXT UNIQUE,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS credit_packages (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          description TEXT,
+          price_cents INTEGER NOT NULL,
+          credits INTEGER NOT NULL,
+          bonus_credits INTEGER NOT NULL DEFAULT 0,
+          status TEXT NOT NULL DEFAULT 'active',
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+        );
+
+        CREATE TABLE IF NOT EXISTS credit_purchase_orders (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL,
+          package_id INTEGER NOT NULL,
+          stripe_session_id TEXT,
+          stripe_payment_intent_id TEXT,
+          stripe_event_id TEXT,
+          amount_cents INTEGER NOT NULL,
+          credits_to_grant INTEGER NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending',
+          fulfilled INTEGER NOT NULL DEFAULT 0,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+          FOREIGN KEY (package_id) REFERENCES credit_packages(id) ON DELETE RESTRICT
+        );
+
+        CREATE TABLE IF NOT EXISTS stripe_webhook_events (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          stripe_event_id TEXT NOT NULL UNIQUE,
+          type TEXT NOT NULL,
+          raw_json TEXT NOT NULL,
+          processed INTEGER NOT NULL DEFAULT 0,
+          processed_at INTEGER,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch())
+        );
+
+        CREATE TABLE IF NOT EXISTS pricing_configs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          event_type TEXT NOT NULL,
+          provider TEXT NOT NULL,
+          model TEXT NOT NULL,
+          wholesale_cost_cents INTEGER NOT NULL DEFAULT 0,
+          retail_cost_cents INTEGER NOT NULL DEFAULT 0,
+          credits_required INTEGER NOT NULL DEFAULT 1,
+          status TEXT NOT NULL DEFAULT 'active',
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+        );
+
+        /* ── Indexes ── */
+
+        -- customer_subscriptions
+        CREATE INDEX IF NOT EXISTS idx_customer_subs_workspace ON customer_subscriptions(workspace_id);
+        CREATE INDEX IF NOT EXISTS idx_customer_subs_status ON customer_subscriptions(status);
+        CREATE INDEX IF NOT EXISTS idx_customer_subs_stripe_sub ON customer_subscriptions(stripe_subscription_id);
+        CREATE INDEX IF NOT EXISTS idx_customer_subs_plan ON customer_subscriptions(plan_id);
+
+        -- credit_ledger
+        CREATE INDEX IF NOT EXISTS idx_credit_ledger_workspace ON credit_ledger(workspace_id);
+        CREATE INDEX IF NOT EXISTS idx_credit_ledger_type ON credit_ledger(type);
+        CREATE INDEX IF NOT EXISTS idx_credit_ledger_subscription ON credit_ledger(subscription_id);
+        CREATE INDEX IF NOT EXISTS idx_credit_ledger_created ON credit_ledger(created_at);
+
+        -- usage_events
+        CREATE INDEX IF NOT EXISTS idx_usage_events_workspace ON usage_events(workspace_id);
+        CREATE INDEX IF NOT EXISTS idx_usage_events_agent ON usage_events(agent_id);
+        CREATE INDEX IF NOT EXISTS idx_usage_events_task ON usage_events(task_id);
+        CREATE INDEX IF NOT EXISTS idx_usage_events_run ON usage_events(workflow_run_id);
+        CREATE INDEX IF NOT EXISTS idx_usage_events_created ON usage_events(created_at);
+        CREATE INDEX IF NOT EXISTS idx_usage_events_event_type ON usage_events(event_type);
+
+        -- credit_purchase_orders
+        CREATE INDEX IF NOT EXISTS idx_cpo_workspace ON credit_purchase_orders(workspace_id);
+        CREATE INDEX IF NOT EXISTS idx_cpo_status ON credit_purchase_orders(status);
+        CREATE INDEX IF NOT EXISTS idx_cpo_stripe_pi ON credit_purchase_orders(stripe_payment_intent_id);
+
+        -- stripe_webhook_events
+        CREATE INDEX IF NOT EXISTS idx_webhook_events_type ON stripe_webhook_events(type);
+        CREATE INDEX IF NOT EXISTS idx_webhook_events_processed ON stripe_webhook_events(processed);
+
+        -- pricing_configs
+        CREATE INDEX IF NOT EXISTS idx_pricing_event_type ON pricing_configs(event_type);
+        CREATE INDEX IF NOT EXISTS idx_pricing_provider_model ON pricing_configs(provider, model);
+
+        /* ── Seed data: default billing plans ── */
+
+        INSERT OR IGNORE INTO billing_plans (id, name, setup_fee_cents, monthly_price_cents, included_credits, max_agents, status, created_at, updated_at)
+        VALUES
+          (1, 'Free',       0,     0,     100,   1,   'active', unixepoch(), unixepoch()),
+          (2, 'Starter',    0,  2900,  1000,   5,   'active', unixepoch(), unixepoch()),
+          (3, 'Teams',      0,  9900,  5000,  20,   'active', unixepoch(), unixepoch()),
+          (4, 'Enterprise', 0, 29900, 20000, 100,   'active', unixepoch(), unixepoch());
+
+        /* ── Seed data: default credit packages ── */
+
+        INSERT OR IGNORE INTO credit_packages (id, name, description, price_cents, credits, bonus_credits, status, created_at, updated_at)
+        VALUES
+          (1, 'Starter Pack', '100 credits for light usage',    999,    100,    0, 'active', unixepoch(), unixepoch()),
+          (2, 'Power Pack',   '500 credits plus 50 bonus',     4499,    500,   50, 'active', unixepoch(), unixepoch()),
+          (3, 'Pro Pack',     '2000 credits plus 300 bonus',  15999,   2000,  300, 'active', unixepoch(), unixepoch()),
+          (4, 'Mega Pack',    '10000 credits plus 2000 bonus', 69999, 10000, 2000, 'active', unixepoch(), unixepoch());
+      `)
+    }
   }
 ]
 

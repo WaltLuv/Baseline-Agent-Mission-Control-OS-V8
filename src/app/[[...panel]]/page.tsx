@@ -33,6 +33,7 @@ import { SkillsPanel } from '@/components/panels/skills-panel'
 import { LocalAgentsDocPanel } from '@/components/panels/local-agents-doc-panel'
 import { ChannelsPanel } from '@/components/panels/channels-panel'
 import { DebugPanel } from '@/components/panels/debug-panel'
+import { BillingPanel } from '@/components/panels/billing-panel'
 import { SecurityAuditPanel } from '@/components/panels/security-audit-panel'
 import { NodesPanel } from '@/components/panels/nodes-panel'
 import { ExecApprovalPanel } from '@/components/panels/exec-approval-panel'
@@ -603,6 +604,8 @@ function ContentRouter({ tab }: { tab: string }) {
         return <LocalModeUnavailable panel={tab} />
       }
       return <DebugPanel />
+    case 'billing':
+      return <BillingPanel />
     case 'exec-approvals':
       if (isLocal) return <LocalModeUnavailable panel={tab} />
       return <ExecApprovalPanel />

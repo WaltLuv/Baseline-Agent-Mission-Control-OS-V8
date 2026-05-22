@@ -111,7 +111,8 @@
     },
     "collapseSidebar": "Collapse sidebar",
     "expandSidebar": "Expand sidebar",
-    "more": "More"
+    "more": "More",
+    "billing": "Billing"
   },
   "settings": {
     "language": "Language",
@@ -2237,5 +2238,32 @@
     "colCpu": "CPU",
     "colMem": "Mem",
     "colRss": "RSS"
+  },
+  "billing": {
+    "title": "AI Workforce Billing",
+    "subtitle": "Track credits, usage, and costs for your AI workforce",
+    "loadingBilling": "Loading billing data...",
+    "retry": "Retry",
+    "noBillingData": "No billing data available",
+    "noBillingDataSubtitle": "Set up a billing plan to start tracking AI workforce credits",
+    "availableCredits": "Available Credits",
+    "totalGranted": "Total Granted",
+    "totalUsed": "Total Used",
+    "ledgerStatus": "Ledger Status",
+    "verified": "Verified",
+    "mismatch": "Mismatch",
+    "currentPlan": "Current Plan",
+    "planName": "Plan",
+    "monthlyFee": "Monthly Fee",
+    "includedCredits": "Included Credits",
+    "periodEnd": "Period End",
+    "topAgentsBySpend": "Top Agents by Credit Usage",
+    "noLedgerEntries": "No ledger entries yet",
+    "noLedgerEntriesSubtitle": "Credit activity appears here as agents perform work",
+    "noUsageEvents": "No usage events yet",
+    "noUsageEventsSubtitle": "Usage records appear here when AI agents complete tasks or run workflows",
+    "buyCredits": "Buy AI Workforce Credits",
+    "buyCreditsSubtitle": "Purchase credits when your AI workforce needs more power",
+    "buyNow": "Buy Now"
   }
 }
