@@ -10,6 +10,10 @@ import { MemoryGraph } from './memory-graph'
 
 const log = createClientLogger('MemoryBrowser')
 
+type MemorySource = 'manual' | 'agent-generated' | 'import' | 'sync' | 'template'
+
+type ConfidenceLevel = 'high' | 'medium' | 'low'
+
 interface MemoryFile {
   path: string
   name: string
@@ -17,6 +21,16 @@ interface MemoryFile {
   size?: number
   modified?: number
   children?: MemoryFile[]
+  /** Where this memory entry came from */
+  source?: MemorySource
+  /** Confidence in this memory's accuracy */
+  confidence?: ConfidenceLevel
+  /** Whether customers can see this memory */
+  customerVisible?: boolean
+  /** Whether an admin has approved this memory */
+  approved?: boolean
+  /** User or agent who created this memory */
+  createdBy?: string
 }
 
 function mergeDirectoryChildren(files: MemoryFile[], targetPath: string, children: MemoryFile[]): MemoryFile[] {
@@ -89,6 +103,35 @@ function statusColor(status: 'healthy' | 'warning' | 'critical'): string {
   if (status === 'healthy') return 'text-green-400'
   if (status === 'warning') return 'text-amber-400'
   return 'text-red-400'
+}
+
+function confidenceColor(level: ConfidenceLevel): { text: string; bg: string; label: string } {
+  switch (level) {
+    case 'high': return { text: 'text-green-400', bg: 'bg-green-500/10', label: 'high' }
+    case 'medium': return { text: 'text-amber-400', bg: 'bg-amber-500/10', label: 'medium' }
+    case 'low': return { text: 'text-red-400', bg: 'bg-red-500/10', label: 'low' }
+  }
+}
+
+function sourceLabel(source: MemorySource): string {
+  switch (source) {
+    case 'manual': return 'manual'
+    case 'agent-generated': return 'agent'
+    case 'import': return 'import'
+    case 'sync': return 'sync'
+    case 'template': return 'template'
+  }
+}
+
+function inferConfidenceFromSource(source: MemorySource | undefined): ConfidenceLevel {
+  switch (source) {
+    case 'manual': return 'high'
+    case 'sync': return 'high'
+    case 'template': return 'high'
+    case 'agent-generated': return 'medium'
+    case 'import': return 'low'
+    default: return 'low'
+  }
 }
 
 function statusBg(status: 'healthy' | 'warning' | 'critical'): string {
@@ -617,29 +660,62 @@ export function MemoryBrowserPanel() {
           ) : (
             <div className="flex-1 flex min-h-0">
               <div className="flex-1 flex flex-col min-h-0">
-                {selectedMemoryFile && (
-                  <div className="flex items-center gap-2 px-4 py-2 border-b border-border/50 bg-[hsl(var(--surface-0))]">
-                    <span className="text-xs font-mono text-muted-foreground/60 truncate flex-1">{selectedMemoryFile}</span>
-                    {memoryContent != null && (
-                      <span className="text-[10px] font-mono text-muted-foreground/30 tabular-nums shrink-0">{memoryContent.length} chars</span>
-                    )}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button onClick={() => setLinksOpen(!linksOpen)} className={`px-2 py-0.5 text-[11px] font-mono rounded transition-colors ${linksOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-[hsl(var(--surface-2))]'}`} title={t('toggleBacklinks')}>{t('links')}</button>
-                      {!isEditing ? (
-                        <>
-                          <button onClick={() => { setIsEditing(true); setEditedContent(memoryContent ?? '') }} className="px-2 py-0.5 text-[11px] font-mono text-muted-foreground hover:text-foreground rounded hover:bg-[hsl(var(--surface-2))] transition-colors">{t('edit')}</button>
-                          <button onClick={() => setShowDeleteConfirm(true)} className="px-2 py-0.5 text-[11px] font-mono text-red-400/60 hover:text-red-400 rounded hover:bg-red-500/10 transition-colors">{t('delete')}</button>
-                        </>
-                      ) : (
-                        <>
-                          <button onClick={saveFile} disabled={isSaving} className="px-2 py-0.5 text-[11px] font-mono text-green-400/80 hover:text-green-400 rounded hover:bg-green-500/10 transition-colors">{isSaving ? t('saving') : t('save')}</button>
-                          <button onClick={() => { setIsEditing(false); setEditedContent('') }} className="px-2 py-0.5 text-[11px] font-mono text-muted-foreground hover:text-foreground rounded hover:bg-[hsl(var(--surface-2))] transition-colors">{t('cancel')}</button>
-                        </>
+                {selectedMemoryFile && (() => {
+                  const currentFile = memoryFiles.find((f) => f.path === selectedMemoryFile)
+                  const fileSource = currentFile?.source
+                  const fileConfidence = currentFile?.confidence ?? inferConfidenceFromSource(fileSource)
+                  const confMeta = confidenceColor(fileConfidence)
+                  const adminMode = dashboardMode === 'admin' || dashboardMode === 'super-admin'
+                  return (
+                  <div className="flex flex-col px-4 py-2 border-b border-border/50 bg-[hsl(var(--surface-0))]">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono text-muted-foreground/60 truncate flex-1">{selectedMemoryFile}</span>
+                      {memoryContent != null && (
+                        <span className="text-[10px] font-mono text-muted-foreground/30 tabular-nums shrink-0">{memoryContent.length} chars</span>
                       )}
-                      <button onClick={() => { setSelectedMemoryFile(''); setMemoryContent(''); setMemoryFileLinks(null); setIsEditing(false); setEditedContent(''); setSchemaWarnings([]); setLinksOpen(false) }} className="px-1.5 py-0.5 text-[11px] font-mono text-muted-foreground/40 hover:text-muted-foreground rounded hover:bg-[hsl(var(--surface-2))] transition-colors">x</button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {fileSource && (
+                          <span className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-[hsl(var(--surface-2))] text-muted-foreground/70" title={`Source: ${sourceLabel(fileSource)}`}>
+                            {sourceLabel(fileSource)}
+                          </span>
+                        )}
+                        <span className={`px-1.5 py-0.5 text-[10px] font-mono rounded ${confMeta.bg} ${confMeta.text}`} title={`Confidence: ${confMeta.label}`}>
+                          {confMeta.label}
+                        </span>
+                        {currentFile?.customerVisible ? (
+                          <span className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-blue-500/10 text-blue-400" title="Visible to customers">customer</span>
+                        ) : fileSource && fileSource !== 'manual' ? (
+                          <span className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-[hsl(var(--surface-2))] text-muted-foreground/40" title="Internal only">internal</span>
+                        ) : null}
+                        {currentFile?.approved ? (
+                          <span className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-green-500/10 text-green-400" title="Admin approved">approved</span>
+                        ) : adminMode ? (
+                          <span className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-amber-500/10 text-amber-400" title="Pending approval">pending</span>
+                        ) : null}
+                        <button onClick={() => setLinksOpen(!linksOpen)} className={`px-2 py-0.5 text-[11px] font-mono rounded transition-colors ${linksOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-[hsl(var(--surface-2))]'}`} title={t('toggleBacklinks')}>{t('links')}</button>
+                        {!isEditing ? (
+                          <>
+                            <button onClick={() => { setIsEditing(true); setEditedContent(memoryContent ?? '') }} className="px-2 py-0.5 text-[11px] font-mono text-muted-foreground hover:text-foreground rounded hover:bg-[hsl(var(--surface-2))] transition-colors">{t('edit')}</button>
+                            <button onClick={() => setShowDeleteConfirm(true)} className="px-2 py-0.5 text-[11px] font-mono text-red-400/60 hover:text-red-400 rounded hover:bg-red-500/10 transition-colors">{t('delete')}</button>
+                            {adminMode && <MemoryAdminActions file={selectedMemoryFile} currentFile={currentFile} onLoadFileTree={loadFileTree} />}
+                          </>
+                        ) : (
+                          <>
+                            <button onClick={saveFile} disabled={isSaving} className="px-2 py-0.5 text-[11px] font-mono text-green-400/80 hover:text-green-400 rounded hover:bg-green-500/10 transition-colors">{isSaving ? t('saving') : t('save')}</button>
+                            <button onClick={() => { setIsEditing(false); setEditedContent('') }} className="px-2 py-0.5 text-[11px] font-mono text-muted-foreground hover:text-foreground rounded hover:bg-[hsl(var(--surface-2))] transition-colors">{t('cancel')}</button>
+                          </>
+                        )}
+                        <button onClick={() => { setSelectedMemoryFile(''); setMemoryContent(''); setMemoryFileLinks(null); setIsEditing(false); setEditedContent(''); setSchemaWarnings([]); setLinksOpen(false) }} className="px-1.5 py-0.5 text-[11px] font-mono text-muted-foreground/40 hover:text-muted-foreground rounded hover:bg-[hsl(var(--surface-2))] transition-colors">x</button>
+                      </div>
                     </div>
+                    {currentFile?.createdBy && (
+                      <div className="text-[10px] font-mono text-muted-foreground/40 mt-1">
+                        by {currentFile.createdBy}{currentFile.modified ? ` · ${new Date(currentFile.modified * 1000).toLocaleString()}` : ''}
+                      </div>
+                    )}
                   </div>
-                )}
+                  )
+                })()}
                 {schemaWarnings.length > 0 && (
                   <div className="px-4 py-2 bg-amber-500/5 border-b border-amber-500/15">
                     <div className="text-[11px] font-mono text-amber-400">{t('schemaWarnings')}</div>
@@ -1016,6 +1092,103 @@ function DeleteConfirmModal({ fileName, onClose, onConfirm }: { fileName: string
           <Button onClick={onClose} variant="secondary" size="sm">{t('cancel')}</Button>
         </div>
       </div>
+    </div>
+  )
+}
+
+interface MemoryAdminActionsProps {
+  file: string
+  currentFile?: MemoryFile | undefined
+  onLoadFileTree: () => void
+}
+
+function MemoryAdminActions({ file, currentFile, onLoadFileTree }: MemoryAdminActionsProps) {
+  const [showMenu, setShowMenu] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
+
+  const updateMetadata = async (updates: Partial<MemoryFile>) => {
+    setIsProcessing(true)
+    try {
+      const response = await fetch('/api/memory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update-metadata', path: file, ...updates })
+      })
+      const data = await response.json()
+      if (data.success) {
+        onLoadFileTree()
+      }
+    } catch (error) {
+      log.error('Failed to update memory metadata:', error)
+    } finally {
+      setIsProcessing(false)
+      setShowMenu(false)
+    }
+  }
+
+  if (!currentFile) return null
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setShowMenu(!showMenu)}
+        disabled={isProcessing}
+        className="px-2 py-0.5 text-[11px] font-mono text-violet-400/80 hover:text-violet-400 rounded hover:bg-violet-500/10 transition-colors disabled:opacity-50"
+        title="Admin actions"
+      >
+        admin
+      </button>
+      {showMenu && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+          <div className="absolute right-0 top-full mt-1 w-52 bg-[hsl(var(--surface-1))] border border-border/50 rounded-lg shadow-xl z-50 p-2 space-y-1">
+            {/* Approve / Revoke */}
+            <button
+              onClick={() => updateMetadata({ approved: !currentFile.approved })}
+              className="w-full text-left px-2 py-1.5 rounded text-[11px] font-mono hover:bg-[hsl(var(--surface-2))] transition-colors"
+            >
+              {currentFile.approved ? '↩ Revoke approval' : '✓ Approve'}
+            </button>
+            {/* Customer visibility toggle */}
+            <button
+              onClick={() => updateMetadata({ customerVisible: !currentFile.customerVisible })}
+              className="w-full text-left px-2 py-1.5 rounded text-[11px] font-mono hover:bg-[hsl(var(--surface-2))] transition-colors"
+            >
+              {currentFile.customerVisible ? '👁 Hide from customers' : '👁 Show to customers'}
+            </button>
+            {/* Confidence upgrade */}
+            <div className="border-t border-border/30 pt-1 mt-1">
+              <div className="px-2 py-0.5 text-[10px] font-mono text-muted-foreground/40 uppercase">Confidence</div>
+              {(['high', 'medium', 'low'] as const).map((level) => (
+                <button
+                  key={level}
+                  onClick={() => updateMetadata({ confidence: level })}
+                  className={`w-full text-left px-2 py-1 rounded text-[11px] font-mono transition-colors ${
+                    currentFile.confidence === level ? 'bg-[hsl(var(--surface-2))] text-foreground' : 'hover:bg-[hsl(var(--surface-2))] text-muted-foreground'
+                  }`}
+                >
+                  {level}
+                </button>
+              ))}
+            </div>
+            {/* Source */}
+            <div className="border-t border-border/30 pt-1 mt-1">
+              <div className="px-2 py-0.5 text-[10px] font-mono text-muted-foreground/40 uppercase">Source</div>
+              {(['manual', 'agent-generated', 'import', 'sync', 'template'] as const).map((src) => (
+                <button
+                  key={src}
+                  onClick={() => updateMetadata({ source: src })}
+                  className={`w-full text-left px-2 py-1 rounded text-[11px] font-mono transition-colors ${
+                    currentFile.source === src ? 'bg-[hsl(var(--surface-2))] text-foreground' : 'hover:bg-[hsl(var(--surface-2))] text-muted-foreground'
+                  }`}
+                >
+                  {sourceLabel(src)}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

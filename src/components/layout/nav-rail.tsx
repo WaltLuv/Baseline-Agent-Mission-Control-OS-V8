@@ -36,6 +36,7 @@ const navGroups: NavGroup[] = [
       { id: 'skills', label: 'Skills', icon: <SkillsIcon />, priority: false },
       { id: 'memory', label: 'Memory', icon: <MemoryIcon />, priority: false },
       { id: 'billing', label: 'Billing', icon: '💰', priority: false },
+      { id: 'daily-optimization', label: 'Optimize', icon: '⚡', priority: false },
     ],
   },
   {
@@ -78,6 +79,7 @@ const navGroups: NavGroup[] = [
       { id: 'integrations', label: 'Integrations', icon: <IntegrationsIcon />, priority: false },
       { id: 'debug', label: 'Debug', icon: <DebugIcon />, priority: false },
       { id: 'settings', label: 'Settings', icon: <SettingsIcon />, priority: false, essential: true },
+      { id: 'scanner', label: 'Scanner', icon: '🔍', priority: false },
     ],
   },
 ]

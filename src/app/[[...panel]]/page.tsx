@@ -38,6 +38,8 @@ import { SecurityAuditPanel } from '@/components/panels/security-audit-panel'
 import { NodesPanel } from '@/components/panels/nodes-panel'
 import { ExecApprovalPanel } from '@/components/panels/exec-approval-panel'
 import { SystemMonitorPanel } from '@/components/panels/system-monitor-panel'
+import { DailyOptimizationPanel } from '@/components/panels/daily-optimization-panel'
+import { AgentScannerPanel } from '@/components/panels/scanner-panel'
 import { ChatPagePanel } from '@/components/panels/chat-page-panel'
 import { ChatPanel } from '@/components/chat/chat-panel'
 import { STORAGE_GATEWAY_URL } from '@/lib/device-identity'
@@ -606,12 +608,16 @@ function ContentRouter({ tab }: { tab: string }) {
       return <DebugPanel />
     case 'billing':
       return <BillingPanel />
+    case 'daily-optimization':
+      return <DailyOptimizationPanel />
     case 'exec-approvals':
       if (isLocal) return <LocalModeUnavailable panel={tab} />
       return <ExecApprovalPanel />
     case 'chat':
       return <ChatPagePanel />
-    default: {
+    case 'scanner':
+      return <AgentScannerPanel />
+    case 'default': {
       return renderPluginPanel(tab)
     }
   }

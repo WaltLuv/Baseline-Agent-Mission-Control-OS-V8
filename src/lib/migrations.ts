@@ -1618,6 +1618,30 @@ const migrations: Migration[] = [
           (4, 'Mega Pack',    '10000 credits plus 2000 bonus', 69999, 10000, 2000, 'active', unixepoch(), unixepoch());
       `)
     }
+  },
+  {
+    id: '020_memory_metadata',
+    up: (db) => {
+      // Check if memory_files table exists (may not in all deployments)
+      const hasMemoryFiles = (db.prepare(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='memory_files'`
+      ).get() as any)
+      if (!hasMemoryFiles) return
+
+      const columns = db.prepare(`PRAGMA table_info(memory_files)`).all() as Array<{ name: string }>
+      const has = (name: string) => columns.some((c) => c.name === name)
+
+      if (!has('source')) db.exec(`ALTER TABLE memory_files ADD COLUMN source TEXT DEFAULT 'manual'`)
+      if (!has('confidence')) db.exec(`ALTER TABLE memory_files ADD COLUMN confidence TEXT DEFAULT 'low'`)
+      if (!has('workspace_id')) db.exec(`ALTER TABLE memory_files ADD COLUMN workspace_id INTEGER`)
+      if (!has('approved')) db.exec(`ALTER TABLE memory_files ADD COLUMN approved INTEGER NOT NULL DEFAULT 0`)
+      if (!has('customer_visible')) db.exec(`ALTER TABLE memory_files ADD COLUMN customer_visible INTEGER NOT NULL DEFAULT 0`)
+      if (!has('created_by')) db.exec(`ALTER TABLE memory_files ADD COLUMN created_by TEXT`)
+
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_memory_files_workspace ON memory_files(workspace_id)`)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_memory_files_approved ON memory_files(approved)`)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_memory_files_customer_visible ON memory_files(customer_visible)`)
+    }
   }
 ]
 

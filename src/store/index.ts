@@ -73,6 +73,16 @@ export interface MemoryFile {
   size?: number
   modified?: number
   children?: MemoryFile[]
+  /** Where this memory entry came from */
+  source?: 'manual' | 'agent-generated' | 'import' | 'sync' | 'template'
+  /** Confidence in this memory's accuracy */
+  confidence?: 'high' | 'medium' | 'low'
+  /** Whether customers can see this memory */
+  customerVisible?: boolean
+  /** Whether an admin has approved this memory */
+  approved?: boolean
+  /** User or agent who created this memory */
+  createdBy?: string
 }
 
 export interface TokenUsage {
@@ -370,7 +380,7 @@ export interface ExecApprovalRequest {
 
 interface MissionControlStore {
   // Dashboard Mode (local vs full gateway)
-  dashboardMode: 'full' | 'local'
+  dashboardMode: 'full' | 'local' | 'admin' | 'super-admin'
   gatewayAvailable: boolean
   localSessionsAvailable: boolean
   bannerDismissed: boolean
