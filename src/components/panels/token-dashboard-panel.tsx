@@ -83,6 +83,8 @@ export function TokenDashboardPanel() {
   // Timezone state
   const [selectedTimezone, setSelectedTimezone] = useState<TimezoneOption>(TIMEZONE_OPTIONS[0])
 
+  // Cache token stats — only show when meaningful (non-zero)
+
   const loadUsageStats = useCallback(async () => {
     setIsLoading(true)
     try {
@@ -539,6 +541,7 @@ export function TokenDashboardPanel() {
   }, [usageStats])
 
   // Cache token stats from session costs (if available in the data)
+  // Only return data when counts are non-zero; hide otherwise
   const cacheStats = useMemo(() => {
     // Aggregate from session cost entries if they have cache token info
     // For now show zeroes; real data flows once backend provides cacheReadTokens/cacheWriteTokens
@@ -551,6 +554,29 @@ export function TokenDashboardPanel() {
     }
     return cacheRead > 0 || cacheWrite > 0 ? { cacheRead, cacheWrite } : null
   }, [sessionCosts])
+
+  // Narrative summary for usage data
+  const narrativeSummary = useMemo(() => {
+    if (!filteredUsageStats) return null
+    const { totalCost, totalTokens, requestCount } = filteredUsageStats.summary
+    const modelCount = Object.keys(filteredUsageStats.models).length
+
+    // Find trend direction from trendData
+    const trends = trendData?.trends
+    let trendDirection: 'up' | 'down' | null = null
+    if (trends && trends.length >= 2) {
+      const last = trends[trends.length - 1].cost
+      const prev = trends[trends.length - 2].cost
+      trendDirection = last > prev ? 'up' : last < prev ? 'down' : null
+    }
+
+    return {
+      cost: formatCost(totalCost),
+      modelCount,
+      requestCount,
+      trendDirection,
+    }
+  }, [filteredUsageStats, trendData])
 
   return (
     <div className="p-6 space-y-6">
@@ -591,6 +617,19 @@ export function TokenDashboardPanel() {
           </div>
         </div>
       </div>
+
+      {/* Narrative Summary Header */}
+      {narrativeSummary && view === 'overview' && (
+        <div className="bg-card border border-border rounded-lg p-4">
+          <p className="text-sm text-foreground">
+            This period: <span className="font-semibold">{narrativeSummary.cost}</span> spent across{' '}
+            <span className="font-semibold">{narrativeSummary.requestCount} tasks</span> using{' '}
+            <span className="font-semibold">{narrativeSummary.modelCount} {narrativeSummary.modelCount === 1 ? 'model' : 'models'}</span>.
+            {narrativeSummary.trendDirection === 'up' && <span className="text-red-400 ml-2">↑ Costs trending up</span>}
+            {narrativeSummary.trendDirection === 'down' && <span className="text-green-400 ml-2">↓ Costs trending down</span>}
+          </p>
+        </div>
+      )}
 
       {/* Filter Chips Bar */}
       {view === 'overview' && usageStats && (availableModels.length > 0 || availableSessions.length > 0) && (
@@ -678,8 +717,8 @@ export function TokenDashboardPanel() {
 
           {sortedSessionCosts.length === 0 ? (
             <div className="text-center text-muted-foreground py-12">
-              <p className="text-lg mb-1">{t('noSessionCostData')}</p>
-              <p className="text-sm">{t('noSessionCostSubtitle')}</p>
+              <p className="text-lg mb-1">No token usage data for this period</p>
+              <p className="text-sm">Run a task to see costs here.</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -756,7 +795,7 @@ export function TokenDashboardPanel() {
 
             <div className="bg-card border border-border rounded-lg p-6">
               <div className="text-3xl font-bold text-foreground">
-                {formatNumber(filteredUsageStats.summary.avgTokensPerRequest)}
+                {filteredUsageStats.summary.requestCount === 0 && filteredUsageStats.summary.totalTokens === 0 ? '--' : formatNumber(filteredUsageStats.summary.avgTokensPerRequest)}
               </div>
               <div className="text-sm text-muted-foreground">
                 {t('avgTokensPerRequest')}
@@ -1182,8 +1221,8 @@ export function TokenDashboardPanel() {
         </div>
       ) : (
         <div className="text-center text-muted-foreground py-12">
-          <div className="text-lg mb-2">{t('noUsageData')}</div>
-          <div className="text-sm">{t('noUsageDataSubtitle')}</div>
+          <div className="text-lg mb-2">No token usage data for this period</div>
+          <div className="text-sm">Run a task to see costs here.</div>
           <Button
             onClick={loadUsageStats}
             className="mt-4"

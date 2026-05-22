@@ -12,6 +12,8 @@ const log = createClientLogger('LogViewer')
 
 const MAX_LOG_BUFFER = 1000
 
+type ViewMode = 'developer' | 'customer'
+
 interface LogFilters {
   level?: string
   source?: string
@@ -32,6 +34,7 @@ function downloadFile(content: string, filename: string, mime: string) {
 export function LogViewerPanel() {
   const t = useTranslations('logViewer')
   const { logs, logFilters, setLogFilters, clearLogs, addLog } = useMissionControl()
+  const [viewMode, setViewMode] = useState<ViewMode>('customer')
   const [isAutoScroll, setIsAutoScroll] = useState(true)
   const [availableSources, setAvailableSources] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -214,17 +217,94 @@ export function LogViewerPanel() {
   // Debug logging
   log.debug(`Store has ${logs.length} logs, filtered to ${filteredLogs.length}`)
 
+  // ── Customer View aggregates ──────────────────────────────────────────────
+  const oneHourAgo = Date.now() - 3600_000
+  const issueLogs = logs.filter(l => l.level === 'error' || l.level === 'warn')
+  const recentIssues = issueLogs.filter(l => {
+    const ts = new Date(l.timestamp).getTime()
+    return ts >= oneHourAgo
+  })
+  const errorCount = recentIssues.filter(l => l.level === 'error').length
+  const warningCount = recentIssues.filter(l => l.level === 'warn').length
+
+  // Bucket by message pattern for counting error types
+  const errorBuckets: Record<string, { count: number; latest: any }> = {}
+  for (const entry of recentIssues) {
+    const key = `${entry.level}|${entry.source}|${entry.message.substring(0, 80)}`
+    if (errorBuckets[key]) {
+      errorBuckets[key].count++
+      if (new Date(entry.timestamp).getTime() > new Date(errorBuckets[key].latest.timestamp).getTime()) {
+        errorBuckets[key].latest = entry
+      }
+    } else {
+      errorBuckets[key] = { count: 1, latest: entry }
+    }
+  }
+  const groupedIssues = Object.values(errorBuckets)
+    .map(b => ({ ...b.latest, occurrences: b.count }))
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+
+  // Trend arrow: compare last hour vs previous hour
+  const twoHoursAgo = Date.now() - 7200_000
+  const prevHourIssues = issueLogs.filter(l => {
+    const ts = new Date(l.timestamp).getTime()
+    return ts >= twoHoursAgo && ts < oneHourAgo
+  }).length
+  const recentTotal = recentIssues.length
+  const trendDirection = prevHourIssues === 0
+    ? (recentTotal > 0 ? 'up' as const : 'flat' as const)
+    : recentTotal > prevHourIssues
+      ? 'up' as const
+      : recentTotal < prevHourIssues
+        ? 'down' as const
+        : 'flat' as const
+
   return (
     <div className="flex flex-col h-full p-6 space-y-4">
       <div className="border-b border-border pb-4">
-        <h1 className="text-3xl font-bold text-foreground">{t('title')}</h1>
-        <p className="text-muted-foreground mt-2">
-          {t('description')}
-          {logFilePath && (
-            <span className="ml-3 font-mono text-xs text-muted-foreground/70">{logFilePath}</span>
-          )}
-        </p>
+        {/* View Mode Toggle */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex rounded-lg border border-border overflow-hidden">
+            <button
+              onClick={() => setViewMode('customer')}
+              className={`px-3 py-1.5 text-xs font-medium transition-colors ${viewMode === 'customer' ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:text-foreground'}`}
+            >
+              Customer View
+            </button>
+            <button
+              onClick={() => setViewMode('developer')}
+              className={`px-3 py-1.5 text-xs font-medium transition-colors ${viewMode === 'developer' ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:text-foreground'}`}
+            >
+              Developer View
+            </button>
+          </div>
+        </div>
+
+        {/* Summary Bar */}
+        <div className={`flex items-center gap-3 text-sm p-2 rounded-md border ${errorCount > 0 ? 'bg-red-500/10 border-red-500/20' : 'bg-green-500/10 border-green-500/20'}`}>
+          <span className="font-medium">
+            {errorCount} {errorCount === 1 ? 'error' : 'errors'}
+          </span>
+          <span className="text-muted-foreground">·</span>
+          <span className="font-medium text-yellow-400">
+            {warningCount} {warningCount === 1 ? 'warning' : 'warnings'}
+          </span>
+          <span className="text-muted-foreground ml-2">in last hour</span>
+          <span className="ml-auto text-lg">
+            {trendDirection === 'up' && '↑'}
+            {trendDirection === 'down' && '↓'}
+            {trendDirection === 'flat' && '→'}
+          </span>
+        </div>
       </div>
+
+      <h1 className="text-3xl font-bold text-foreground">{t('title')}</h1>
+      <p className="text-muted-foreground mt-2">
+        {t('description')}
+        {logFilePath && (
+          <span className="ml-3 font-mono text-xs text-muted-foreground/70">{logFilePath}</span>
+        )}
+      </p>
 
       {/* Filters and Controls */}
       <div className="bg-card border border-border rounded-lg p-4">
@@ -352,13 +432,56 @@ export function LogViewerPanel() {
 
       {/* Log Display */}
       <div className="flex-1 bg-card border border-border rounded-lg overflow-hidden">
-        <div 
-          ref={logContainerRef}
-          className="h-full overflow-auto p-4 space-y-2 font-mono text-sm"
-        >
-          {isLoading ? (
-            <Loader variant="panel" label="Loading logs" />
-          ) : filteredLogs.length === 0 ? (
+        {viewMode === 'customer' ? (
+          /* ── Customer View: error/warning cards ──────────────────────── */
+          <div className="overflow-auto p-4 space-y-3" style={{ maxHeight: 'calc(100vh - 320px)' }}>
+            {isLoading ? (
+              <Loader variant="panel" label="Loading logs" />
+            ) : groupedIssues.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
+                <span className="text-lg mb-1">No issues found</span>
+                <span className="text-sm">No errors or warnings in the last hour.</span>
+              </div>
+            ) : (
+              groupedIssues.map((issue, idx) => (
+                <div
+                  key={`${issue.id || idx}`}
+                  className={`border-l-4 pl-4 py-3 rounded-r-md ${getLogLevelBg(issue.level)}`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 text-xs mb-1">
+                        <span className={`font-semibold uppercase px-1.5 py-0.5 rounded text-white ${
+                          issue.level === 'error' ? 'bg-red-500' : 'bg-amber-500'
+                        }`}>
+                          {issue.level}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {new Date(issue.timestamp).toLocaleTimeString()}
+                        </span>
+                        <span className="text-muted-foreground">[{issue.source}]</span>
+                        {issue.occurrences > 1 && (
+                          <span className="px-1.5 py-0.5 rounded text-xs bg-muted text-muted-foreground">
+                            ×{issue.occurrences}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-foreground break-words">{issue.message}</div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        ) : (
+          /* ── Developer View: raw log feed ────────────────────────────── */
+          <div
+            ref={logContainerRef}
+            className="h-full overflow-auto p-4 space-y-2 font-mono text-sm"
+          >
+            {isLoading ? (
+              <Loader variant="panel" label="Loading logs" />
+            ) : filteredLogs.length === 0 ? (
             <div className="flex items-center justify-center h-32 text-muted-foreground">
               {t('noLogs')}
             </div>
@@ -405,6 +528,7 @@ export function LogViewerPanel() {
             ))
           )}
         </div>
+        )}
       </div>
     </div>
   )

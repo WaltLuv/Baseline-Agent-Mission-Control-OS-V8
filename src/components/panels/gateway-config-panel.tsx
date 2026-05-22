@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { schemaType, normalizeSchema, extractSchemaTags } from '@/lib/config-schema-utils'
 import type { JsonSchema } from '@/lib/config-schema-utils'
 
-type FormMode = 'form' | 'json'
+type FormMode = 'quick' | 'form' | 'json'
+type TestState = 'idle' | 'testing' | 'connected' | 'failed'
 
 type Feedback = { ok: boolean; text: string } | null
 
@@ -145,8 +146,17 @@ export function GatewayConfigPanel() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<Feedback>(null)
-  const [mode, setMode] = useState<FormMode>('form')
+  const [mode, setMode] = useState<FormMode>('quick')
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [jsonText, setJsonText] = useState('')
+  const [quickName, setQuickName] = useState('')
+  const [quickUrl, setQuickUrl] = useState('')
+  const [quickApiKey, setQuickApiKey] = useState('')
+  const [showApiKey, setShowApiKey] = useState(false)
+  const [quickChannels, setQuickChannels] = useState({ telegram: false, slack: false, discord: false, whatsapp: false })
+  const [quickConnectionMode, setQuickConnectionMode] = useState('primary')
+  const [testState, setTestState] = useState<TestState>('idle')
+  const [justSaved, setJustSaved] = useState(false)
   const [activeSection, setActiveSection] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [saving, setSaving] = useState(false)
@@ -176,6 +186,25 @@ export function GatewayConfigPanel() {
       setConfigHash(data.hash ?? null)
       setJsonText(JSON.stringify(data.config, null, 2))
       setError(null)
+      // Populate quick-setup form from config
+      const c = data.config as Record<string, unknown> | null
+      if (c) {
+        setQuickName(String((c as any)?.name ?? (c as any)?.gateway?.name ?? ''))
+        const rawUrl = String((c as any)?.gateway?.url ?? (c as any)?.url ?? '')
+        setQuickUrl(rawUrl || '')
+        setQuickApiKey(String((c as any)?.gateway?.apiKey ?? (c as any)?.apiKey ?? ''))
+        const rawMode = String((c as any)?.gateway?.connectionMode ?? (c as any)?.connectionMode ?? 'primary')
+        setQuickConnectionMode(rawMode)
+        const ch = (c as any)?.channels ?? {}
+        if (typeof ch === 'object' && ch !== null) {
+          setQuickChannels({
+            telegram: !!((ch as Record<string, unknown>).telegram),
+            slack: !!((ch as Record<string, unknown>).slack),
+            discord: !!((ch as Record<string, unknown>).discord),
+            whatsapp: !!((ch as Record<string, unknown>).whatsapp),
+          })
+        }
+      }
     } catch {
       setError('Failed to load gateway config')
     } finally {
@@ -237,6 +266,8 @@ export function GatewayConfigPanel() {
 
   const hasChanges = mode === 'json'
     ? jsonText !== JSON.stringify(originalConfig, null, 2)
+    : mode === 'quick'
+    ? diff.length > 0
     : diff.length > 0
 
   const handlePatch = useCallback((path: string[], value: unknown) => {
@@ -346,7 +377,75 @@ export function GatewayConfigPanel() {
     }
   }, [updating, showFeedback])
 
+  const handleQuickSave = useCallback(async () => {
+    if (!quickUrl || saving) return
+    setSaving(true)
+    setJustSaved(false)
+
+    try {
+      const updates: Record<string, unknown> = {}
+      if (quickName) {
+        if ((config as any)?.name !== undefined) {
+          updates['name'] = quickName
+        } else {
+          updates['gateway.name'] = quickName
+        }
+      }
+      updates['gateway.url'] = quickUrl
+      if (quickApiKey) updates['gateway.apiKey'] = quickApiKey
+      updates['gateway.connectionMode'] = quickConnectionMode
+      updates['channels.telegram'] = quickChannels.telegram
+      updates['channels.slack'] = quickChannels.slack
+      updates['channels.discord'] = quickChannels.discord
+      updates['channels.whatsapp'] = quickChannels.whatsapp
+
+      const res = await fetch('/api/gateway-config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates, hash: configHash }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setJustSaved(true)
+        showFeedback(true, `Saved ${data.count} field${data.count !== 1 ? 's' : ''}`)
+        setConfigHash(data.hash ?? null)
+        fetchConfig()
+        setTimeout(() => setJustSaved(false), 3000)
+      } else if (res.status === 409) {
+        showFeedback(false, data.error || 'Conflict - please reload')
+      } else {
+        showFeedback(false, data.error || 'Failed to save')
+      }
+    } catch {
+      showFeedback(false, 'Network error')
+    } finally {
+      setSaving(false)
+    }
+  }, [quickUrl, quickName, quickApiKey, quickConnectionMode, quickChannels, saving, config, configHash, showFeedback, fetchConfig])
+
   const t = useTranslations('gatewayConfig')
+
+  const handleTestConnection = useCallback(async () => {
+    if (!quickUrl || testState === 'testing') return
+    setTestState('testing')
+    try {
+      // Try to reach the gateway URL directly
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 8000)
+      // Strip trailing slash for clean URL
+      const target = quickUrl.replace(/\/+$/, '')
+      const res = await fetch(target, {
+        method: 'GET',
+        mode: 'no-cors',
+        signal: controller.signal,
+      }).catch(() => null)
+      clearTimeout(timeout)
+      // no-cors will always return 'opaque', but if no error was thrown, it's reachable
+      setTestState(res ? 'connected' : 'failed')
+    } catch {
+      setTestState('failed')
+    }
+  }, [quickUrl, testState])
 
   // Loading state
   if (loading) {
@@ -463,36 +562,42 @@ export function GatewayConfigPanel() {
             <button
               onClick={() => {
                 if (mode === 'json' && config) {
-                  // Sync JSON back to form
                   try { setConfig(JSON.parse(jsonText)) } catch { /* keep current */ }
                 }
-                setMode('form')
+                setMode('quick')
               }}
               className={`flex-1 text-xs py-1.5 transition-colors ${
-                mode === 'form' ? 'bg-primary/20 text-primary font-medium' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >{t('modeForm')}</button>
+                mode === 'quick' ? 'bg-primary/20 text-primary font-medium' : 'text-muted-foreground hover:text-foreground'
+              }`}>{t('modeForm')}</button>
             <button
               onClick={() => {
-                if (mode === 'form' && config) {
+                if (mode === 'quick' && config) {
                   setJsonText(JSON.stringify(config, null, 2))
                 }
                 setMode('json')
               }}
               className={`flex-1 text-xs py-1.5 transition-colors border-l border-border ${
                 mode === 'json' ? 'bg-primary/20 text-primary font-medium' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >{t('modeJson')}</button>
+              }`}>{t('modeJson')}</button>
           </div>
         </div>
       </aside>
+
+
 
       {/* Main content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Action bar */}
         <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/30">
           <div className="flex items-center gap-2">
-            {hasChanges ? (
+            {justSaved ? (
+              <span className="flex items-center gap-1 text-xs font-medium text-green-400">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                {t('saved')}
+              </span>
+            ) : hasChanges ? (
               <span className="text-xs font-medium text-amber-400">
                 {mode === 'json' ? t('unsavedChanges') : t('unsavedChangesCount', { count: diff.length })}
               </span>
@@ -510,21 +615,25 @@ export function GatewayConfigPanel() {
             <Button
               variant="default"
               size="xs"
-              onClick={handleSave}
-              disabled={!hasChanges || saving}
+              onClick={mode === 'quick' ? handleQuickSave : handleSave}
+              disabled={mode === 'quick' ? (!quickUrl || saving) : (!hasChanges || saving)}
             >{saving ? t('saving') : t('save')}</Button>
-            <Button
-              variant="outline"
-              size="xs"
-              onClick={handleApply}
-              disabled={applying}
-            >{applying ? t('applying') : t('apply')}</Button>
-            <Button
-              variant="outline"
-              size="xs"
-              onClick={handleUpdate}
-              disabled={updating}
-            >{updating ? t('updating') : t('updateSystem')}</Button>
+            {(mode === 'quick' || mode === 'form') && (
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={handleApply}
+                disabled={applying}
+              >{applying ? t('applying') : t('apply')}</Button>
+            )}
+            {(mode === 'quick' || mode === 'form') && (
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={handleUpdate}
+                disabled={updating}
+              >{updating ? t('updating') : t('updateSystem')}</Button>
+            )}
           </div>
         </div>
 
@@ -537,28 +646,172 @@ export function GatewayConfigPanel() {
           </div>
         )}
 
-        {/* Diff summary */}
-        {hasChanges && mode === 'form' && diff.length > 0 && (
-          <details className="mx-4 mt-2 border border-amber-500/20 rounded-lg">
-            <summary className="px-3 py-1.5 text-xs text-amber-400 cursor-pointer hover:bg-amber-500/5">
-              {t('viewPendingChanges', { count: diff.length })}
-            </summary>
-            <div className="px-3 py-2 space-y-1 border-t border-amber-500/10">
-              {diff.map((d, i) => (
-                <div key={i} className="flex items-center gap-2 text-2xs">
-                  <span className="font-mono text-muted-foreground">{d.path}</span>
-                  <span className="text-red-400 truncate max-w-24">{truncateValue(d.from)}</span>
-                  <span className="text-muted-foreground">-&gt;</span>
-                  <span className="text-green-400 truncate max-w-24">{truncateValue(d.to)}</span>
-                </div>
-              ))}
-            </div>
-          </details>
-        )}
-
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {mode === 'json' ? (
+          {mode === 'quick' ? (
+            <div className="max-w-xl mx-auto space-y-6">
+              {/* Quick Setup Header */}
+              <div className="text-center space-y-1">
+                <h2 className="text-lg font-semibold text-foreground">{t('quickSetupTitle')}</h2>
+                <p className="text-sm text-muted-foreground">{t('quickSetupDescription')}</p>
+              </div>
+
+              {/* Gateway Name */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">{t('gatewayNameLabel')}</label>
+                <input
+                  type="text"
+                  value={quickName}
+                  onChange={e => setQuickName(e.target.value)}
+                  placeholder={t('gatewayNamePlaceholder')}
+                  className="w-full h-9 px-3 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary/50"
+                />
+                <p className="text-2xs text-muted-foreground">{t('gatewayNameHelp')}</p>
+              </div>
+
+              {/* Gateway URL + Test Connection */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">{t('gatewayUrlLabel')}</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={quickUrl}
+                    onChange={e => { setQuickUrl(e.target.value); setTestState('idle') }}
+                    placeholder="https://"
+                    className="flex-1 h-9 px-3 text-sm font-mono bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary/50"
+                  />
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    onClick={handleTestConnection}
+                    disabled={!quickUrl || testState === 'testing'}
+                    className="shrink-0"
+                  >
+                    {testState === 'testing' ? (
+                      <>
+                        <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin mr-1.5" />
+                        {t('testingConnection')}
+                      </>
+                    ) : testState === 'connected' ? (
+                      <>
+                        <span className="text-green-400 mr-1">&#10003;</span>
+                        {t('connectionSuccess')}
+                      </>
+                    ) : testState === 'failed' ? (
+                      <>
+                        <span className="text-red-400 mr-1">&#10007;</span>
+                        {t('connectionFailed')}
+                      </>
+                    ) : (
+                      t('testConnection')
+                    )}
+                  </Button>
+                </div>
+                <p className="text-2xs text-muted-foreground">{t('gatewayUrlHelp')}</p>
+              </div>
+
+              {/* API Key */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">{t('apiKeyLabel')}</label>
+                <div className="relative">
+                  <input
+                    type={showApiKey ? 'text' : 'password'}
+                    value={quickApiKey}
+                    onChange={e => setQuickApiKey(e.target.value)}
+                    placeholder={t('apiKeyPlaceholder')}
+                    className="w-full h-9 px-3 pr-10 text-sm font-mono bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary/50"
+                  />
+                  <button
+                    onClick={() => setShowApiKey(prev => !prev)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
+                    type="button"
+                  >
+                    {showApiKey ? t('apiKeyHide') : t('apiKeyShow')}
+                  </button>
+                </div>
+                <p className="text-2xs text-muted-foreground">{t('apiKeyHelp')}</p>
+              </div>
+
+              {/* Channels */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">{t('channelsLabel')}</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { key: 'telegram' as const, label: 'Telegram', icon: '✈' },
+                    { key: 'slack' as const, label: 'Slack', icon: '#' },
+                    { key: 'discord' as const, label: 'Discord', icon: '🎮' },
+                    { key: 'whatsapp' as const, label: 'WhatsApp', icon: '📱' },
+                  ].map(ch => (
+                    <label
+                      key={ch.key}
+                      className={`flex items-center gap-2 p-2.5 rounded-md border cursor-pointer transition-colors ${
+                        quickChannels[ch.key]
+                          ? 'border-primary/40 bg-primary/5'
+                          : 'border-border hover:bg-secondary/30'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={quickChannels[ch.key]}
+                        onChange={e => setQuickChannels(prev => ({ ...prev, [ch.key]: e.target.checked }))}
+                        className="sr-only peer"
+                      />
+                      <div className="w-5 h-5 shrink-0 flex items-center justify-center rounded border border-border bg-background peer-checked:bg-primary peer-checked:border-primary transition-colors text-xs text-white">
+                        {quickChannels[ch.key] && <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>}
+                      </div>
+                      <span className="text-sm text-foreground">{ch.icon} {ch.label}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-2xs text-muted-foreground">{t('channelsHelp')}</p>
+              </div>
+
+              {/* Connection Mode */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">{t('connectionModeLabel')}</label>
+                <select
+                  value={quickConnectionMode}
+                  onChange={e => setQuickConnectionMode(e.target.value)}
+                  className="w-full h-9 px-3 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary/50"
+                >
+                  <option value="primary">{t('connectionModePrimary')}</option>
+                  <option value="fallback">{t('connectionModeFallback')}</option>
+                  <option value="standby">{t('connectionModeStandby')}</option>
+                </select>
+                <p className="text-2xs text-muted-foreground">{t('connectionModeHelp')}</p>
+              </div>
+
+              {/* Advanced Toggle */}
+              <div className="pt-4 border-t border-border">
+                <button
+                  onClick={() => setShowAdvanced(prev => !prev)}
+                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <svg
+                    className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-90' : ''}`}
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                  >
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                  {showAdvanced ? t('hideAdvancedEditor') : t('showAdvancedEditor')}
+                </button>
+              </div>
+
+              {/* Advanced JSON Editor */}
+              {showAdvanced && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">{t('advancedEditorLabel')}</label>
+                  <textarea
+                    value={jsonText}
+                    onChange={e => setJsonText(e.target.value)}
+                    className="w-full min-h-[300px] p-3 text-xs font-mono bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary/50 resize-y"
+                    spellCheck={false}
+                  />
+                  <p className="text-2xs text-muted-foreground">{t('advancedEditorHelp')}</p>
+                </div>
+              )}
+            </div>
+          ) : mode === 'json' ? (
             <textarea
               value={jsonText}
               onChange={e => setJsonText(e.target.value)}

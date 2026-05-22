@@ -3,20 +3,12 @@ import { randomBytes } from 'crypto'
 import { requireRole } from '@/lib/auth'
 import { getDatabase, logAuditEvent } from '@/lib/db'
 import { mutationLimiter } from '@/lib/rate-limit'
+import { maskApiKey } from '@/lib/api-key-mask'
 
 interface ApiKeyRow {
   value: string
   updated_by: string | null
   updated_at: number
-}
-
-/**
- * Mask an API key for display: show first 4 and last 5 chars.
- * e.g. "mc_a1b2c3d4e5f6g7h8i9j0" -> "mc_a****j0"
- */
-function maskApiKey(key: string): string {
-  if (key.length <= 9) return '****'
-  return key.slice(0, 4) + '-****-****-' + key.slice(-5)
 }
 
 /**
