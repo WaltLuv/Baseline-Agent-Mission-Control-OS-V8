@@ -1,0 +1,32 @@
+# ═══════════════════════════════════════════════════════════════════════
+# Caddyfile — Production reverse proxy for Mission Control V2
+#
+# Automatic HTTPS with Caddy's default ACME cert provider (Let's Encrypt).
+# Place the public domain name in MC_HOST env var or hardcode here.
+# ═══════════════════════════════════════════════════════════════════════
+
+{$MC_HOST:-localhost}:443 {
+    # Reverse proxy to Mission Control
+    reverse_proxy mission-control:3000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # Security headers
+    header {
+        -Server
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    }
+
+    # TLS defaults (automatic from Let's Encrypt)
+    # For zero-SSL or internal CA, uncomment:
+    # tls internal
+    encode gzip zstd
+}
+
+# HTTP → HTTPS redirect (automatic in Caddy when port 80 is exposed)

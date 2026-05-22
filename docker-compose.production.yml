@@ -1,0 +1,128 @@
+# ═══════════════════════════════════════════════════════════════════════
+# Mission Control V2 — Production Docker Compose
+#
+# This compose orchestrates a full production stack:
+#   - Mission Control (Next.js dashboard)
+#   - Caddy reverse proxy (automatic HTTPS)
+#
+# Usage:
+#   docker compose -f docker-compose.production.yml \
+#     --env-file .env.production up -d
+#
+# Secrets are loaded from .env.production (never inline).
+# ═══════════════════════════════════════════════════════════════════════
+
+services:
+  # ── Mission Control Application ─────────────────────────────────────
+  mission-control:
+    build:
+      context: .
+      dockerfile: Dockerfile.hardened
+      args:
+        MC_VERSION: ${MC_VERSION:-latest}
+    container_name: mission-control
+    restart: unless-stopped
+    image: mission-control:${MC_VERSION:-latest}
+
+    # ── Resource limits ─────────────────────────────────────────────
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 1.0
+    cpuset: ""
+    pids_limit: 256
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+          pids: 256
+        reservations:
+          memory: 256M
+          cpus: "0.5"
+
+    # ── Ports — only on internal network; exposed via Caddy ─────────
+    expose:
+      - "3000"
+
+    # ── Environment — all values from env-file, not inline ──────────
+    env_file:
+      - path: ${ENV_FILE:-.env.production}
+        required: true
+
+    # ── Health check ────────────────────────────────────────────────
+    healthcheck:
+      test: ["CMD", "node", "/app/healthcheck.js"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+    # ── Volumes ──────────────────────────────────────────────────────
+    volumes:
+      - mc-data:/app/.data
+      # Optional: mount OpenClaw state read-only for agent config access
+      # - ${OPENCLAW_HOME:-~/.openclaw}:/run/openclaw:ro
+
+    # ── Network ──────────────────────────────────────────────────────
+    networks:
+      - mc-internal
+      - mc-proxy
+
+    # ── Security ─────────────────────────────────────────────────────
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.next/cache
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+
+  # ── Caddy Reverse Proxy ──────────────────────────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    container_name: mc-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile.production:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    environment:
+      - MC_HOST=${MC_HOST:-localhost}
+    networks:
+      - mc-proxy
+      - mc-internal
+    healthcheck:
+      test: ["CMD", "caddy", "health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+volumes:
+  mc-data:
+    driver: local
+  caddy-data:
+    driver: local
+  caddy-config:
+    driver: local
+
+networks:
+  # Public-facing network: Caddy receives external traffic
+  mc-proxy:
+    driver: bridge
+    labels:
+      com.docker.network.description: "Mission Control public ingress"
+
+  # Internal-only network: Mission Control is not directly reachable
+  # Only containers on mc-proxy (Caddy) can reach it
+  mc-internal:
+    driver: bridge
+    internal: true
+    labels:
+      com.docker.network.description: "Mission Control internal backend"

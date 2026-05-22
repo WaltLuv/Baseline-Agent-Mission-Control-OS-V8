@@ -1,0 +1,51 @@
+# ═══════════════════════════════════════════════════════════════════════
+# Dockerignore — Hardened production build context
+# Prevents unnecessary files from entering the build context.
+# ═══════════════════════════════════════════════════════════════════════
+
+# Git
+.git
+.gitignore
+.github
+
+# Node
+node_modules
+.pnpm-store
+
+# Generated
+.next
+.next/standalone
+.next/static
+
+# Env and secrets (NEVER in image)
+.env
+.env.*
+!.env.example
+
+# Data directories
+.data
+.data/**/*
+
+# IDE
+.vscode
+.idea
+
+# Tests
+*.test.*
+*.spec.*
+__tests__
+__e2e__
+playwright.config.*
+vitest.config.*
+
+# Docs (not needed in production image)
+docs
+
+# Deploy scripts
+scripts/deploy*
+scripts/production-start.sh
+
+# Misc
+*.md
+LICENSE
+!.openclaw
