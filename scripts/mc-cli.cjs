@@ -550,6 +550,17 @@ const commands = {
     capabilities: () => ({ method: 'GET', route: '/api/status?action=capabilities' }),
   },
 
+  workflows: {
+    list: () => ({ method: 'GET', route: '/api/workflows' }),
+    get: (flags) => ({ method: 'GET', route: `/api/workflows/${required(flags, 'id')}` }),
+    create: (flags) => ({
+      method: 'POST',
+      route: '/api/workflows',
+      body: bodyFromFlags(flags) || { name: required(flags, 'name') },
+    }),
+    delete: (flags) => ({ method: 'DELETE', route: `/api/workflows/${required(flags, 'id')}` }),
+  },
+
   export: {
     audit: (flags) => {
       const format = optional(flags, 'format', 'json');
