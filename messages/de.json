@@ -1842,7 +1842,8 @@
     "tokens": "Token ({count})",
     "tokenUsed": "verwendet {time}",
     "revoked": "widerrufen",
-    "rotate": "Rotieren"
+    "rotate": "Rotieren",
+    "whatAreNodes": "Nodes are remote agents or devices that report into Mission Control. They appear here when they connect to the gateway."
   },
   "activityFeed": {
     "title": "Aktivität",
@@ -2057,7 +2058,23 @@
     "stopping": "Stopping...",
     "restarting": "Restarting...",
     "diagnosing": "Diagnosing...",
-    "notInstalled": "Not installed"
+    "notInstalled": "Not installed",
+    "qualityNone": "No gateways",
+    "qualityGood": "Connected",
+    "qualityDegraded": "Partially connected",
+    "qualityCritical": "All disconnected",
+    "whatIsGatewayTitle": "About the Gateway:",
+    "whatIsGateway": "The gateway connects your agents to real-time messaging channels (Telegram, Slack, Discord, WhatsApp) and manages agent lifecycle.",
+    "troubleshootingTitle": "Troubleshooting",
+    "troubleshootNotRunning": "Gateway is not running",
+    "troubleshootNotRunningHelp": "If a gateway shows as stopped, click Start to launch it. If it fails to start, try Diagnose for detailed logs.",
+    "troubleshootCheck1": "Check that the gateway binary is installed correctly",
+    "troubleshootCheck2": "Verify the port is not already in use by another process",
+    "troubleshootCheck3": "Review the system logs for permission errors",
+    "troubleshootConnectionIssues": "Connection issues with agents",
+    "troubleshootConnectionHelp": "If agents cannot connect, verify the gateway is running and the device tokens are valid. Try restarting the gateway or rotating tokens for affected devices.",
+    "troubleshootAgentsNot": "Agents not responding",
+    "troubleshootAgentsNotHelp": "Check that each agent has a valid paired device entry. Use the Nodes tab to verify agent connectivity and review token status."
   },
   "agentHistory": {
     "title": "Agentenverlauf",
@@ -2194,5 +2211,31 @@
     "tabStatus": "Status",
     "unhealthy": "Ungesund",
     "unreachable": "Nicht erreichbar"
+  },
+  "monitor": {
+    "title": "System Monitor",
+    "loadingMetrics": "Loading system metrics…",
+    "error": "Error: {message}",
+    "allSystemsNominal": "All systems nominal — CPU at {cpu}%",
+    "systemWarning": "Elevated usage — CPU at {cpu}%, Memory at {memory}%",
+    "systemCritical": "High resource usage — CPU at {cpu}%, Memory at {memory}%",
+    "cpu": "CPU",
+    "memory": "Memory",
+    "disk": "Disk",
+    "gpu": "GPU",
+    "noDiskData": "No disk data available",
+    "noGpuDetected": "No GPU detected",
+    "gpuMemoryUnavailable": "GPU detected but live memory usage unavailable",
+    "processes": "Top Processes",
+    "shownCount": "{count} shown",
+    "noProcessData": "No process data available",
+    "network": "Network I/O",
+    "noNetworkData": "No network data available",
+    "download": "Download",
+    "upload": "Upload",
+    "colProcess": "Process",
+    "colCpu": "CPU",
+    "colMem": "Mem",
+    "colRss": "RSS"
   }
 }

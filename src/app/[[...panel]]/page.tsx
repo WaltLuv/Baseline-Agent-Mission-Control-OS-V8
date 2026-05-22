@@ -598,6 +598,10 @@ function ContentRouter({ tab }: { tab: string }) {
     case 'security':
       return <SecurityAuditPanel />
     case 'debug':
+      // Debug panel — hidden in production, only visible in local/dev mode
+      if (dashboardMode === 'local') {
+        return <LocalModeUnavailable panel={tab} />
+      }
       return <DebugPanel />
     case 'exec-approvals':
       if (isLocal) return <LocalModeUnavailable panel={tab} />

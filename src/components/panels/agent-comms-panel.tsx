@@ -409,6 +409,9 @@ export function AgentCommsPanel() {
         </div>
       </div>
 
+      {/* Narrative summary bar */}
+      {!loading && (commsData || logs.length > 0) && <NarrativeSummary commsData={commsData} feedEvents={feedEvents} />}
+
       {/* Filter bar — matches TUI FeedFilter */}
       <div className="flex items-center gap-1 px-4 py-2 border-b border-border/30 flex-shrink-0 overflow-x-auto">
         {FILTER_OPTIONS.map(opt => (
@@ -645,6 +648,45 @@ function SessionChip({ session, selected, onClick }: { session: Session; selecte
   )
 }
 
+// ── Narrative summary ──
+
+function NarrativeSummary({ commsData, feedEvents }: { commsData: CommsData | null; feedEvents: FeedEvent[] }) {
+  const now = Date.now()
+  const msgsLastHour = feedEvents.filter(e => (now - e.ts) < 3600000).length
+
+  // Active conversations (unique conversation_ids with messages in last hour)
+  const activeConvos = new Set(
+    (commsData?.messages || [])
+      .filter(m => (now - m.created_at * 1000) < 3600000)
+      .map(m => m.conversation_id)
+  ).size
+
+  // Most active agents
+  const agentMsgCounts = new Map<string, number>()
+  for (const e of feedEvents) {
+    agentMsgCounts.set(e.source, (agentMsgCounts.get(e.source) || 0) + 1)
+  }
+  const topAgents = [...agentMsgCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4)
+
+  const totalMsgs = feedEvents.length
+
+  return (
+    <div className="px-4 py-2 border-b border-border/30 flex-shrink-0">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+        <span><strong className="text-foreground">{activeConvos}</strong> active conversations</span>
+        <span><strong className="text-foreground">{msgsLastHour}</strong> messages last hour</span>
+        <span><strong className="text-foreground">{totalMsgs}</strong> total events</span>
+        {topAgents.length > 0 && (
+          <span>most active: {topAgents.map(([agent, cnt]) => {
+            const id = getIdentity(agent)
+            return <span key={agent}><span style={{ color: id.color }}>{id.emoji} {id.label}</span> <span className="text-muted-foreground/50">({cnt})</span></span>
+          }).reduce((acc, el, i) => i === 0 ? [el] : [...acc, <span key={`sep-${i}`} className="text-muted-foreground/30"> · </span>, el], [] as React.ReactNode[])}</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Empty state ──
 
 function EmptyState({ filter }: { filter: FeedFilter }) {
@@ -657,7 +699,7 @@ function EmptyState({ filter }: { filter: FeedFilter }) {
       </p>
       <p className="text-xs text-muted-foreground/50 mt-1 max-w-[320px]">
         {filter === 'all'
-          ? t('noFeedEventsHint')
+          ? 'Agent communication feed is empty. Start a conversation or trigger agent activity to see events here.'
           : t('noFilterEventsHint', { filter })}
       </p>
     </div>

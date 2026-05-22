@@ -57,6 +57,22 @@ export function GatewayControlPanel() {
     }
   }
 
+  // Compute connection quality based on running gateways
+  const runningCount = gateways.filter(g => g.running).length
+  const totalCount = gateways.filter(g => g.installed).length
+  const connectionQuality = totalCount === 0 ? 'none'
+    : runningCount === totalCount ? 'good'
+    : runningCount > 0 ? 'degraded'
+    : 'critical'
+
+  const qualityConfig = {
+    none: { label: t('qualityNone'), color: 'text-muted-foreground', dot: 'bg-muted-foreground/30' },
+    good: { label: t('qualityGood'), color: 'text-emerald-400', dot: 'bg-emerald-400' },
+    degraded: { label: t('qualityDegraded'), color: 'text-amber-400', dot: 'bg-amber-400 animate-pulse' },
+    critical: { label: t('qualityCritical'), color: 'text-red-400', dot: 'bg-red-400 animate-pulse' },
+  }
+  const q = qualityConfig[connectionQuality]
+
   if (loading) {
     return (
       <div className="p-6">
@@ -70,9 +86,31 @@ export function GatewayControlPanel() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
+      {/* Header */}
       <div className="mb-6">
-        <h2 className="text-lg font-semibold text-foreground">{t('title')}</h2>
-        <p className="text-sm text-muted-foreground mt-1">{t('description')}</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">{t('title')}</h2>
+            <p className="text-sm text-muted-foreground mt-1">{t('description')}</p>
+          </div>
+          {/* Connection quality badge */}
+          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${
+            connectionQuality === 'good' ? 'border-emerald-500/30 bg-emerald-500/10' :
+            connectionQuality === 'degraded' ? 'border-amber-500/30 bg-amber-500/10' :
+            connectionQuality === 'critical' ? 'border-red-500/30 bg-red-500/10' :
+            'border-border/30 bg-surface-1/10'
+          }`}>
+            <span className={`w-2 h-2 rounded-full ${q.dot}`} />
+            <span className={q.color}>{q.label}</span>
+          </div>
+        </div>
+        {/* Value context */}
+        <div className="mt-3 px-3 py-2 rounded-lg border border-border/20 bg-card/50">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">{t('whatIsGatewayTitle')}</span>{' '}
+            {t('whatIsGateway')}
+          </p>
+        </div>
       </div>
 
       {installed.length === 0 ? (
@@ -177,6 +215,44 @@ export function GatewayControlPanel() {
           </div>
         </div>
       )}
+
+      {/* Troubleshooting section */}
+      <div className="mt-6 pt-4 border-t border-border/20">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          {t('troubleshootingTitle')}
+        </h3>
+        <div className="space-y-2">
+          <details className="group rounded-lg border border-border/20 bg-card/30">
+            <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-foreground select-none">
+              {t('troubleshootNotRunning')}
+            </summary>
+            <div className="px-3 pb-2 text-xs text-muted-foreground leading-relaxed">
+              <p>{t('troubleshootNotRunningHelp')}</p>
+              <ul className="list-disc ml-4 mt-1 space-y-0.5">
+                <li>{t('troubleshootCheck1')}</li>
+                <li>{t('troubleshootCheck2')}</li>
+                <li>{t('troubleshootCheck3')}</li>
+              </ul>
+            </div>
+          </details>
+          <details className="group rounded-lg border border-border/20 bg-card/30">
+            <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-foreground select-none">
+              {t('troubleshootConnectionIssues')}
+            </summary>
+            <div className="px-3 pb-2 text-xs text-muted-foreground leading-relaxed">
+              <p>{t('troubleshootConnectionHelp')}</p>
+            </div>
+          </details>
+          <details className="group rounded-lg border border-border/20 bg-card/30">
+            <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-foreground select-none">
+              {t('troubleshootAgentsNot')}
+            </summary>
+            <div className="px-3 pb-2 text-xs text-muted-foreground leading-relaxed">
+              <p>{t('troubleshootAgentsNotHelp')}</p>
+            </div>
+          </details>
+        </div>
+      </div>
     </div>
   )
 }

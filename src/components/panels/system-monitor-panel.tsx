@@ -2,6 +2,8 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { useSmartPoll } from '@/lib/use-smart-poll'
+import { useTranslations } from 'next-intl'
+import { Loader } from '@/components/ui/loader'
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts'
 
 interface CpuData {
@@ -93,6 +95,7 @@ function formatTime(ts: number): string {
 }
 
 export function SystemMonitorPanel() {
+  const t = useTranslations('monitor')
   const [latest, setLatest] = useState<Snapshot | null>(null)
   const [history, setHistory] = useState<TimePoint[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -162,24 +165,55 @@ export function SystemMonitorPanel() {
 
   if (!latest) {
     return (
-      <div className="p-5 flex items-center justify-center h-64 text-muted-foreground">
-        {error ? `Error: ${error}` : 'Loading system metrics...'}
+      <div className="p-5 flex items-center justify-center h-64">
+        {error ? (
+          <span className="text-sm text-red-400">{t('error', { message: error })}</span>
+        ) : (
+          <Loader variant="inline" label={t('loadingMetrics')} />
+        )}
       </div>
     )
   }
 
+  // Health summary computation
+  const cpuStatus = latest.cpu.usagePercent >= 90 ? 'critical' : latest.cpu.usagePercent >= 75 ? 'warning' : 'nominal'
+  const memStatus = latest.memory.usagePercent >= 90 ? 'critical' : latest.memory.usagePercent >= 75 ? 'warning' : 'nominal'
+  const overallStatus = cpuStatus === 'critical' || memStatus === 'critical' ? 'critical'
+    : cpuStatus === 'warning' || memStatus === 'warning' ? 'warning'
+    : 'nominal'
+
   return (
     <div className="p-5 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">System Monitor</h2>
-        {error && <span className="text-xs text-red-500">{error}</span>}
+        <h2 className="text-lg font-semibold">{t('title')}</h2>
+        {error && <span className="text-xs text-red-500">{t('error', { message: error })}</span>}
+      </div>
+
+      {/* Health summary bar */}
+      <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm ${
+        overallStatus === 'critical' ? 'border-red-500/30 bg-red-500/5 text-red-400'
+          : overallStatus === 'warning' ? 'border-amber-500/30 bg-amber-500/5 text-amber-400'
+          : 'border-emerald-500/30 bg-emerald-500/5 text-emerald-400'
+      }`}>
+        <span className={`w-2 h-2 rounded-full ${
+          overallStatus === 'critical' ? 'bg-red-400'
+            : overallStatus === 'warning' ? 'bg-amber-400 animate-pulse'
+            : 'bg-emerald-400'
+        }`} />
+        {overallStatus === 'nominal' ? (
+          <span>{t('allSystemsNominal', { cpu: latest.cpu.usagePercent })}</span>
+        ) : overallStatus === 'warning' ? (
+          <span>{t('systemWarning', { cpu: latest.cpu.usagePercent, memory: latest.memory.usagePercent })}</span>
+        ) : (
+          <span>{t('systemCritical', { cpu: latest.cpu.usagePercent, memory: latest.memory.usagePercent })}</span>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* CPU */}
         <section className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium">CPU</h3>
+            <h3 className="text-sm font-medium">{t('cpu')}</h3>
             <span className="text-2xl font-mono font-bold tabular-nums">{latest.cpu.usagePercent}%</span>
           </div>
           <div className="text-xs text-muted-foreground mb-2">
@@ -212,7 +246,7 @@ export function SystemMonitorPanel() {
         {/* Memory */}
         <section className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium">Memory</h3>
+            <h3 className="text-sm font-medium">{t('memory')}</h3>
             <span className="text-2xl font-mono font-bold tabular-nums">{latest.memory.usagePercent}%</span>
           </div>
           <div className="text-xs text-muted-foreground mb-2">
@@ -248,10 +282,10 @@ export function SystemMonitorPanel() {
         {/* Disk */}
         <section className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium">Disk</h3>
+            <h3 className="text-sm font-medium">{t('disk')}</h3>
           </div>
           {latest.disk.length === 0 ? (
-            <div className="text-xs text-muted-foreground">No disk data available</div>
+            <div className="text-xs text-muted-foreground">{t('noDiskData')}</div>
           ) : (
             <div className="space-y-3">
               {latest.disk.map(d => (
@@ -277,14 +311,14 @@ export function SystemMonitorPanel() {
         {/* GPU */}
         <section className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium">GPU</h3>
+            <h3 className="text-sm font-medium">{t('gpu')}</h3>
             {latest.gpu && latest.gpu[0] && (
               <span className="text-2xl font-mono font-bold tabular-nums">{latest.gpu[0].usagePercent}%</span>
             )}
           </div>
           {!latest.gpu ? (
             <div className="flex items-center justify-center h-40 text-xs text-muted-foreground">
-              No GPU detected
+              {t('noGpuDetected')}
             </div>
           ) : (
             <>
@@ -319,7 +353,7 @@ export function SystemMonitorPanel() {
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-40 text-xs text-muted-foreground">
-                  GPU detected but live memory usage unavailable
+                  {t('gpuMemoryUnavailable')}
                 </div>
               )}
             </>
@@ -328,21 +362,21 @@ export function SystemMonitorPanel() {
         {/* Processes */}
         <section className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium">Top Processes</h3>
-            <span className="text-xs text-muted-foreground">{latest.processes.length} shown</span>
+            <h3 className="text-sm font-medium">{t('processes')}</h3>
+            <span className="text-xs text-muted-foreground">{t('shownCount', { count: latest.processes.length })}</span>
           </div>
           {latest.processes.length === 0 ? (
             <div className="flex items-center justify-center h-40 text-xs text-muted-foreground">
-              No process data available
+              {t('noProcessData')}
             </div>
           ) : (
             <div className="space-y-0">
               {/* Header */}
               <div className="flex items-center text-[10px] text-muted-foreground uppercase tracking-wider pb-1.5 border-b border-border mb-1">
-                <span className="flex-1">Process</span>
-                <span className="w-14 text-right">CPU</span>
-                <span className="w-14 text-right">Mem</span>
-                <span className="w-16 text-right">RSS</span>
+                <span className="flex-1">{t('colProcess')}</span>
+                <span className="w-14 text-right">{t('colCpu')}</span>
+                <span className="w-14 text-right">{t('colMem')}</span>
+                <span className="w-16 text-right">{t('colRss')}</span>
               </div>
               {latest.processes.map(p => (
                 <div key={p.pid} className="flex items-center text-xs py-1 border-b border-border/50 last:border-0">
@@ -367,7 +401,7 @@ export function SystemMonitorPanel() {
         {/* Network I/O */}
         <section className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium">Network I/O</h3>
+            <h3 className="text-sm font-medium">{t('network')}</h3>
             {history.length > 0 && (
               <div className="text-right">
                 <span className="text-xs text-muted-foreground">
@@ -378,7 +412,7 @@ export function SystemMonitorPanel() {
           </div>
           {latest.network.length === 0 ? (
             <div className="flex items-center justify-center h-40 text-xs text-muted-foreground">
-              No network data available
+              {t('noNetworkData')}
             </div>
           ) : (
             <>
@@ -395,7 +429,7 @@ export function SystemMonitorPanel() {
                       contentStyle={{ fontSize: 12, background: 'var(--color-card)', border: '1px solid var(--color-border)' }}
                       formatter={(v: number | undefined, name?: string) => [
                         formatRate(v ?? 0),
-                        name === 'netRxRate' ? 'Download' : 'Upload',
+                        name === 'netRxRate' ? t('download') : t('upload'),
                       ]}
                     />
                     <Area

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
+import { Loader } from '@/components/ui/loader'
 
 interface PresenceEntry {
   id: string
@@ -191,7 +192,10 @@ export function NodesPanel() {
       )}
 
       {loading ? (
-        <div className="text-muted-foreground text-sm py-8 text-center">{t('loading')}</div>
+        <div className="flex flex-col items-center justify-center py-12 gap-3">
+          <Loader variant="panel" label={t('loading')} />
+          <p className="text-xs text-muted-foreground max-w-xs text-center">{t('whatAreNodes')}</p>
+        </div>
       ) : tab === 'instances' ? (
         <InstancesTab nodes={nodes} />
       ) : (
@@ -209,8 +213,11 @@ function InstancesTab({ nodes }: { nodes: PresenceEntry[] }) {
   const t = useTranslations('nodes')
   if (nodes.length === 0) {
     return (
-      <div className="text-muted-foreground text-sm py-8 text-center">
-        {t('noInstances')}
+      <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+        <p className="text-sm text-muted-foreground">{t('noInstances')}</p>
+        <p className="text-xs text-muted-foreground max-w-xs">
+          {t('whatAreNodes', { context: 'empty' })}
+        </p>
       </div>
     )
   }
@@ -423,8 +430,10 @@ function PairedDevicesSection({
 
   if (devices.length === 0) {
     return (
-      <div className="text-muted-foreground text-sm py-8 text-center">
-        {t('noPairedDevices')}
+      <div className="flex flex-col items-center justify-center py-10 text-center">
+        <div className="text-2xl text-muted-foreground/30 mb-2">🔌</div>
+        <p className="text-sm text-muted-foreground">{t('noPairedDevices')}</p>
+        <p className="text-xs text-muted-foreground/50 mt-1 max-w-xs">No devices have been paired yet. Connect a device to the gateway and approve the pairing request to see it here.</p>
       </div>
     )
   }

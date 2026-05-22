@@ -62,12 +62,17 @@ export function AlertRulesPanel() {
   const [showCreate, setShowCreate] = useState(false)
   const [evalResults, setEvalResults] = useState<EvalResult[] | null>(null)
   const [evaluating, setEvaluating] = useState(false)
+  const [recentAlerts, setRecentAlerts] = useState<{ rule_name: string; triggered_at: number; reason?: string }[]>([])
 
   const fetchRules = useCallback(async () => {
     try {
       const res = await fetch('/api/alerts')
       const data = await res.json()
       setRules(data.rules || [])
+      // Also load recent alert history if available
+      if (data.recent) {
+        setRecentAlerts(data.recent.slice(0, 5))
+      }
     } catch { /* ignore */ }
     setLoading(false)
   }, [])

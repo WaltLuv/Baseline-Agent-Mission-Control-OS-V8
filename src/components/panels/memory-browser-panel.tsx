@@ -588,7 +588,12 @@ export function MemoryBrowserPanel() {
               {isLoading ? (
                 <div className="flex items-center justify-center h-20"><Loader variant="inline" /></div>
               ) : filteredFiles.length === 0 ? (
-                <div className="text-center text-muted-foreground/40 text-xs font-mono py-8">{t('noFiles')}</div>
+                <div className="flex flex-col items-center justify-center py-10 text-center px-3">
+                  <div className="text-2xl text-muted-foreground/30 mb-2">📓</div>
+                  <p className="text-xs font-mono text-muted-foreground">{t('noFiles')}</p>
+                  <p className="text-[11px] font-mono text-muted-foreground/50 mt-1 max-w-[200px]">Create your first daily note, knowledge base entry, or skill reference.</p>
+                  <button onClick={() => setShowCreateModal(true)} className="mt-3 px-3 py-1 text-[11px] font-mono rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors">Create file</button>
+                </div>
               ) : renderTree(filteredFiles)}
             </div>
             <div className="p-2 border-t border-border/50">

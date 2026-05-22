@@ -92,6 +92,53 @@ const actionIcons: Record<string, string> = {
   access_deny: 'x',
 }
 
+function SummaryStats({ events }: { events: AuditEvent[] }) {
+  const now = Date.now()
+  const last24h = events.filter(e => (now - e.created_at * 1000) < 24 * 60 * 60 * 1000)
+
+  // Most active actor
+  const actorCounts = new Map<string, number>()
+  for (const e of events) {
+    actorCounts.set(e.actor, (actorCounts.get(e.actor) || 0) + 1)
+  }
+  const mostActiveActor = [...actorCounts.entries()].sort((a, b) => b[1] - a[1])[0]
+
+  // Breakdown by event type
+  const actionCounts = new Map<string, number>()
+  for (const e of events) {
+    actionCounts.set(e.action, (actionCounts.get(e.action) || 0) + 1)
+  }
+  const topActions = [...actionCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6)
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+      <div className="flex items-center gap-4 text-xs">
+        <div className="flex items-center gap-1.5">
+          <span className="text-muted-foreground">{last24h.length}</span>
+          <span className="text-muted-foreground/60">events in 24h</span>
+        </div>
+        {mostActiveActor && (
+          <div className="flex items-center gap-1.5">
+            <span className="font-medium text-foreground">{mostActiveActor[0]}</span>
+            <span className="text-muted-foreground/60">most active ({mostActiveActor[1]})</span>
+          </div>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {topActions.map(([action, count]) => (
+          <span
+            key={action}
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-secondary text-muted-foreground"
+          >
+            {action}
+            <span className="px-1 py-px rounded-full bg-primary/20 text-primary">{count}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function AuditTrailPanel() {
   const t = useTranslations('auditTrail')
 
@@ -218,6 +265,11 @@ export function AuditTrailPanel() {
           {t('refresh')}
         </Button>
       </div>
+
+      {/* Summary stats */}
+      {!loading && events.length > 0 && (
+        <SummaryStats events={events} />
+      )}
 
       {/* Filters */}
       <div className="flex gap-2">

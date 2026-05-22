@@ -99,6 +99,54 @@ function formatDateLabel(date: Date): string {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
+function CronOverviewMetrics({ jobs, formatRelativeTime }: { jobs: CronJob[]; formatRelativeTime: (ts: string | number, future?: boolean) => string }) {
+  const totalJobs = jobs.length
+  const activeJobs = jobs.filter(j => j.enabled).length
+  const now = Date.now()
+  const todayStart = new Date(now).setHours(0, 0, 0, 0)
+  const executedToday = jobs.filter(j => j.lastRun && j.lastRun >= todayStart).length
+
+  // Find the next upcoming run
+  let nextRun: number | undefined
+  for (const j of jobs) {
+    if (j.nextRun && j.enabled) {
+      if (!nextRun || j.nextRun < nextRun) nextRun = j.nextRun
+    }
+  }
+
+  // Error rate
+  const withStatus = jobs.filter(j => j.lastStatus)
+  const errorCount = jobs.filter(j => j.lastStatus === 'error').length
+  const errorRate = withStatus.length > 0 ? Math.round((errorCount / withStatus.length) * 100) : 0
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="bg-card border border-border rounded-lg p-3">
+        <div className="text-xs text-muted-foreground">Jobs configured</div>
+        <div className="text-xl font-bold text-foreground mt-0.5">{totalJobs}</div>
+      </div>
+      <div className="bg-card border border-border rounded-lg p-3">
+        <div className="text-xs text-muted-foreground">Active</div>
+        <div className="text-xl font-bold text-emerald-400 mt-0.5">{activeJobs}</div>
+      </div>
+      <div className="bg-card border border-border rounded-lg p-3">
+        <div className="text-xs text-muted-foreground">Executed today</div>
+        <div className="text-xl font-bold text-blue-400 mt-0.5">{executedToday}</div>
+      </div>
+      <div className="bg-card border border-border rounded-lg p-3">
+        <div className="text-xs text-muted-foreground">Next run</div>
+        <div className="text-sm font-semibold text-primary mt-1">{nextRun ? formatRelativeTime(nextRun, true) : '—'}</div>
+      </div>
+      <div className="bg-card border border-border rounded-lg p-3">
+        <div className="text-xs text-muted-foreground">Error rate</div>
+        <div className={`text-xl font-bold mt-0.5 ${errorRate === 0 ? 'text-emerald-400' : errorRate > 20 ? 'text-red-400' : 'text-amber-400'}`}>
+          {errorRate}%
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function CronManagementPanel() {
   const t = useTranslations('cronManagement')
   const { cronJobs, setCronJobs, dashboardMode } = useMissionControl()
@@ -707,6 +755,9 @@ export function CronManagementPanel() {
           </div>
         </div>
       </div>
+
+      {/* Overview metrics summary */}
+      {!isLoading && cronJobs.length > 0 && <CronOverviewMetrics jobs={cronJobs} formatRelativeTime={formatRelativeTime} />}
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Calendar View - Phase A (read-only) */}

@@ -550,6 +550,18 @@ export function SkillsPanel() {
             <div className="rounded-lg border border-border bg-card px-4 py-6 text-sm text-muted-foreground">{t('loadingSkills')}</div>
           ) : error ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-6 text-sm text-destructive">{error}</div>
+          ) : (skillsList?.length === 0 && (!skillGroups || skillGroups.every(g => g.skills.length === 0))) ? (
+            <div className="rounded-lg border border-border bg-card p-8 text-center space-y-3">
+              <div className="text-3xl">✨</div>
+              <div>
+                <p className="text-sm font-medium text-foreground">No skills installed yet</p>
+                <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">Browse the Skill Registry to discover and install skills, or create your own from scratch.</p>
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <Button variant="default" size="sm" onClick={() => setActiveTab('registry')}>{t('browseRegistry')}</Button>
+                <span className="text-xs text-muted-foreground">or create a skill above</span>
+              </div>
+            </div>
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">

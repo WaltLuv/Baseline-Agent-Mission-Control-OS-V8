@@ -122,6 +122,7 @@ const gatewayOnlyPanels = new Set([
   'gateways', 'gateway-config', 'channels', 'nodes', 'exec-approvals',
   ...getPluginNavItems().filter(pi => pi.gatewayOnly).map(pi => pi.id),
 ])
+const localOnlyPanels = new Set(['debug'])
 const adminOnlyPanels = new Set<string>([])
 
 export function NavRail() {
@@ -183,6 +184,7 @@ export function NavRail() {
           return { ...i, children: filteredChildren }
         }
         if (isLocal && gatewayOnlyPanels.has(i.id)) return null
+        if (!isLocal && localOnlyPanels.has(i.id)) return null
         if (!isAdmin && adminOnlyPanels.has(i.id)) return null
         if (isEssential && !i.essential) return null
         return i
