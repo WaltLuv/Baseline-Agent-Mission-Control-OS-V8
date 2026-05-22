@@ -222,7 +222,7 @@ export default function LoginPage() {
 
     // Full reload ensures the session cookie is sent on all subsequent requests.
     // router.push() + refresh() can race and use stale RSC payloads.
-    window.location.href = '/'
+    window.location.href = '/app'
     return true
   }, [t])
 

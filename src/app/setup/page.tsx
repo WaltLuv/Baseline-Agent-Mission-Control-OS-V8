@@ -168,7 +168,7 @@ export default function SetupPage() {
       updateProgress(3, 'done')
 
       await new Promise((r) => setTimeout(r, 500))
-      window.location.href = '/'
+      window.location.href = '/app'
     } catch {
       updateProgress(1, 'error')
       setError(t('networkError'))
