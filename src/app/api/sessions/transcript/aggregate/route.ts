@@ -25,6 +25,9 @@ export async function GET(request: NextRequest) {
   const auth = requireRole(request, 'viewer')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
+  // Tenant isolation: scope to workspace
+  const workspaceId = auth.user.workspace_id ?? 1
+
   const { searchParams } = new URL(request.url)
   const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '100', 10), 1), 500)
   const since = parseInt(searchParams.get('since') || '0', 10) || 0
@@ -37,8 +40,13 @@ export async function GET(request: NextRequest) {
   const sessions = getAllGatewaySessions()
   const allEvents: AggregateEvent[] = []
 
+  // Tenant isolation: only return sessions for this workspace
   for (const session of sessions) {
     if (!session.sessionId) continue
+    // Workspace-scoped: only include sessions whose key contains this workspace's context
+    if (!session.key.includes(`ws-${workspaceId}`) && !session.key.includes('ws-1')) {
+      if (workspaceId !== 1) continue // workspace 1 is the default shared workspace
+    }
 
     const raw = readSessionJsonl(stateDir, session.agent, session.sessionId)
     if (!raw) continue

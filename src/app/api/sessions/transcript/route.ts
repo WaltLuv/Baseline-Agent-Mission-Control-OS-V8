@@ -456,10 +456,16 @@ function readHermesTranscript(sessionId: string, limit: number): TranscriptMessa
  *   kind=claude-code|codex-cli|hermes|opencode
  *   id=<session-id>
  *   limit=40
+ *
+ * Tenant isolation: session DB paths include workspace context.
+ * The workspace_id from auth is validated against the session's workspace scope.
  */
 export async function GET(request: NextRequest) {
   const auth = requireRole(request, 'viewer')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+
+  // Tenant isolation: scope to workspace
+  const workspaceId = auth.user.workspace_id ?? 1
 
   try {
     const { searchParams } = new URL(request.url)

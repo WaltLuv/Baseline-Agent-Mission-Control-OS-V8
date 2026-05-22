@@ -126,7 +126,7 @@ function getRootBySource(roots: SkillRoot[], sourceRaw: string | null): SkillRoo
   return roots.find((r) => r.source === source) || null
 }
 
-async function upsertSkill(root: SkillRoot, name: string, content: string) {
+async function upsertSkill(root: SkillRoot, name: string, content: string, workspaceId: number) {
   const skillPath = resolveWithin(root.path, name)
   const skillDocPath = resolveWithin(skillPath, 'SKILL.md')
   await mkdir(skillPath, { recursive: true })
@@ -141,12 +141,13 @@ async function upsertSkill(root: SkillRoot, name: string, content: string) {
     const descLines = content.split('\n').map(l => l.trim()).filter(Boolean)
     const desc = descLines.find(l => !l.startsWith('#'))
     db.prepare(`
-      INSERT INTO skills (name, source, path, description, content_hash, installed_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO skills (name, source, path, description, content_hash, workspace_id, installed_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(source, name) DO UPDATE SET
         path = excluded.path,
         description = excluded.description,
         content_hash = excluded.content_hash,
+        workspace_id = excluded.workspace_id,
         updated_at = excluded.updated_at
     `).run(
       name,
@@ -154,6 +155,7 @@ async function upsertSkill(root: SkillRoot, name: string, content: string) {
       skillPath,
       desc ? (desc.length > 220 ? `${desc.slice(0, 217)}...` : desc) : null,
       hash,
+      workspaceId,
       now,
       now
     )
@@ -162,15 +164,15 @@ async function upsertSkill(root: SkillRoot, name: string, content: string) {
   return { skillPath, skillDocPath }
 }
 
-async function deleteSkill(root: SkillRoot, name: string) {
+async function deleteSkill(root: SkillRoot, name: string, workspaceId: number) {
   const skillPath = resolveWithin(root.path, name)
   await rm(skillPath, { recursive: true, force: true })
 
-  // Remove from DB
+  // Remove from DB (workspace-scoped)
   try {
     const { getDatabase } = await import('@/lib/db')
     const db = getDatabase()
-    db.prepare('DELETE FROM skills WHERE source = ? AND name = ?').run(root.source, name)
+    db.prepare('DELETE FROM skills WHERE source = ? AND name = ? AND workspace_id = ?').run(root.source, name, workspaceId)
   } catch { /* best-effort */ }
 
   return { skillPath }
@@ -179,12 +181,13 @@ async function deleteSkill(root: SkillRoot, name: string) {
 /**
  * Try to serve skill list from DB (fast path).
  * Falls back to filesystem scan if DB has no data yet.
+ * Workspace-scoped: only returns skills for the given workspace_id.
  */
-function getSkillsFromDB(): SkillSummary[] | null {
+function getSkillsFromDB(workspaceId: number): SkillSummary[] | null {
   try {
     const { getDatabase } = require('@/lib/db')
     const db = getDatabase()
-    const rows = db.prepare('SELECT name, source, path, description, registry_slug, security_status FROM skills ORDER BY name').all() as Array<{
+    const rows = db.prepare('SELECT name, source, path, description, registry_slug, security_status FROM skills WHERE workspace_id = ? ORDER BY name').all(workspaceId) as Array<{
       name: string; source: string; path: string; description: string | null; registry_slug: string | null; security_status: string | null
     }>
     if (rows.length === 0) return null // DB empty — fall back to fs scan
@@ -205,6 +208,9 @@ function getSkillsFromDB(): SkillSummary[] | null {
 export async function GET(request: NextRequest) {
   const auth = requireRole(request, 'viewer')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+
+  // Tenant isolation: scope to workspace
+  const workspaceId = auth.user.workspace_id ?? 1
 
   const roots = getSkillRoots()
   const { searchParams } = new URL(request.url)
@@ -267,7 +273,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Try DB-backed fast path first
-  const dbSkills = getSkillsFromDB()
+  const dbSkills = getSkillsFromDB(workspaceId)
   if (dbSkills) {
     // Group by source for the groups response
     const groupMap = new Map<string, { source: string; path: string; skills: SkillSummary[] }>()
@@ -321,6 +327,7 @@ export async function POST(request: NextRequest) {
   const auth = requireRole(request, 'operator')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
+  const workspaceId = auth.user.workspace_id ?? 1
   const roots = getSkillRoots()
   const body = await request.json().catch(() => ({}))
   const root = getRootBySource(roots, body?.source)
@@ -333,7 +340,7 @@ export async function POST(request: NextRequest) {
   }
 
   await mkdir(root.path, { recursive: true })
-  const { skillPath, skillDocPath } = await upsertSkill(root, name, content)
+  const { skillPath, skillDocPath } = await upsertSkill(root, name, content, workspaceId)
   return NextResponse.json({ ok: true, source: root.source, name, skillPath, skillDocPath })
 }
 
@@ -341,6 +348,7 @@ export async function PUT(request: NextRequest) {
   const auth = requireRole(request, 'operator')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
+  const workspaceId = auth.user.workspace_id ?? 1
   const roots = getSkillRoots()
   const body = await request.json().catch(() => ({}))
   const root = getRootBySource(roots, body?.source)
@@ -352,7 +360,7 @@ export async function PUT(request: NextRequest) {
   }
 
   await mkdir(root.path, { recursive: true })
-  const { skillPath, skillDocPath } = await upsertSkill(root, name, content)
+  const { skillPath, skillDocPath } = await upsertSkill(root, name, content, workspaceId)
   return NextResponse.json({ ok: true, source: root.source, name, skillPath, skillDocPath })
 }
 
@@ -360,6 +368,7 @@ export async function DELETE(request: NextRequest) {
   const auth = requireRole(request, 'operator')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
+  const workspaceId = auth.user.workspace_id ?? 1
   const { searchParams } = new URL(request.url)
   const roots = getSkillRoots()
   const root = getRootBySource(roots, searchParams.get('source'))
@@ -368,7 +377,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: 'Valid source and name are required' }, { status: 400 })
   }
 
-  const { skillPath } = await deleteSkill(root, name)
+  const { skillPath } = await deleteSkill(root, name, workspaceId)
   return NextResponse.json({ ok: true, source: root.source, name, skillPath })
 }
 

@@ -7,7 +7,7 @@ function safeParseJson(str: string): any {
 }
 
 /**
- * GET /api/audit - Query audit log (admin only)
+ * GET /api/audit - Query audit log (admin only, workspace-scoped)
  * Query params: action, actor, limit, offset, since, until
  */
 export async function GET(request: NextRequest) {
@@ -22,8 +22,11 @@ export async function GET(request: NextRequest) {
   const since = searchParams.get('since')
   const until = searchParams.get('until')
 
-  const conditions: string[] = []
-  const params: any[] = []
+  // Tenant isolation: filter by workspace_id
+  const workspaceId = auth.user.workspace_id ?? 1
+
+  const conditions: string[] = ['workspace_id = ?']
+  const params: any[] = [workspaceId]
 
   if (action) {
     conditions.push('action = ?')
@@ -42,7 +45,7 @@ export async function GET(request: NextRequest) {
     params.push(parseInt(until))
   }
 
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+  const where = `WHERE ${conditions.join(' AND ')}`
 
   const db = getDatabase()
 
