@@ -172,7 +172,8 @@ pnpm test:all    # lint + typecheck + vitest + playwright e2e + build
 9. Add loading states and error boundaries to billing UI components
 10. Add "low balance" modal prompting credit purchase
 11. Add usage history table to billing overview
-12. Add margin percentage to billing overview
+12. Add margin percentage to the billing overview panel
+13. Add "Real Estate Sales Agent" and "Mortgage Broker" templates to the onboarding wizard (Business Template #5 and #6). Include relevant workflow presets, skill mappings, and demo data specific to real estate and mortgage workflows.
 ```
 
 ---
@@ -208,7 +209,7 @@ pnpm test:all    # lint + typecheck + vitest + playwright e2e + build
 - [ ] Rate limiting on `POST /api/tokens`
 - [ ] Docker deployment works with billing engine
 - [ ] Landing, pricing, onboarding pages use billing data
-- [ ] All `.original` backup files removed
+- [ ] Onboarding Wizard includes "Real Estate Sales Agent" and "Mortgage Broker" templates (#5 & #6)
 - [ ] All debugging code removed
 - [ ] Documentation complete
 
