@@ -35,6 +35,7 @@ Manage AI agent fleets, dispatch tasks, track costs, and coordinate multi-agent 
 - [API Reference](#api-reference)
 - [Development](#development)
 - [Troubleshooting](#troubleshooting)
+- [Billing & Monetization](#billing--monetization)
 - [Security](#security)
 - [Built with Mission Control](#built-with-mission-control)
 - [Roadmap](#roadmap)
@@ -229,7 +230,57 @@ Browse, install, and manage agent skills from local directories and external reg
 
 Token usage dashboard with per-model breakdowns, trend charts, and cost analysis. Session-level granularity powered by Recharts.
 
-### Security Audit & Agent Trust
+#
+---
+
+## Billing & Monetization
+
+Mission Control includes a complete usage-based billing engine. LLM token consumption is converted into monetized credit charges with configurable markup.
+
+**Files:** `src/lib/billing.ts` (3 cost modes, dual fallbacks, never free) | `src/lib/token-cost-calculator.ts` | `src/lib/pricing-seeds.ts` | `src/app/api/billing/margin/route.ts` | `scripts/seed-billing-data.ts`
+
+### How It Works
+
+1. Agents consume tokens → gateway reports via `POST /api/tokens`
+2. Token cost calculator converts tokens to wholesale USD (11 LLM providers)
+3. 2.5x markup converts wholesale to retail credits
+4. Credits deducted atomically with immutable ledger
+5. Margin tracked via `GET /api/billing/margin` (wholesale vs retail)
+
+### Credit Packages
+
+| Package | Credits | Price | Bonus |
+|---------|---------|-------|-------|
+| Starter | 1,000 | $10 | - |
+| Power | 2,750 | $25 | +250 |
+| Pro | 6,000 | $50 | +500 |
+| Enterprise | 25,000 | $200 | +2,500 |
+
+### Pricing Engine
+
+- 14 providers with wholesale rates and 2.5x retail markup
+- 12 action-level prices (Market Swarm: 40 credits, Vision SOW: 18, etc.)
+- Dual safety fallbacks — defaults to 13 credits/action when no config found. Never zero.
+- 3 cost modes: token-based, custom override, config lookup
+
+### Setup
+
+```bash
+pnpm tsx scripts/seed-billing-data.ts
+```
+
+### API Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /api/tokens` | Gateway reports agent token usage, auto-charges credits |
+| `GET /api/billing/overview` | Balance, transactions, usage history |
+| `GET /api/billing/margin` | Wholesale cost vs retail revenue + margin % |
+| `POST /api/billing/purchase-order` | Stripe checkout for credit purchase |
+
+---
+
+## Security Audit & Agent Trust
 
 Real-time posture scoring (0-100), secret detection across agent messages, MCP tool call auditing, injection attempt tracking, and per-agent trust scores. Hook profiles (minimal/standard/strict) let operators tune security strictness per deployment.
 
@@ -398,6 +449,56 @@ bash scripts/security-audit.sh     # Security configuration audit
 | `AUTH_PASS` with `#` ignored | Quote it: `AUTH_PASS="my#pass"` or use `AUTH_PASS_B64` |
 
 See [docs/deployment.md](docs/deployment.md) for detailed troubleshooting.
+
+
+---
+
+## Billing & Monetization
+
+Mission Control includes a complete usage-based billing engine. LLM token consumption is converted into monetized credit charges with configurable markup.
+
+**Files:** `src/lib/billing.ts` (3 cost modes, dual fallbacks, never free) | `src/lib/token-cost-calculator.ts` | `src/lib/pricing-seeds.ts` | `src/app/api/billing/margin/route.ts` | `scripts/seed-billing-data.ts`
+
+### How It Works
+
+1. Agents consume tokens → gateway reports via `POST /api/tokens`
+2. Token cost calculator converts tokens to wholesale USD (11 LLM providers)
+3. 2.5x markup converts wholesale to retail credits
+4. Credits deducted atomically with immutable ledger
+5. Margin tracked via `GET /api/billing/margin` (wholesale vs retail)
+
+### Credit Packages
+
+| Package | Credits | Price | Bonus |
+|---------|---------|-------|-------|
+| Starter | 1,000 | $10 | - |
+| Power | 2,750 | $25 | +250 |
+| Pro | 6,000 | $50 | +500 |
+| Enterprise | 25,000 | $200 | +2,500 |
+
+### Pricing Engine
+
+- 14 providers with wholesale rates and 2.5x retail markup
+- 12 action-level prices (Market Swarm: 40 credits, Vision SOW: 18, etc.)
+- Dual safety fallbacks — defaults to 13 credits/action when no config found. Never zero.
+- 3 cost modes: token-based, custom override, config lookup
+
+### Setup
+
+```bash
+pnpm tsx scripts/seed-billing-data.ts
+```
+
+### API Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /api/tokens` | Gateway reports agent token usage, auto-charges credits |
+| `GET /api/billing/overview` | Balance, transactions, usage history |
+| `GET /api/billing/margin` | Wholesale cost vs retail revenue + margin % |
+| `POST /api/billing/purchase-order` | Stripe checkout for credit purchase |
+
+---
 
 ## Security
 
