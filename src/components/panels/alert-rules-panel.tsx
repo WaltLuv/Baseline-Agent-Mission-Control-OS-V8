@@ -117,6 +117,13 @@ export function AlertRulesPanel() {
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
+      {/* Story header — tell us when to interrupt the operator */}
+      <div data-testid="panel-story-alert-rules" className="rounded-lg border border-border/60 bg-card/20 p-3">
+        <h2 className="text-base font-semibold text-foreground">Heads-Up Rules</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground max-w-2xl">
+          Story: tell Mission Control when to interrupt you — by event, severity, channel. Add a rule so high-stakes situations never sit silently in a queue waiting for someone to notice.
+        </p>
+      </div>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

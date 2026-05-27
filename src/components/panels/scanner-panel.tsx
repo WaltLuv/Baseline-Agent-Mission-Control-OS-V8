@@ -152,6 +152,12 @@ export function AgentScannerPanel() {
 
   return (
     <div className="flex flex-col gap-4">
+      <div data-testid="panel-story-scanner" className="rounded-lg border border-border/60 bg-card/20 p-3">
+        <h2 className="text-base font-semibold text-foreground">Local AI Discovery</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground max-w-2xl">
+          Story: scan this machine for already-installed AI tools (Claude, Codex, OpenClaw, MCP) and adopt them as AI employees in one click. Read-only and secrets-masked.
+        </p>
+      </div>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">

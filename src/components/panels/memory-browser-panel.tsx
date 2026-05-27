@@ -577,6 +577,12 @@ export function MemoryBrowserPanel() {
 
   return (
     <div className="h-[calc(100vh-3.5rem)] flex flex-col overflow-hidden">
+      <div data-testid="panel-story-memory-browser" className="px-4 py-2 border-b border-border/60 bg-card/20">
+        <h2 className="text-sm font-semibold text-foreground">Workforce Memory</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground max-w-2xl">
+          Story: long-term knowledge your AI workforce remembers between jobs — SOPs, decisions, customer facts, daily notes. Edit a fact here and every AI employee knows it next time they work.
+        </p>
+      </div>
       {/* Top bar */}
       <div className="flex items-center gap-1 px-3 py-2 border-b border-border bg-[hsl(var(--surface-0))]">
         <button

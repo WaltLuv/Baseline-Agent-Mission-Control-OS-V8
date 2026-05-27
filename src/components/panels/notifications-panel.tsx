@@ -85,6 +85,12 @@ export function NotificationsPanel() {
 
   return (
     <div className="h-full flex flex-col">
+      <div data-testid="panel-story-notifications" className="p-4 border-b border-border bg-card/20 flex-shrink-0">
+        <h2 className="text-base font-semibold text-foreground">Heads-Up Notifications</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground max-w-2xl">
+          Story: alerts from your AI workforce that need a quick look — escalations, errors, attention items. Snooze or acknowledge to keep the queue clean.
+        </p>
+      </div>
       <div className="flex justify-between items-center p-4 border-b border-border flex-shrink-0">
         <h2 className="text-xl font-bold text-foreground">{t('title')}</h2>
         <Button

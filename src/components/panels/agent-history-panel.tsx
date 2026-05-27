@@ -133,6 +133,13 @@ export function AgentHistoryPanel() {
 
   return (
     <div className="p-5 space-y-4">
+      {/* Story header — one AI employee's complete record */}
+      <div data-testid="panel-story-agent-history" className="rounded-lg border border-border/60 bg-card/20 p-3">
+        <h2 className="text-base font-semibold text-foreground">AI Employee History</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground max-w-2xl">
+          Story: everything one AI employee has done — every action, every status change, every task — with the credit cost beside it. Use this to audit a specific employee's performance or replay how a job got done.
+        </p>
+      </div>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

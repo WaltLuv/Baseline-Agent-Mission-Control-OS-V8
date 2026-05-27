@@ -580,6 +580,12 @@ export function TokenDashboardPanel() {
 
   return (
     <div className="p-6 space-y-6">
+      <div data-testid="panel-story-token-dashboard" className="rounded-lg border border-border/60 bg-card/20 p-3">
+        <h2 className="text-base font-semibold text-foreground">Workforce Credit Usage</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground max-w-2xl">
+          Story: where your workforce credits went — by model, by session, by hour. Spot expensive surges, find cheaper substitutes, and export the numbers for your books.
+        </p>
+      </div>
       <div className="border-b border-border pb-4">
         <div className="flex items-center justify-between">
           <div>

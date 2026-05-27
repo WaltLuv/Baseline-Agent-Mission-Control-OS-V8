@@ -214,6 +214,12 @@ export function SessionDetailsPanel() {
 
   return (
     <div className="p-6 space-y-6">
+      <div data-testid="panel-story-sessions" className="rounded-lg border border-border/60 bg-card/20 p-3">
+        <h2 className="text-base font-semibold text-foreground">Live AI Sessions</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground max-w-2xl">
+          Story: every live conversation your AI employees are running right now — model, age, token usage, controls. Pause a runaway session, monitor a busy one, or tune thinking depth in place.
+        </p>
+      </div>
       <div className="border-b border-border pb-4">
         <h1 className="text-3xl font-bold text-foreground">{t('title')}</h1>
         <p className="text-muted-foreground mt-2">

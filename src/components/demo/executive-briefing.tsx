@@ -1,6 +1,18 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useDemoMode } from './demo-mode-provider'
+
+interface LiveBriefing {
+  briefingHeadline: string
+  dailyWins: { title: string; impact: string; valueUsd: number }[]
+  attentionItems: { title: string; severity: 'low' | 'medium' | 'high'; reason: string }[]
+  valueCreatedMonthUsd: number
+  hoursSavedMonth: number
+  creditsUsedMonth: number
+  topEmployee: { name: string; impact: string } | null
+  nextAction: { label: string; href: string }
+}
 
 /**
  * Executive Morning Briefing — the first thing a business owner reads when
@@ -10,105 +22,226 @@ import { useDemoMode } from './demo-mode-provider'
  *   - what created value?
  *   - what should I do next?
  *
- * In demo mode this is fully populated from `demo-narratives.ts`. In live
- * mode (no demo overlay), we surface a friendly empty state until the
- * workforce produces real activity.
+ * In demo mode (`?demo=cpa` etc.) this is populated from `demo-narratives.ts`
+ * so prospects see an activated workforce instantly.
+ *
+ * In live mode (no demo overlay) we fetch real metrics from `/api/briefing`
+ * — today's wins, attention items, workforce labor value created this month,
+ * top AI employee, and the recommended next action.
  */
 export function ExecutiveBriefing() {
   const { active, narrative } = useDemoMode()
-  if (!active || !narrative) {
+  const [live, setLive] = useState<LiveBriefing | null>(null)
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    if (active) return // demo overlay handles its own data
+    let cancelled = false
+    fetch('/api/briefing')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return
+        setLive(data as LiveBriefing)
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoaded(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [active])
+
+  // ---------- DEMO MODE ----------
+  if (active && narrative) {
     return (
-      <div
-        data-testid="executive-briefing-empty"
-        className="rounded-2xl border border-dashed border-border/60 bg-card/20 p-6"
-      >
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Your daily briefing
-        </p>
-        <p className="mt-2 text-sm text-foreground">
-          As your AI workforce starts working, this is where you&apos;ll see what happened, what needs
-          your attention, and what value was created today.
-        </p>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Tip: try Demo mode (top-right) to see what a fully active workforce looks like.
-        </p>
-      </div>
+      <BriefingCard
+        testId="executive-briefing"
+        headlineEyebrow={`Your COO briefing — ${formatToday()} · Demo`}
+        headline={narrative.briefingHeadline}
+        subheadline={`Operating as ${narrative.template.icon} ${narrative.template.name}`}
+        valueLabel="Value created · this month"
+        valueUsd={narrative.valueCreatedMonthUsd}
+        hoursSaved={narrative.hoursSavedMonth}
+        dailyWins={narrative.dailyWins}
+        attentionItems={narrative.attentionItems}
+        topEmployee={narrative.topEmployee}
+        nextAction={narrative.nextAction}
+      />
     )
   }
 
+  // ---------- LIVE MODE, REAL DATA ----------
+  if (loaded && live && (live.dailyWins.length > 0 || live.attentionItems.length > 0 || live.creditsUsedMonth > 0)) {
+    return (
+      <BriefingCard
+        testId="executive-briefing-live"
+        headlineEyebrow={`Your COO briefing — ${formatToday()}`}
+        headline={live.briefingHeadline}
+        subheadline={`${live.creditsUsedMonth.toLocaleString()} workforce credits used this month`}
+        valueLabel="Value created · this month"
+        valueUsd={live.valueCreatedMonthUsd}
+        hoursSaved={live.hoursSavedMonth}
+        dailyWins={live.dailyWins}
+        attentionItems={live.attentionItems}
+        topEmployee={live.topEmployee}
+        nextAction={live.nextAction}
+      />
+    )
+  }
+
+  // ---------- EMPTY STATE ----------
   return (
     <div
-      data-testid="executive-briefing"
-      className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/8 via-card/60 to-card/40 p-6 shadow-lg"
+      data-testid="executive-briefing-empty"
+      className="rounded-2xl border border-dashed border-border/60 bg-card/20 p-6"
+    >
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Your daily briefing
+      </p>
+      <p className="mt-2 text-sm text-foreground">
+        As your AI workforce starts working, this is where you&apos;ll see what happened, what needs
+        your attention, and what value was created today.
+      </p>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Tip: try Demo mode (top-right) to see what a fully active workforce looks like.
+      </p>
+    </div>
+  )
+}
+
+function formatToday() {
+  return new Date().toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  })
+}
+
+interface BriefingCardProps {
+  testId: string
+  headlineEyebrow: string
+  headline: string
+  subheadline: string
+  valueLabel: string
+  valueUsd: number
+  hoursSaved: number
+  dailyWins: { title: string; impact: string; valueUsd: number }[]
+  attentionItems: { title: string; severity: 'low' | 'medium' | 'high'; reason: string }[]
+  topEmployee: { name: string; impact: string } | null
+  nextAction: { label: string; href: string }
+}
+
+function BriefingCard({
+  testId,
+  headlineEyebrow,
+  headline,
+  subheadline,
+  valueLabel,
+  valueUsd,
+  hoursSaved,
+  dailyWins,
+  attentionItems,
+  topEmployee,
+  nextAction,
+}: BriefingCardProps) {
+  return (
+    <div
+      data-testid={testId}
+      className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/8 via-card/60 to-card/40 p-6 shadow-lg animate-in fade-in slide-in-from-top-2 duration-500"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-            Your COO briefing — {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+            {headlineEyebrow}
           </p>
           <h2 className="mt-1 text-2xl font-bold text-foreground" data-testid="briefing-headline">
-            {narrative.briefingHeadline}
+            {headline}
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Operating as <span className="font-semibold text-foreground">{narrative.template.icon} {narrative.template.name}</span>
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{subheadline}</p>
         </div>
         <div className="text-right" data-testid="briefing-value-counter">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Value created · this month</p>
-          <p className="mt-0.5 text-3xl font-bold text-emerald-400">
-            ${narrative.valueCreatedMonthUsd.toLocaleString()}
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {valueLabel}
           </p>
-          <p className="text-xs text-muted-foreground">{narrative.hoursSavedMonth} hours saved</p>
+          <p className="mt-0.5 text-3xl font-bold text-emerald-400">
+            ${valueUsd.toLocaleString()}
+          </p>
+          <p className="text-xs text-muted-foreground">{hoursSaved} hours saved</p>
         </div>
       </div>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-3">
-        {/* Daily Wins */}
         <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4" data-testid="briefing-wins">
-          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-400">Today&apos;s wins</p>
-          <ul className="mt-2 space-y-2">
-            {narrative.dailyWins.map((w, i) => (
-              <li key={i} className="text-xs text-foreground/90">
-                <p className="font-medium">{w.title}</p>
-                <p className="text-muted-foreground">{w.impact} · <span className="text-emerald-400">+${w.valueUsd.toLocaleString()}</span></p>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Attention Required */}
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4" data-testid="briefing-attention">
-          <p className="text-xs font-semibold uppercase tracking-wider text-amber-400">
-            Attention required ({narrative.attentionItems.length})
+          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
+            Today&apos;s wins ({dailyWins.length})
           </p>
-          <ul className="mt-2 space-y-2">
-            {narrative.attentionItems.map((a, i) => (
-              <li key={i} className="text-xs text-foreground/90">
-                <p className="font-medium flex items-center gap-1">
-                  <span
-                    className={
-                      a.severity === 'high'
-                        ? 'text-red-400'
-                        : a.severity === 'medium'
-                        ? 'text-amber-400'
-                        : 'text-muted-foreground'
-                    }
-                  >
-                    ●
-                  </span>
-                  {a.title}
-                </p>
-                <p className="text-muted-foreground mt-0.5">{a.reason}</p>
-              </li>
-            ))}
-          </ul>
+          {dailyWins.length === 0 ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              No wins logged yet today. As your AI workforce closes work, it surfaces here.
+            </p>
+          ) : (
+            <ul className="mt-2 space-y-2">
+              {dailyWins.map((w, i) => (
+                <li key={i} className="text-xs text-foreground/90">
+                  <p className="font-medium">{w.title}</p>
+                  <p className="text-muted-foreground">
+                    {w.impact} · <span className="text-emerald-400">+${w.valueUsd.toLocaleString()}</span>
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
-        {/* MVP Employee */}
+        <div
+          className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4"
+          data-testid="briefing-attention"
+        >
+          <p className="text-xs font-semibold uppercase tracking-wider text-amber-400">
+            Attention required ({attentionItems.length})
+          </p>
+          {attentionItems.length === 0 ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Nothing waiting on you right now. Your AI workforce is handling things.
+            </p>
+          ) : (
+            <ul className="mt-2 space-y-2">
+              {attentionItems.map((a, i) => (
+                <li key={i} className="text-xs text-foreground/90">
+                  <p className="font-medium flex items-center gap-1">
+                    <span
+                      className={
+                        a.severity === 'high'
+                          ? 'text-red-400'
+                          : a.severity === 'medium'
+                          ? 'text-amber-400'
+                          : 'text-muted-foreground'
+                      }
+                    >
+                      ●
+                    </span>
+                    {a.title}
+                  </p>
+                  <p className="text-muted-foreground mt-0.5">{a.reason}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         <div className="rounded-xl border border-primary/30 bg-primary/5 p-4" data-testid="briefing-top-employee">
           <p className="text-xs font-semibold uppercase tracking-wider text-primary">Star AI employee</p>
-          <p className="mt-2 text-sm font-semibold text-foreground">{narrative.topEmployee.name}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{narrative.topEmployee.impact}</p>
+          {topEmployee ? (
+            <>
+              <p className="mt-2 text-sm font-semibold text-foreground">{topEmployee.name}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{topEmployee.impact}</p>
+            </>
+          ) : (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Your top performer of the week will show up here once activity rolls in.
+            </p>
+          )}
         </div>
       </div>
 
@@ -117,12 +250,12 @@ export function ExecutiveBriefing() {
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             What you should do next
           </p>
-          <p className="mt-1 text-sm text-foreground">{narrative.nextAction.label}</p>
+          <p className="mt-1 text-sm text-foreground">{nextAction.label}</p>
         </div>
         <a
-          href={narrative.nextAction.href}
+          href={nextAction.href}
           data-testid="briefing-next-action"
-          className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           Go →
         </a>

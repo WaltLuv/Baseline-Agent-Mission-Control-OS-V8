@@ -300,6 +300,12 @@ export function GitHubSyncPanel() {
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
+      <div data-testid="panel-story-github" className="rounded-lg border border-border/60 bg-card/20 p-3">
+        <h2 className="text-base font-semibold text-foreground">GitHub → Work Sync</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground max-w-2xl">
+          Story: turn GitHub issues into work for your AI engineers — import, assign, and sync status back. Use this when you want engineering tickets to flow through your AI workforce.
+        </p>
+      </div>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

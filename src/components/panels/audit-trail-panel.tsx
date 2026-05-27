@@ -251,6 +251,13 @@ export function AuditTrailPanel() {
 
   return (
     <div className="p-5 space-y-4">
+      {/* Story header — who did what and why, with evidence */}
+      <div data-testid="panel-story-audit-trail" className="rounded-lg border border-border/60 bg-card/20 p-3">
+        <h2 className="text-base font-semibold text-foreground">Audit Trail</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground max-w-2xl">
+          Story: who did what and why — every AI and human action with evidence. Use this to satisfy compliance, investigate an incident, or prove accountability to a client.
+        </p>
+      </div>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

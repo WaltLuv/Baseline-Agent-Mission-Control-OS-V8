@@ -214,7 +214,7 @@ export function BillingPanel() {
   return (
     <div className="flex flex-col h-full">
       {/* Story header */}
-      <div className="flex items-center justify-between p-4 border-b border-border">
+      <div data-testid="panel-story-billing" className="flex items-center justify-between p-4 border-b border-border">
         <div>
           <h2 className="text-lg font-semibold">AI Workforce Billing</h2>
           <p className="text-xs text-muted-foreground mt-0.5">

@@ -23,6 +23,8 @@ import {
 } from './agent-detail-tabs'
 import { formatModelName, buildTaskStatParts } from '@/lib/agent-card-helpers'
 import { useMissionControl, type Agent } from '@/store'
+import { getAIEmployeeIdentity } from '@/lib/ai-employee-identity'
+import { PanelStoryHeader } from './_story-header'
 
 const log = createClientLogger('AgentSquadPhase3')
 
@@ -306,76 +308,53 @@ export function AgentSquadPanelPhase3() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex justify-between items-center p-4 border-b border-border flex-shrink-0">
-        <div className="flex items-center gap-4">
-          <h2 className="text-xl font-bold text-foreground">{t('title')}</h2>
-          
-          {/* Status Summary */}
-          <div className="flex gap-2 text-sm">
-            {Object.entries(statusCounts).map(([status, count]) => (
-              <div key={status} className="flex items-center gap-1">
-                <div className={`w-2 h-2 rounded-full ${statusColors[status]}`}></div>
-                <span className="text-muted-foreground">{count}</span>
-              </div>
-            ))}
+      {/* Story header — your AI workforce roster */}
+      <PanelStoryHeader
+        panelId="agent-squad"
+        title="Your AI Workforce"
+        story="Every AI employee on your team — their role, current workload, trust level, and what they're built to do. Click any card for a full identity card and tools."
+        currentState={`${agents.length} on staff · ${statusCounts['idle'] ?? 0} idle · ${statusCounts['busy'] ?? 0} working · ${agents.filter(hasRecentHeartbeat).length} active heartbeat${agents.filter(hasRecentHeartbeat).length === 1 ? '' : 's'}`}
+        rightSlot={
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              variant={autoRefresh ? 'success' : 'secondary'}
+              size="xs"
+            >
+              {autoRefresh ? t('live') : t('manual')}
+            </Button>
+            <Button
+              onClick={() => syncFromConfig()}
+              disabled={syncing}
+              size="xs"
+              className="bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/30"
+            >
+              {syncing ? t('syncing') : t('syncConfig')}
+            </Button>
+            <Button
+              onClick={() => syncFromConfig('local')}
+              disabled={syncing}
+              size="xs"
+              className="bg-violet-500/20 text-violet-400 border border-violet-500/30 hover:bg-violet-500/30"
+            >
+              {t('syncLocal')}
+            </Button>
+            <Button
+              onClick={() => setShowHidden(!showHidden)}
+              variant={showHidden ? 'success' : 'secondary'}
+              size="xs"
+            >
+              {showHidden ? 'Hidden shown' : 'Show hidden'}
+            </Button>
+            <Button onClick={() => setShowCreateModal(true)} size="xs">
+              {t('addAgent')}
+            </Button>
+            <Button onClick={fetchAgents} variant="secondary" size="xs">
+              {t('refresh')}
+            </Button>
           </div>
-
-          {/* Active Heartbeats Indicator */}
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></div>
-            <span className="text-sm text-muted-foreground">
-              {t('activeHeartbeats', { count: agents.filter(hasRecentHeartbeat).length })}
-            </span>
-          </div>
-        </div>
-        
-        <div className="flex gap-2">
-          <Button
-            onClick={() => setAutoRefresh(!autoRefresh)}
-            variant={autoRefresh ? 'success' : 'secondary'}
-            size="sm"
-          >
-            {autoRefresh ? t('live') : t('manual')}
-          </Button>
-          <Button
-            onClick={() => syncFromConfig()}
-            disabled={syncing}
-            size="sm"
-            className="bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/30"
-          >
-            {syncing ? t('syncing') : t('syncConfig')}
-          </Button>
-          <Button
-            onClick={() => syncFromConfig('local')}
-            disabled={syncing}
-            size="sm"
-            className="bg-violet-500/20 text-violet-400 border border-violet-500/30 hover:bg-violet-500/30"
-          >
-            {t('syncLocal')}
-          </Button>
-          <Button
-            onClick={() => setShowHidden(!showHidden)}
-            variant={showHidden ? 'success' : 'secondary'}
-            size="sm"
-          >
-            {showHidden ? 'Showing hidden' : 'Show hidden'}
-          </Button>
-          <Button
-            onClick={() => setShowCreateModal(true)}
-            size="sm"
-          >
-            {t('addAgent')}
-          </Button>
-          <Button
-            onClick={fetchAgents}
-            variant="secondary"
-            size="sm"
-          >
-            {t('refresh')}
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Sync Toast */}
       {syncToast && (
@@ -419,10 +398,12 @@ export function AgentSquadPanelPhase3() {
             {agents.map(agent => {
               const modelName = formatModelName(agent.config)
               const taskStatsLine = buildTaskStatParts(agent.taskStats)
+              const identity = getAIEmployeeIdentity(agent.name)
 
               return (
                 <div
                   key={agent.id}
+                  data-testid={`ai-employee-card-${agent.id}`}
                   className="group relative overflow-hidden rounded-xl border border-border/70 bg-card p-4 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-border hover:shadow-lg cursor-pointer"
                   onClick={() => setSelectedAgent(agent)}
                 >
@@ -432,10 +413,22 @@ export function AgentSquadPanelPhase3() {
                   {/* Header: avatar + name + status */}
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <AgentAvatar name={agent.name} size="md" />
+                      <div className="relative">
+                        <AgentAvatar name={agent.name} size="md" />
+                        <span
+                          className="absolute -bottom-1 -right-1 inline-flex h-5 w-5 items-center justify-center rounded-full border border-card bg-card text-xs"
+                          aria-hidden
+                          title={identity.codename}
+                        >
+                          {identity.avatar}
+                        </span>
+                      </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <h3 className="font-semibold text-foreground truncate">{agent.name}</h3>
+                          <h3 className="font-semibold text-foreground truncate" data-testid={`ai-employee-name-${agent.id}`}>
+                            <span className="text-primary">{identity.codename}</span>
+                            <span className="text-muted-foreground font-normal"> · {agent.name}</span>
+                          </h3>
                           {(agent as any).source && (agent as any).source !== 'manual' && (
                             <span className={`text-2xs px-1.5 py-0.5 rounded-full border ${
                               (agent as any).source === 'local'
@@ -461,6 +454,34 @@ export function AgentSquadPanelPhase3() {
                       <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs capitalize ${statusBadgeStyles[agent.status]}`}>
                         <span className={`h-1.5 w-1.5 rounded-full ${(statusCardStyles[agent.status] || defaultCardStyle).dot}`} />
                         {agent.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* AI Employee identity — mission + strengths + trust band */}
+                  <div className="mb-3" data-testid={`ai-employee-identity-${agent.id}`}>
+                    <p className="text-xs italic text-muted-foreground">{identity.personality}</p>
+                    <p className="mt-1 text-xs text-foreground/90">{identity.mission}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-1">
+                      {identity.strengths.map((s) => (
+                        <span
+                          key={s}
+                          className="rounded border border-border/40 bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                        >
+                          {s}
+                        </span>
+                      ))}
+                      <span
+                        data-testid={`ai-employee-trust-${agent.id}`}
+                        className={`ml-auto inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
+                          identity.trustBand === 'high'
+                            ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10'
+                            : identity.trustBand === 'medium'
+                            ? 'text-amber-400 border-amber-500/30 bg-amber-500/10'
+                            : 'text-sky-400 border-sky-500/30 bg-sky-500/10'
+                        }`}
+                      >
+                        {identity.trustBand} trust
                       </span>
                     </div>
                   </div>

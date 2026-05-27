@@ -258,6 +258,12 @@ export function StandupPanel() {
 
   return (
     <div className="h-full flex flex-col">
+      <div data-testid="panel-story-standup" className="px-4 pt-3 pb-2 border-b border-border bg-card/20 flex-shrink-0">
+        <h2 className="text-base font-semibold text-foreground">Daily Standup</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground max-w-2xl">
+          Story: yesterday / today / blockers — auto-generated from your AI workforce&apos;s activity. Share it with your team in one click so everyone knows what got done without sitting through a meeting.
+        </p>
+      </div>
       {/* Header */}
       <div className="flex justify-between items-center p-4 border-b border-border flex-shrink-0">
         <h2 className="text-xl font-bold text-foreground">{t('title')}</h2>

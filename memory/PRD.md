@@ -197,3 +197,80 @@ mod   package.json + lockfile                     (stripe@^17)
 | Demo readiness | 8 / 10 | All 9 templates seeded with realistic activity, attention items, credit usage. -2 until the dashboard offers a "Demo workspace" picker that switches the active workspace. |
 | Deployment | 7 / 10 | `next build` clean, Docker compose already in repo, hardened compose exists. -3 until you ship the live-mode Stripe + webhook URL configured in a real prod env. |
 | **Overall** | **7.8 / 10** | Real business owner can demo, understand, trust, and pay for it today in test mode. Live launch needs the go-live checklist + remaining panel story headers. |
+
+
+---
+
+## 10. Iteration 4 — Operator Experience Layer (this pass, Feb 2026)
+
+User mandate: ship the **integrated P0 pass** for the operator-grade narrative layer.
+
+### 10.1 — Executive Briefing wired with real + demo data
+- **New endpoint**: `GET /api/briefing` — aggregates today's wins (completed tasks last 24h), attention items (blocked / approval / review), workforce labor value created this month (credits × $4 heuristic, hours saved at 5min/credit), top AI employee this week, recommended next action.
+- **Component**: `src/components/demo/executive-briefing.tsx` rewritten to:
+  - Demo mode (`?demo=cpa|law|marketing|real-estate|mortgage|…`) → renders `narrative.briefingHeadline` etc. from `demo-narratives.ts`.
+  - Live mode → fetches `/api/briefing` and renders real metrics.
+  - Empty state → invites the operator to try demo mode.
+- **Surfaces**: already mounted at top of `/app/overview` via `src/app/app/[[...panel]]/page.tsx:9`.
+
+### 10.2 — AI Employee Identity cards in Agent Squad
+- `src/components/panels/agent-squad-panel-phase3.tsx` updated:
+  - Imports `getAIEmployeeIdentity` and renders, for **every agent**:
+    - Codename + avatar pictogram + role + model
+    - One-line mission, italic personality, strengths chips
+    - Trust band pill (high / medium / low) computed from `agent.name`
+  - Card has `data-testid="ai-employee-card-${id}"` and `data-testid="ai-employee-identity-${id}"`, plus `data-testid="ai-employee-trust-${id}"`.
+
+### 10.3 — Demo Mode Switcher (global)
+- Already mounted in `src/components/layout/header-bar.tsx:350`.
+- Provider `src/components/demo/demo-mode-provider.tsx` already syncs `?demo=<id>` to provider state. Executive Briefing now consumes it.
+- All 9 templates routable: `?demo=cpa | law | marketing | real-estate | mortgage | freelance-dev | content-creator | ecommerce | event-planning`.
+
+### 10.4 — Panel Story Headers (32/32)
+- Story headers landed on the remaining customer-facing panels with `data-testid="panel-story-<id>"`:
+  - `agent-comms`, `agent-history`, `alert-rules`, `audit-trail`, `channels`, `chat`, `cron`, `daily-optimization`, `documents`, `exec-approval`, `github`, `integrations`, `memory-browser`, `notifications`, `office`, `orchestration`, `scanner`, `sessions`, `skills`, `standup`, `agent-cost`, `token-dashboard`, `agent-squad`, `billing` (data-testid only — copy already existed).
+- Pre-existing 4 (`activity`, `agent-squad`, `cost-tracker`, `security-audit`) untouched.
+- Every panel now answers: *what does this show, why does it matter, what should the operator do next.*
+
+### 10.5 — Verification
+- `npx tsc --noEmit` → **0 errors**.
+- `npx vitest run` → **963 passed, 1 pre-existing failure** in `gateway-url.test.ts` (unrelated to this pass — file last touched in commit `7ba1e77`).
+- `npx next build` → **compiled successfully in 61s**.
+- Login → `/api/briefing` returns live JSON `{ creditsUsedMonth: 608, valueCreatedMonthUsd: 2432, hoursSavedMonth: 51, topEmployee: { name: "agent-browser", impact: "3 actions completed this week." } }`.
+- Smoke screenshots (`/app/overview`, `/app/agents`, `/app/overview?demo=cpa`) all render — demo screenshot confirms briefing reads *"Tax season pressure is dropping. One reconciliation needs you."* with $11,900 value counter.
+
+### 10.6 — Files touched in this pass
+```
+new   src/app/api/briefing/route.ts
+mod   src/components/demo/executive-briefing.tsx                (full rewrite)
+mod   src/components/panels/agent-squad-panel-phase3.tsx        (AI Employee identity + story header)
+mod   src/components/panels/agent-comms-panel.tsx               (story header)
+mod   src/components/panels/agent-history-panel.tsx             (story header)
+mod   src/components/panels/alert-rules-panel.tsx               (story header)
+mod   src/components/panels/audit-trail-panel.tsx               (story header)
+mod   src/components/panels/channels-panel.tsx                  (story header)
+mod   src/components/panels/chat-page-panel.tsx                 (story header)
+mod   src/components/panels/cron-management-panel.tsx           (story header)
+mod   src/components/panels/daily-optimization-panel.tsx        (story header)
+mod   src/components/panels/documents-panel.tsx                 (story header)
+mod   src/components/panels/exec-approval-panel.tsx             (story header)
+mod   src/components/panels/github-sync-panel.tsx               (story header)
+mod   src/components/panels/integrations-panel.tsx              (story header)
+mod   src/components/panels/memory-browser-panel.tsx            (story header)
+mod   src/components/panels/notifications-panel.tsx             (story header)
+mod   src/components/panels/office-panel.tsx                    (story header)
+mod   src/components/panels/orchestration-bar.tsx               (story header)
+mod   src/components/panels/scanner-panel.tsx                   (story header)
+mod   src/components/panels/session-details-panel.tsx           (story header)
+mod   src/components/panels/skills-panel.tsx                    (story header)
+mod   src/components/panels/standup-panel.tsx                   (story header)
+mod   src/components/panels/agent-cost-panel.tsx                (story header)
+mod   src/components/panels/token-dashboard-panel.tsx           (story header)
+mod   src/components/panels/billing-panel.tsx                   (data-testid)
+```
+
+### 10.7 — Remaining backlog (P1 / P2 — not in this pass)
+- P1 cinematic onboarding transitions (workforce activation sequence motion).
+- P1 marketplace install animation (feels like hiring vs installing).
+- P2 cross-panel continuity (link activity → billing → ROI → employee profile).
+- Pre-existing flaky `gateway-url.test.ts` (unrelated to commercial pass — needs review by gateway owner).

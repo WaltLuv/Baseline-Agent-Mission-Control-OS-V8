@@ -1511,6 +1511,12 @@ export function OfficePanel() {
 
   return (
     <div className="p-6 space-y-4">
+      <div data-testid="panel-story-office" className="rounded-lg border border-border/60 bg-card/20 p-3">
+        <h2 className="text-base font-semibold text-foreground">Virtual Office</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground max-w-2xl">
+          Story: see your AI workforce at work — who&apos;s busy, who&apos;s idle, who&apos;s pairing on a task. The fastest way to feel the size and pace of your AI team in one glance.
+        </p>
+      </div>
       <div className="border-b border-border pb-4">
         <div className="flex items-center justify-between">
           <div>

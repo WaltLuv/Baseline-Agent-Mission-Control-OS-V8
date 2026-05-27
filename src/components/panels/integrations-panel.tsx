@@ -246,6 +246,12 @@ export function IntegrationsPanel() {
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
+      <div data-testid="panel-story-integrations" className="rounded-lg border border-border/60 bg-card/20 p-3">
+        <h2 className="text-base font-semibold text-foreground">Connected Services</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground max-w-2xl">
+          Story: the tools your AI workforce uses — model providers, CRMs, email, scheduling, vault. Connect a service so AI employees can act inside it. Status shows green when ready to ship work.
+        </p>
+      </div>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

@@ -384,6 +384,12 @@ export function AgentCostPanel() {
 
   return (
     <div className="p-6 space-y-6">
+      <div data-testid="panel-story-agent-cost" className="rounded-lg border border-border/60 bg-card/20 p-3">
+        <h2 className="text-base font-semibold text-foreground">Cost per AI Employee</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground max-w-2xl">
+          Story: how much each AI employee cost you this period — most expensive, most efficient, and per-task attribution. Use this to right-size models and reroute work to cheaper employees.
+        </p>
+      </div>
       {/* Header */}
       <div className="border-b border-border pb-4">
         <div className="flex items-center justify-between">

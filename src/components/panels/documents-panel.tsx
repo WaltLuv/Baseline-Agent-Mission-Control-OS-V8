@@ -209,7 +209,13 @@ export function DocumentsPanel() {
 
   return (
     <div className="h-full p-4 md:p-6">
-      <div className="h-full min-h-[600px] rounded-xl border border-border bg-card overflow-hidden grid grid-cols-1 lg:grid-cols-[340px_1fr]">
+      <div data-testid="panel-story-documents" className="mb-3 rounded-lg border border-border/60 bg-card/20 p-3">
+        <h2 className="text-base font-semibold text-foreground">Workforce Documents</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground max-w-2xl">
+          Story: every file your AI workforce can read and reference — SOPs, playbooks, client docs, knowledge bases. Upload a doc to expand what your AI employees know about your business.
+        </p>
+      </div>
+      <div className="h-[calc(100%-5rem)] min-h-[560px] rounded-xl border border-border bg-card overflow-hidden grid grid-cols-1 lg:grid-cols-[340px_1fr]">
         <aside className="border-r border-border p-4 space-y-3 overflow-y-auto">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-foreground">{t('title')}</h2>

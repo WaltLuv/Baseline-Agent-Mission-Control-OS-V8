@@ -176,6 +176,12 @@ export function DailyOptimizationPanel() {
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
+      <div data-testid="panel-story-daily-optimization" className="p-4 border-b border-border bg-card/20">
+        <h2 className="text-base font-semibold text-foreground">Daily Optimization</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground max-w-2xl">
+          Story: today&apos;s recommendations to reduce cost, fix drift, and keep the workforce healthy — cheaper models, better routes, attention items. Apply a prescription to act in one click.
+        </p>
+      </div>
       {/* Header + Health Gauge */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between mb-4">

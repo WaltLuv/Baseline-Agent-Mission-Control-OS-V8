@@ -371,7 +371,14 @@ export function AgentCommsPanel() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
+      {/* Story header — conversations between AI employees and people */}
+      <div data-testid="panel-story-agent-comms" className="px-4 py-3 border-b border-border/50 bg-card/20 flex-shrink-0">
+        <h2 className="text-sm font-semibold text-foreground">AI Workforce Conversations</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground max-w-2xl">
+          Story: every conversation between AI employees and your team — who said what, when, and what got escalated. Use this to catch quality drift, tone issues, or items waiting on a human reply.
+        </p>
+      </div>
+      {/* Toolbar */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">

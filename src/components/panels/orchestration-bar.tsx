@@ -227,6 +227,13 @@ export function OrchestrationBar() {
 
   return (
     <div className="border-b border-border bg-card/50">
+      {/* Story header — workflow management */}
+      <div data-testid="panel-story-orchestration" className="px-4 pt-3 pb-1">
+        <h2 className="text-sm font-semibold text-foreground">Workflow Management</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground max-w-2xl">
+          Story: chain AI actions into repeatable workflows — command, run templates, build pipelines, watch the fleet. Use this to turn ad-hoc instructions into reusable plays your team can run with one click.
+        </p>
+      </div>
       {/* Tab bar */}
       <div className="flex items-center gap-1 px-4 pt-2">
         {(['command', 'templates', 'pipelines', 'fleet'] as const).map(tab => (

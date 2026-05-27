@@ -787,6 +787,13 @@ export function ChannelsPanel() {
 
   return (
     <div className="m-4">
+      {/* Story header — where your AI workforce talks */}
+      <div data-testid="panel-story-channels" className="mb-4 rounded-lg border border-border/60 bg-card/20 p-3">
+        <h2 className="text-base font-semibold text-foreground">Customer Channels</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground max-w-2xl">
+          Story: where your AI workforce talks to customers and teammates — Slack, SMS, email, WhatsApp, Telegram, webhooks. Connect a channel so AI employees can reach people on the surface they already use.
+        </p>
+      </div>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>

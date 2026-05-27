@@ -85,6 +85,13 @@ export function ExecApprovalPanel() {
 
   return (
     <div className="m-4">
+      {/* Story header — AI actions waiting on the operator */}
+      <div data-testid="panel-story-exec-approval" className="mb-4 rounded-lg border border-border/60 bg-card/20 p-3">
+        <h2 className="text-base font-semibold text-foreground">Approvals Inbox</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground max-w-2xl">
+          Story: AI actions waiting on you before they go live — review the risk, the command, and the reasoning, then Allow Once / Always Allow / Deny. Use this to keep accountability on the high-stakes work.
+        </p>
+      </div>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">

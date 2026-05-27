@@ -403,6 +403,12 @@ export function SkillsPanel() {
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-4">
+      <div data-testid="panel-story-skills" className="rounded-lg border border-border/60 bg-card/20 p-3">
+        <h2 className="text-base font-semibold text-foreground">AI Workforce Skills</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground max-w-2xl">
+          Story: capabilities your AI employees can use — installed skills, security scans, and a registry of new abilities to install. Install a skill to teach your workforce a new trick.
+        </p>
+      </div>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-foreground">{t('title')}</h2>
