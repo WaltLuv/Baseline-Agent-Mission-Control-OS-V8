@@ -1747,6 +1747,23 @@ const migrations: Migration[] = [
       pkgInsert.run(3, 'Pro', '5,500 + 500 bonus = 6,000 credits', 5000, 5500, 500);
       pkgInsert.run(4, 'Enterprise', '22,500 + 2,500 bonus = 25,000 credits', 20000, 22500, 2500);
     }
+  },
+  {
+    id: '032_workforce_autoreload',
+    up(db: Database.Database) {
+      db.exec(`CREATE TABLE IF NOT EXISTS workspace_autoreload (
+        workspace_id INTEGER PRIMARY KEY,
+        enabled INTEGER NOT NULL DEFAULT 0,
+        threshold_credits INTEGER NOT NULL DEFAULT 100,
+        package_id INTEGER NOT NULL DEFAULT 1,
+        max_per_month_cents INTEGER NOT NULL DEFAULT 5000,
+        stripe_customer_id TEXT,
+        stripe_payment_method_id TEXT,
+        last_triggered_at INTEGER,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+      )`);
+    }
   }
 ]
 

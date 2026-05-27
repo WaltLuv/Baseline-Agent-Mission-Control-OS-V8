@@ -8,6 +8,8 @@ import { logger } from '@/lib/logger'
 import { getDatabase } from '@/lib/db'
 import { calculateTokenCost } from '@/lib/token-pricing'
 import { chargeForAgentSession } from '@/lib/billing'
+import { tokenReportLimiter } from '@/lib/rate-limit'
+import { logBillingEvent } from '@/lib/billing-log'
 import { getProviderSubscriptionFlags } from '@/lib/provider-subscriptions'
 import { buildTaskCostReport, type TaskCostMetadata } from '@/lib/task-costs'
 
@@ -554,6 +556,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const rl = tokenReportLimiter(request)
+  if (rl) return rl
+
   const auth = requireRole(request, 'operator')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
@@ -624,13 +629,41 @@ export async function POST(request: NextRequest) {
           { workspaceId, model, sessionId, inputTokens, outputTokens, message: e.message },
           'Insufficient credits — token usage NOT recorded'
         )
+        logBillingEvent('warn', 'credit.insufficient', 'Token report blocked by insufficient credits', {
+          workspaceId,
+          sessionId,
+          reason: e.message ?? 'Insufficient credits',
+          metadata: { model, provider: typeof provider === 'string' ? provider : '', inputTokens, outputTokens },
+        })
         return NextResponse.json(
           { error: 'INSUFFICIENT_CREDITS', message: e.message ?? 'Insufficient credits' },
           { status: 402 }
         )
       }
       logger.error({ err }, 'Billing pipeline error')
+      logBillingEvent('error', 'token.charged', 'Billing pipeline error', {
+        workspaceId,
+        sessionId,
+        reason: err instanceof Error ? err.message : 'unknown',
+      })
       return NextResponse.json({ error: 'Billing error' }, { status: 500 })
+    }
+
+    if (billing) {
+      logBillingEvent('info', 'token.charged', 'Token usage charged', {
+        workspaceId,
+        amount: billing.creditsCharged,
+        balanceAfter: billing.balanceAfter,
+        sessionId,
+        metadata: {
+          model,
+          provider: typeof provider === 'string' ? provider : '',
+          inputTokens,
+          outputTokens,
+          wholesaleCostCents: billing.wholesaleCostCents,
+          retailCostCents: billing.retailCostCents,
+        },
+      })
     }
 
     const record: TokenUsageRecord = {

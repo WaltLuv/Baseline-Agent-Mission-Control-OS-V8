@@ -205,9 +205,11 @@ export function CostTrackerPanel() {
       {/* Header */}
       <div className="border-b border-border pb-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">{t('title')}</h1>
-            <p className="text-muted-foreground mt-1">{t('subtitle')}</p>
+          <div data-testid="panel-story-cost-tracker">
+            <h1 className="text-3xl font-bold text-foreground">Workforce Cost & ROI</h1>
+            <p className="text-muted-foreground mt-1 max-w-2xl text-sm">
+              Story: where Workforce Credits are going and how they map to time saved. Use the per-AI-employee and per-workflow breakdowns to spot routes that should switch to a cheaper model.
+            </p>
           </div>
           <div className="flex items-center gap-3">
             {/* View tabs */}

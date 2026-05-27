@@ -349,10 +349,10 @@ export function SecurityAuditPanel() {
       {/* Header */}
       <div className="border-b border-border pb-4">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">{t('title')}</h1>
-            <p className="text-muted-foreground mt-2">
-              {t('subtitle')}
+          <div data-testid="panel-story-security-audit">
+            <h1 className="text-3xl font-bold text-foreground">Workforce Trust & Safety</h1>
+            <p className="text-muted-foreground mt-2 max-w-2xl text-sm">
+              Story: how trustworthy your AI workforce is right now — security posture, trust score per AI employee, and any actions flagged for human review.
             </p>
           </div>
           <div className="flex items-center gap-4">

@@ -111,6 +111,26 @@ export const heavyLimiter = createRateLimiter({
   message: 'Too many requests for this resource. Please try again later.',
 })
 
+// Billing-critical limiters. Marked `critical: true` so MC_DISABLE_RATE_LIMIT
+// cannot bypass them in production.
+export const tokenReportLimiter = createAgentRateLimiter({
+  windowMs: 60_000,
+  // 120 reports/min/agent — generous enough for any real fleet, blocks
+  // pathological gateway loops that would drain customer credits.
+  maxRequests: 120,
+  message: 'Too many token reports. Throttle your gateway / agent.',
+  critical: true,
+})
+
+export const purchaseOrderLimiter = createRateLimiter({
+  windowMs: 60_000,
+  // 5 attempts/min/IP. Stripe checkout is interactive — a real customer never
+  // needs more.
+  maxRequests: 5,
+  message: 'Too many credit purchase attempts. Please wait a minute.',
+  critical: true,
+})
+
 // ---------------------------------------------------------------------------
 // Per-agent rate limiter
 // ---------------------------------------------------------------------------

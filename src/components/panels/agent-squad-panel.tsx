@@ -146,20 +146,25 @@ export function AgentSquadPanel() {
 
   return (
     <div className="h-full flex flex-col bg-gray-900">
-      {/* Header */}
-      <div className="flex justify-between items-center p-4 border-b border-gray-700">
-        <div className="flex items-center gap-4">
-          <h2 className="text-xl font-bold text-white">{t('title')}</h2>
-          
-          {/* Status Summary */}
-          <div className="flex gap-2 text-sm">
-            {Object.entries(statusCounts).map(([status, count]) => (
-              <div key={status} className="flex items-center gap-1">
-                <div className={`w-2 h-2 rounded-full ${statusColors[status]}`}></div>
-                <span className="text-gray-400">{count}</span>
-              </div>
-            ))}
+      {/* Story header — your AI workforce roster */}
+      <div className="flex justify-between items-start gap-3 p-4 border-b border-gray-700" data-testid="panel-story-agent-squad">
+        <div className="flex-1">
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-bold text-white">Your AI Workforce</h2>
+
+            {/* Status Summary */}
+            <div className="flex gap-2 text-sm">
+              {Object.entries(statusCounts).map(([status, count]) => (
+                <div key={status} className="flex items-center gap-1">
+                  <div className={`w-2 h-2 rounded-full ${statusColors[status]}`}></div>
+                  <span className="text-gray-400">{count}</span>
+                </div>
+              ))}
+            </div>
           </div>
+          <p className="mt-0.5 text-xs text-gray-400 max-w-2xl">
+            Story: every AI employee on your team, their role, current workload, and recent performance. Add more employees when a workflow needs more capacity.
+          </p>
         </div>
         
         <div className="flex gap-2">

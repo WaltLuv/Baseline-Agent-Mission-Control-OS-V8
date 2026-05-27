@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
   // Get recent usage events
   const recentUsage = db.prepare(
-    'SELECT id, event_type, credits_charged, agent_id, task_id, created_at FROM usage_events WHERE workspace_id = ? ORDER BY created_at DESC LIMIT 20'
+    'SELECT id, event_type, credits_charged, agent_id, task_id, created_at, provider, model FROM usage_events WHERE workspace_id = ? ORDER BY created_at DESC LIMIT 20'
   ).all(workspaceId) as any[]
 
   // Top agents by spend

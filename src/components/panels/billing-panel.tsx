@@ -12,6 +12,7 @@ import {
   computeFuelFromOverview,
   type WorkforceFuelData,
 } from '@/components/billing/workforce-fuel'
+import { WorkforceHealthScore, useDerivedHealthInputs } from '@/components/billing/workforce-health-score'
 
 interface BillingOverview {
   balance: {
@@ -54,6 +55,8 @@ interface BillingOverview {
     agent_id: number | null
     task_id: number | null
     created_at: number
+    provider?: string | null
+    model?: string | null
   }>
   topAgents: Array<{
     agent_id: number
@@ -107,6 +110,24 @@ export function BillingPanel() {
   const [fuel, setFuel] = useState<WorkforceFuelData | null>(null)
   const [showLowBalance, setShowLowBalance] = useState(false)
   const [autoDismissedLowBalance, setAutoDismissedLowBalance] = useState(false)
+  const [marginData, setMarginData] = useState<{
+    wholesaleCents: number
+    retailCents: number
+    marginPercent: number
+  } | null>(null)
+  const [autoreload, setAutoreload] = useState<{
+    enabled: boolean
+    thresholdCredits: number
+    packageId: number
+    maxPerMonthCents: number
+  } | null>(null)
+  const { currentUser } = useMissionControl()
+  const isAdmin = currentUser?.role === 'admin'
+  // Detect Stripe live vs test/mock mode. Public env var so the client can
+  // surface the safety banner without a roundtrip.
+  const isStripeTestMode =
+    typeof window !== 'undefined' &&
+    (process.env.NEXT_PUBLIC_STRIPE_LIVE_MODE !== 'true')
 
   const fetchOverview = useCallback(async () => {
     try {
@@ -132,6 +153,27 @@ export function BillingPanel() {
 
   useEffect(() => { fetchOverview() }, [fetchOverview])
   useSmartPoll(fetchOverview, 60000) // refresh every 60s
+
+  // Lazy fetch admin-only / settings data once on mount.
+  useEffect(() => {
+    if (!isAdmin) return
+    fetch('/api/billing/margin?timeframe=week')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d) setMarginData({
+          wholesaleCents: d.wholesaleCents ?? 0,
+          retailCents: d.retailCents ?? 0,
+          marginPercent: d.marginPercent ?? 0,
+        })
+      })
+      .catch(() => {})
+  }, [isAdmin])
+  useEffect(() => {
+    fetch('/api/billing/autoreload')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setAutoreload(d) })
+      .catch(() => {})
+  }, [])
 
   if (loading) {
     return (
@@ -171,11 +213,13 @@ export function BillingPanel() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
+      {/* Story header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div>
-          <h2 className="text-lg font-semibold">{t('title')}</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">{t('subtitle')}</p>
+          <h2 className="text-lg font-semibold">AI Workforce Billing</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Track Workforce Credits, work completed, and labor value saved across your AI employees.
+          </p>
         </div>
         <div className="flex gap-1">
           {(['overview', 'ledger', 'usage', 'buy'] as const).map(tab => (
@@ -184,17 +228,38 @@ export function BillingPanel() {
               variant={selectedTab === tab ? 'default' : 'ghost'}
               size="xs"
               onClick={() => setSelectedTab(tab)}
+              data-testid={`billing-tab-${tab}`}
             >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === 'buy' ? 'Buy Credits' : tab.charAt(0).toUpperCase() + tab.slice(1)}
             </Button>
           ))}
         </div>
       </div>
 
+      {/* Test-mode safety banner */}
+      {isStripeTestMode && (
+        <div
+          className="px-4 py-2 border-b border-amber-500/30 bg-amber-500/10 text-xs text-amber-200"
+          data-testid="billing-testmode-banner"
+        >
+          <strong>Stripe test/mock mode active</strong> — purchases auto-fulfill instantly and no
+          real cards are charged. Set <code>STRIPE_SECRET_KEY</code> +{' '}
+          <code>STRIPE_WEBHOOK_SECRET</code> + <code>NEXT_PUBLIC_STRIPE_LIVE_MODE=true</code> to go live.
+        </div>
+      )}
+
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {selectedTab === 'overview' && (
           <>
+            {/* Workforce Health Score — admin-facing trust surface */}
+            <HealthBlock
+              fuel={fuel}
+              marginPercent={marginData?.marginPercent ?? null}
+              ledgerVerified={balance.ledgerVerified}
+              recentEventCount={recentUsage.length}
+            />
+
             {/* Workforce Fuel Meter — frames credits as productivity fuel */}
             {fuel && (
               <WorkforceFuelMeter
@@ -263,16 +328,20 @@ export function BillingPanel() {
               </div>
             )}
 
-            {/* Top Agents by Spend */}
+            {/* Top AI Employees by Spend */}
             {topAgents.length > 0 && (
-              <div className="bg-card border border-border rounded-lg p-4">
-                <h3 className="text-sm font-semibold mb-3">{t('topAgentsBySpend')}</h3>
+              <div className="bg-card border border-border rounded-lg p-4" data-testid="billing-top-agents">
+                <h3 className="text-sm font-semibold mb-1">Top AI Employees by Workforce Credit Usage</h3>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Story: where your AI workforce is doing the most work right now. High-spend
+                  employees should map to the workflows that matter most to your business.
+                </p>
                 <div className="space-y-2">
                   {topAgents.map(a => (
                     <div key={a.agent_id || 'unknown'} className="flex items-center justify-between text-sm">
-                      <span className="text-foreground">{a.agent_name || 'Unknown Agent'}</span>
+                      <span className="text-foreground">{a.agent_name || 'Unknown AI Employee'}</span>
                       <div className="flex gap-4">
-                        <span className="text-muted-foreground">{a.task_count} tasks</span>
+                        <span className="text-muted-foreground">{a.task_count} tasks completed</span>
                         <span className="font-mono text-amber-400">{formatCredits(a.total_credits)} credits</span>
                       </div>
                     </div>
@@ -280,6 +349,126 @@ export function BillingPanel() {
                 </div>
               </div>
             )}
+
+            {/* Recent Usage / Billing Event Timeline */}
+            {recentUsage.length > 0 && (
+              <div className="bg-card border border-border rounded-lg p-4" data-testid="billing-usage-history">
+                <h3 className="text-sm font-semibold mb-1">Recent Workforce Activity</h3>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Story: every billable action your AI workforce has performed. Each row is one
+                  unit of work completed with credits exchanged for time saved.
+                </p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead className="text-muted-foreground">
+                      <tr className="border-b border-border/40">
+                        <th className="py-1.5 text-left font-medium">When</th>
+                        <th className="py-1.5 text-left font-medium">Event</th>
+                        <th className="py-1.5 text-left font-medium">Provider / Model</th>
+                        <th className="py-1.5 text-right font-medium">Credits</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentUsage.slice(0, 8).map((u, i) => (
+                        <tr key={i} className="border-b border-border/20">
+                          <td className="py-1.5 text-muted-foreground">
+                            {new Date(u.created_at * 1000).toLocaleString(undefined, {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit',
+                            })}
+                          </td>
+                          <td className="py-1.5">{u.event_type || 'work'}</td>
+                          <td className="py-1.5 text-muted-foreground">
+                            {[u.provider, u.model].filter(Boolean).join(' · ') || '—'}
+                          </td>
+                          <td className="py-1.5 text-right font-mono text-amber-400">
+                            {u.credits_charged}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Admin-only margin widget. Story: "is the business model healthy?" */}
+            {isAdmin && marginData && (
+              <div className="bg-card border border-border rounded-lg p-4" data-testid="billing-margin-widget">
+                <h3 className="text-sm font-semibold mb-1">Workforce Margin (admin view)</h3>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Story: of every dollar a customer spends on credits, how much covers wholesale
+                  cost and how much is gross margin?
+                </p>
+                <div className="grid grid-cols-3 gap-3 text-sm">
+                  <div className="rounded border border-border/40 bg-muted/30 p-3">
+                    <p className="text-xs text-muted-foreground">Wholesale (last week)</p>
+                    <p className="mt-1 font-mono text-foreground">
+                      ${(marginData.wholesaleCents / 100).toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="rounded border border-border/40 bg-muted/30 p-3">
+                    <p className="text-xs text-muted-foreground">Retail (last week)</p>
+                    <p className="mt-1 font-mono text-foreground">
+                      ${(marginData.retailCents / 100).toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="rounded border border-border/40 bg-muted/30 p-3">
+                    <p className="text-xs text-muted-foreground">Margin</p>
+                    <p className="mt-1 font-mono text-emerald-400">
+                      {marginData.marginPercent.toFixed(1)}%
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Auto-reload toggle */}
+            {autoreload && (
+              <div className="bg-card border border-border rounded-lg p-4" data-testid="billing-autoreload">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold">Never let the workforce stop</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Automatically top up with the recommended pack when your workforce fuel falls
+                      below {autoreload.thresholdCredits} credits. Cap: ${Math.round(autoreload.maxPerMonthCents / 100)} / month.
+                    </p>
+                  </div>
+                  <Button
+                    size="xs"
+                    variant={autoreload.enabled ? 'default' : 'outline'}
+                    data-testid="billing-autoreload-toggle"
+                    onClick={async () => {
+                      const next = { ...autoreload, enabled: !autoreload.enabled }
+                      setAutoreload(next)
+                      await fetch('/api/billing/autoreload', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(next),
+                      })
+                    }}
+                  >
+                    {autoreload.enabled ? 'Enabled ✓' : 'Enable'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Customer explainer */}
+            <div
+              className="rounded-lg border border-border/40 bg-muted/30 p-4 text-xs text-muted-foreground"
+              data-testid="billing-credits-explainer"
+            >
+              <p className="font-semibold text-foreground">What are AI Workforce Credits?</p>
+              <p className="mt-1">
+                Workforce Credits are the fuel that powers your AI employees. Each task an AI
+                employee completes uses a small number of credits — roughly proportional to the
+                time it would have taken a human to do the same work. We never charge zero for
+                real work, and you only pay for what your workforce actually does.
+              </p>
+            </div>
           </>
         )}
 
@@ -425,4 +614,19 @@ export function BillingPanel() {
       )}
     </div>
   )
+}
+
+/**
+ * Mini wrapper that delays the health computation until task data is loaded
+ * (so the score doesn't flicker between "0 attention" and "N attention" when
+ * the page first mounts).
+ */
+function HealthBlock(props: {
+  fuel: { balance: number; daysRemaining: number } | null
+  marginPercent: number | null
+  ledgerVerified: boolean
+  recentEventCount: number
+}) {
+  const inputs = useDerivedHealthInputs(props)
+  return <WorkforceHealthScore inputs={inputs} />
 }

@@ -311,13 +311,18 @@ export function ActivityFeedPanel() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex justify-between items-center p-4 border-b border-border flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl font-bold text-foreground">{t('title')}</h2>
-          <div
-            className={`w-2.5 h-2.5 rounded-full ${autoRefresh ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground/30'}`}
-          />
+      {/* Story header — what is this and why does it matter */}
+      <div className="flex justify-between items-start gap-3 p-4 border-b border-border flex-shrink-0" data-testid="panel-story-activity">
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold text-foreground">Live AI Workforce Activity</h2>
+            <div
+              className={`w-2.5 h-2.5 rounded-full ${autoRefresh ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground/30'}`}
+            />
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground max-w-2xl">
+            Story: every action your AI workforce is taking right now — who did what, when, and why. Use this to spot work-in-progress, drift, or items waiting on a human.
+          </p>
         </div>
         <div className="flex gap-2">
           <Button
