@@ -108,7 +108,7 @@ export default function PricingPage() {
             </Button>
           </nav>
           <div className="block md:hidden">
-            <LanguageSwitcherSelect variant="ghost" size="sm" />
+            <LanguageSwitcherSelect />
           </div>
         </div>
       </header>

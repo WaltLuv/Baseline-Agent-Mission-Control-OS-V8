@@ -61,8 +61,8 @@ export const CREDIT_PACKAGES_SEED = `
 DELETE FROM credit_packages WHERE id >= 1;
 INSERT INTO credit_packages (id, name, description, price_cents, credits, bonus_credits, status, created_at, updated_at)
 VALUES
-  (1, 'Starter',    '1,000 credits',    1000,  1000,    0, 'active', unixepoch(), unixepoch()),
-  (2, 'Power',      '2,750 credits',    2500,  2500,  250, 'active', unixepoch(), unixepoch()),
-  (3, 'Pro',        '6,000 credits',    5000,  5000,  500, 'active', unixepoch(), unixepoch()),
-  (4, 'Enterprise', '25,000 credits',  20000, 20000, 2500, 'active', unixepoch(), unixepoch());
+  (1, 'Starter',    '1,000 credits',                          1000,  1000,    0, 'active', unixepoch(), unixepoch()),
+  (2, 'Power',      '2,500 + 250 bonus = 2,750 credits',      2500,  2500,  250, 'active', unixepoch(), unixepoch()),
+  (3, 'Pro',        '5,500 + 500 bonus = 6,000 credits',      5000,  5500,  500, 'active', unixepoch(), unixepoch()),
+  (4, 'Enterprise', '22,500 + 2,500 bonus = 25,000 credits', 20000, 22500, 2500, 'active', unixepoch(), unixepoch());
 `

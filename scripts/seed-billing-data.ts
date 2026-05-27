@@ -7,6 +7,9 @@ import { PRICING_CONFIGS_SEED, FEATURE_PRICING_DDL, FEATURE_PRICING_SEED, CREDIT
  * Usage: pnpm tsx scripts/seed-billing-data.ts
  */
 
+// Set test mode so the scheduler/webhook listeners are not initialized.
+process.env.MISSION_CONTROL_TEST_MODE = '1'
+
 const db = getDatabase()
 
 console.log('Seeding billing data...')
@@ -43,3 +46,4 @@ addColIfNeeded('usage_events', 'markup_multiplier', 'REAL NOT NULL DEFAULT 2.5')
 
 console.log('\nAll billing data seeded successfully.')
 db.close()
+process.exit(0)

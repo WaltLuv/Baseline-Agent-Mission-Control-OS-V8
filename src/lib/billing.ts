@@ -1,6 +1,6 @@
 import { getDatabase } from '@/lib/db'
 import { logStructured } from '@/lib/observability'
-import { calculateTokenCosts, type TokenUsageInput, type CostResult } from './token-cost-calculator'
+import { calculateTokenCosts } from './token-cost-calculator'
 
 // -- Types --
 

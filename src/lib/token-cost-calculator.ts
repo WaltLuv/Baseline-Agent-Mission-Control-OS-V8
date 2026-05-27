@@ -87,9 +87,9 @@ export function calculateTokenCosts(input: TokenUsageInput): CostResult {
 
   return {
     wholesaleCostUsd: Math.round(wholesaleUsd * 100000) / 100000,
-    wholesaleCostCents,
+    wholesaleCostCents: wholesaleCents,
     retailCostUsd: Math.round(retailUsd * 100000) / 100000,
-    retailCostCents,
+    retailCostCents: retailCents,
     creditsRequired: credits,
     markupMultiplier: markup,
     breakdown: {

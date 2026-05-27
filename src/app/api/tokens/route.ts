@@ -7,6 +7,7 @@ import { getAllGatewaySessions } from '@/lib/sessions'
 import { logger } from '@/lib/logger'
 import { getDatabase } from '@/lib/db'
 import { calculateTokenCost } from '@/lib/token-pricing'
+import { chargeForAgentSession } from '@/lib/billing'
 import { getProviderSubscriptionFlags } from '@/lib/provider-subscriptions'
 import { buildTaskCostReport, type TaskCostMetadata } from '@/lib/task-costs'
 
@@ -559,7 +560,18 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const workspaceId = auth.user.workspace_id ?? 1
-    const { model, sessionId, inputTokens, outputTokens, operation = 'chat_completion', duration, taskId } = body
+    const {
+      model,
+      sessionId,
+      inputTokens,
+      outputTokens,
+      operation = 'chat_completion',
+      duration,
+      taskId,
+      agentId,
+      provider,
+      idempotencyKey: bodyIdempotencyKey,
+    } = body
 
     if (!model || !sessionId || typeof inputTokens !== 'number' || typeof outputTokens !== 'number') {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -572,6 +584,10 @@ export async function POST(request: NextRequest) {
       taskId != null && Number.isFinite(Number(taskId)) && Number(taskId) > 0
         ? Number(taskId)
         : null
+    const parsedAgentId =
+      agentId != null && Number.isFinite(Number(agentId)) && Number(agentId) > 0
+        ? Number(agentId)
+        : null
 
     let validatedTaskId: number | null = null
     if (parsedTaskId) {
@@ -580,6 +596,41 @@ export async function POST(request: NextRequest) {
         'SELECT id FROM tasks WHERE id = ? AND workspace_id = ?'
       ).get(parsedTaskId, workspaceId) as { id?: number } | undefined
       if (taskRow?.id) validatedTaskId = taskRow.id
+    }
+
+    // ── Billing pipeline ──────────────────────────────────────────────
+    // Convert tokens → wholesale → 2.5x markup → retail credits → deduct.
+    // Always returns proper HTTP 402 on INSUFFICIENT_CREDITS.
+    let billing: { creditsCharged: number; balanceAfter: number; wholesaleCostCents: number; retailCostCents: number } | null = null
+    try {
+      const idempotencyKey =
+        typeof bodyIdempotencyKey === 'string' && bodyIdempotencyKey.length > 0
+          ? bodyIdempotencyKey
+          : `${sessionId}:${Date.now()}:${inputTokens}:${outputTokens}`
+      billing = chargeForAgentSession(
+        workspaceId,
+        parsedAgentId ?? 0,
+        validatedTaskId,
+        model,
+        typeof provider === 'string' ? provider : '',
+        inputTokens,
+        outputTokens,
+        idempotencyKey,
+      )
+    } catch (err) {
+      const e = err as { type?: string; message?: string }
+      if (e?.type === 'INSUFFICIENT_CREDITS') {
+        logger.warn(
+          { workspaceId, model, sessionId, inputTokens, outputTokens, message: e.message },
+          'Insufficient credits — token usage NOT recorded'
+        )
+        return NextResponse.json(
+          { error: 'INSUFFICIENT_CREDITS', message: e.message ?? 'Insufficient credits' },
+          { status: 402 }
+        )
+      }
+      logger.error({ err }, 'Billing pipeline error')
+      return NextResponse.json({ error: 'Billing error' }, { status: 500 })
     }
 
     const record: TokenUsageRecord = {
@@ -608,7 +659,7 @@ export async function POST(request: NextRequest) {
 
     await saveTokenData(existingData)
 
-    return NextResponse.json({ success: true, record })
+    return NextResponse.json({ success: true, record, billing })
   } catch (error) {
     logger.error({ err: error }, 'Error saving token usage')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

@@ -1642,44 +1642,112 @@ const migrations: Migration[] = [
       db.exec(`CREATE INDEX IF NOT EXISTS idx_memory_files_approved ON memory_files(approved)`)
       db.exec(`CREATE INDEX IF NOT EXISTS idx_memory_files_customer_visible ON memory_files(customer_visible)`)
     }
-  
+  },
   {
     id: '031_billing_seed_and_usage_columns',
     up(db: Database.Database) {
-      // Seed pricing configs with real provider costs and 2.5x markup
-      const pricingSeeds = [
-        "INSERT OR IGNORE INTO pricing_configs (event_type, provider, model, wholesale_cost_cents, retail_cost_cents, credits_required, status, created_at, updated_at) VALUES ('default', 'default', 'default', 500, 1250, 13, 'active', unixepoch(), unixepoch())",
-        "INSERT OR IGNORE INTO pricing_configs (event_type, provider, model, wholesale_cost_cents, retail_cost_cents, credits_required, status, created_at, updated_at) VALUES ('llm_inference', 'openrouter', 'anthropic/claude-sonnet-4', 300, 750, 8, 'active', unixepoch(), unixepoch())",
-        "INSERT OR IGNORE INTO pricing_configs (event_type, provider, model, wholesale_cost_cents, retail_cost_cents, credits_required, status, created_at, updated_at) VALUES ('llm_inference', 'openrouter', 'openai/gpt-4o', 250, 625, 7, 'active', unixepoch(), unixepoch())",
-        "INSERT OR IGNORE INTO pricing_configs (event_type, provider, model, wholesale_cost_cents, retail_cost_cents, credits_required, status, created_at, updated_at) VALUES ('llm_inference', 'openrouter', 'gemini/gemini-2.5-flash', 15, 38, 1, 'active', unixepoch(), unixepoch())",
-        "INSERT OR IGNORE INTO pricing_configs (event_type, provider, model, wholesale_cost_cents, retail_cost_cents, credits_required, status, created_at, updated_at) VALUES ('tts_generation', 'elevenlabs', 'default', 500, 1250, 13, 'active', unixepoch(), unixepoch())",
-      ];
-      pricingSeeds.forEach(s => db.exec(s));
-
-      // Create feature pricing table
-      db.exec(`CREATE TABLE IF NOT EXISTS credit_feature_pricing (id INTEGER PRIMARY KEY AUTOINCREMENT, feature_name TEXT NOT NULL, variant TEXT NOT NULL DEFAULT 'standard', credits INTEGER NOT NULL, charge_unit TEXT NOT NULL, min_charge INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1, created_at INTEGER NOT NULL DEFAULT (unixepoch()), updated_at INTEGER NOT NULL DEFAULT (unixepoch()))`);
-      db.exec('CREATE INDEX IF NOT EXISTS idx_cfp_feature ON credit_feature_pricing(feature_name)');
-
-      // Seed feature pricing
-      db.exec("INSERT OR IGNORE INTO credit_feature_pricing (feature_name, variant, credits, charge_unit, min_charge, active, created_at, updated_at) VALUES ('Agent Session', 'standard', 1, 'per_1k_tokens', 5, 1, unixepoch(), unixepoch())");
-      db.exec("INSERT OR IGNORE INTO credit_feature_pricing (feature_name, variant, credits, charge_unit, min_charge, active, created_at, updated_at) VALUES ('Market Swarm Run', 'standard', 40, 'per_run', 40, 1, unixepoch(), unixepoch())");
-
-      // Fix credit packages to match PDF launch prices ($10=1000, $25=2750, $50=6000)
-      db.exec('DELETE FROM credit_packages WHERE id >= 1');
-      db.exec("INSERT INTO credit_packages (id, name, description, price_cents, credits, bonus_credits, status, created_at, updated_at) VALUES (1, 'Starter', '1,000 credits', 1000, 1000, 0, 'active', unixepoch(), unixepoch())");
-      db.exec("INSERT INTO credit_packages (id, name, description, price_cents, credits, bonus_credits, status, created_at, updated_at) VALUES (2, 'Power', '2,750 credits', 2500, 2500, 250, 'active', unixepoch(), unixepoch())");
-      db.exec("INSERT INTO credit_packages (id, name, description, price_cents, credits, bonus_credits, status, created_at, updated_at) VALUES (3, 'Pro', '6,000 credits', 5000, 5000, 500, 'active', unixepoch(), unixepoch())");
-      db.exec("INSERT INTO credit_packages (id, name, description, price_cents, credits, bonus_credits, status, created_at, updated_at) VALUES (4, 'Enterprise', '25,000 credits', 20000, 20000, 2500, 'active', unixepoch(), unixepoch())");
-
-      // Add missing columns to usage_events
+      // Add missing columns to usage_events FIRST (other migrations may reference them)
       const cols = db.prepare('PRAGMA table_info(usage_events)').all() as Array<{name: string}>;
       const colNames = cols.map(c => c.name);
       if (!colNames.includes('input_tokens')) db.exec('ALTER TABLE usage_events ADD COLUMN input_tokens INTEGER NOT NULL DEFAULT 0');
       if (!colNames.includes('output_tokens')) db.exec('ALTER TABLE usage_events ADD COLUMN output_tokens INTEGER NOT NULL DEFAULT 0');
       if (!colNames.includes('markup_multiplier')) db.exec('ALTER TABLE usage_events ADD COLUMN markup_multiplier REAL NOT NULL DEFAULT 2.5');
+
+      // Performance indexes for margin/balance queries
+      db.exec('CREATE INDEX IF NOT EXISTS idx_usage_events_workspace ON usage_events(workspace_id, created_at)');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_credit_ledger_workspace ON credit_ledger(workspace_id, created_at)');
+
+      // De-dupe pricing_configs (legacy installs missing the unique index produced duplicates)
+      db.exec(`
+        DELETE FROM pricing_configs
+        WHERE id NOT IN (
+          SELECT MIN(id) FROM pricing_configs GROUP BY event_type, provider, model
+        )
+      `);
+      db.exec('CREATE UNIQUE INDEX IF NOT EXISTS ux_pricing_configs_lookup ON pricing_configs(event_type, provider, model)');
+
+      // Seed pricing configs with real provider costs and 2.5x markup (14 entries)
+      const pricingSeeds: Array<[string, string, string, number, number, number]> = [
+        ['llm_inference', 'openrouter', 'anthropic/claude-sonnet-4', 300, 750, 8],
+        ['llm_inference', 'openrouter', 'anthropic/claude-opus-4', 1500, 3750, 38],
+        ['llm_inference', 'openrouter', 'anthropic/claude-haiku', 80, 200, 3],
+        ['llm_inference', 'openrouter', 'openai/gpt-4o', 250, 625, 7],
+        ['llm_inference', 'openrouter', 'gemini/gemini-2.5-flash', 15, 38, 1],
+        ['llm_inference', 'openrouter', 'qwen/qwen3-235b', 20, 50, 1],
+        ['tts_generation', 'elevenlabs', 'default', 500, 1250, 13],
+        ['voice_transcription', 'groq', 'whisper', 50, 125, 2],
+        ['image_generation', 'fal', 'default', 400, 1000, 10],
+        ['places_api', 'google', 'places', 400, 1000, 10],
+        ['sms_send', 'twilio', 'sms_outbound', 7, 18, 1],
+        ['bot_turn', 'telegram', 'default', 3, 8, 1],
+        ['rent_estimate', 'rentcast', 'default', 20, 50, 1],
+        ['default', 'default', 'default', 500, 1250, 13],
+      ];
+      const pricingInsert = db.prepare(
+        `INSERT OR IGNORE INTO pricing_configs
+         (event_type, provider, model, wholesale_cost_cents, retail_cost_cents, credits_required, status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'active', unixepoch(), unixepoch())`
+      );
+      for (const s of pricingSeeds) pricingInsert.run(...s);
+
+      // Create feature pricing table
+      db.exec(`CREATE TABLE IF NOT EXISTS credit_feature_pricing (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        feature_name TEXT NOT NULL,
+        variant TEXT NOT NULL DEFAULT 'standard',
+        credits INTEGER NOT NULL,
+        charge_unit TEXT NOT NULL,
+        min_charge INTEGER NOT NULL DEFAULT 0,
+        active INTEGER NOT NULL DEFAULT 1,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+      )`);
+      db.exec(`
+        DELETE FROM credit_feature_pricing
+        WHERE id NOT IN (
+          SELECT MIN(id) FROM credit_feature_pricing GROUP BY feature_name, variant
+        )
+      `);
+      db.exec('CREATE UNIQUE INDEX IF NOT EXISTS ux_cfp_feature_variant ON credit_feature_pricing(feature_name, variant)');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_cfp_feature ON credit_feature_pricing(feature_name)');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_cfp_active ON credit_feature_pricing(feature_name, variant, active)');
+
+      // Seed feature pricing (12 entries)
+      const featureSeeds: Array<[string, string, number, string, number]> = [
+        ['Rent Estimate', 'standard', 8, 'per_property', 8],
+        ['Appraisal Report', 'standard', 35, 'per_report', 35],
+        ['Comps Explorer Run', 'standard', 12, 'per_run', 12],
+        ['Vision SOW Generator', 'standard', 18, 'per_run', 18],
+        ['Market Swarm Run', 'standard', 40, 'per_run', 40],
+        ['Vendor Swarm Run', 'standard', 30, 'per_run', 30],
+        ['Telegram Bot Turn', 'standard', 3, 'per_turn', 3],
+        ['SMS Send', 'standard', 2, 'per_message', 2],
+        ['AI Scripts Generator', 'standard', 10, 'per_set', 10],
+        ['Agent Session', 'standard', 1, 'per_1k_tokens', 5],
+        ['Image Generation', 'standard', 10, 'per_image', 10],
+        ['AI Interior Design', 'standard', 16, 'per_room', 16],
+      ];
+      const featureInsert = db.prepare(
+        `INSERT OR IGNORE INTO credit_feature_pricing
+         (feature_name, variant, credits, charge_unit, min_charge, active, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 1, unixepoch(), unixepoch())`
+      );
+      for (const f of featureSeeds) featureInsert.run(...f);
+
+      // Fix credit packages to match launch prices.
+      // Totals: Starter=1000/$10, Power=2750/$25, Pro=6000/$50, Enterprise=25000/$200
+      db.exec('DELETE FROM credit_packages WHERE id >= 1');
+      const pkgInsert = db.prepare(
+        `INSERT INTO credit_packages
+         (id, name, description, price_cents, credits, bonus_credits, status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'active', unixepoch(), unixepoch())`
+      );
+      pkgInsert.run(1, 'Starter', '1,000 credits', 1000, 1000, 0);
+      pkgInsert.run(2, 'Power', '2,500 + 250 bonus = 2,750 credits', 2500, 2500, 250);
+      pkgInsert.run(3, 'Pro', '5,500 + 500 bonus = 6,000 credits', 5000, 5500, 500);
+      pkgInsert.run(4, 'Enterprise', '22,500 + 2,500 bonus = 25,000 credits', 20000, 22500, 2500);
     }
-  },
-}
+  }
 ]
 
 export function runMigrations(db: Database.Database) {

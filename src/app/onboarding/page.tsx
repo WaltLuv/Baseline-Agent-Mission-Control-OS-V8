@@ -10,6 +10,8 @@ const BUSINESS_TYPES = [
   { id: "gc", name: "General Contractor", icon: "🔨", template: "gc-default" },
   { id: "home-services", name: "Home Services", icon: "🔧", template: "hs-default" },
   { id: "ai-agency", name: "AI Agency / Operator", icon: "🤖", template: "ai-default" },
+  { id: "real-estate", name: "Real Estate Sales Agent", icon: "🏡", template: "re-default" },
+  { id: "mortgage", name: "Mortgage Broker", icon: "💰", template: "mb-default" },
 ];
 
 const TEMPLATES: Record<string, { agents: string[]; skills: string[]; workflows: string[] }> = {
@@ -32,6 +34,45 @@ const TEMPLATES: Record<string, { agents: string[]; skills: string[]; workflows:
     agents: ["Agent Manager", "QA Reviewer", "Cost Tracker"],
     skills: ["agent-orchestration", "qa-gates", "cost-tracking", "security-scan"],
     workflows: ["Agent Deployment Pipeline", "Quality Assurance Review", "Cost Optimization Loop"],
+  },
+  "re-default": {
+    agents: ["Lead Capture Agent", "CMA Analyst", "Showing Coordinator", "Transaction Coordinator"],
+    skills: [
+      "lead-capture",
+      "buyer-seller-intake",
+      "cma-report-generator",
+      "showing-scheduling",
+      "offer-follow-up",
+      "transaction-coordination",
+      "post-close-nurture",
+    ],
+    workflows: [
+      "New Lead → Qualify → Schedule Tour",
+      "Listing Prep → CMA → Pricing Strategy",
+      "Offer → Negotiation → Acceptance",
+      "Under Contract → Transaction Coordinator Handoff",
+      "Post-Close 30 / 60 / 90-Day Nurture",
+    ],
+  },
+  "mb-default": {
+    agents: ["Application Intake Agent", "Pre-Qual Scorer", "Doc Collection Bot", "Rate Quote Engine", "Loan Officer Assistant"],
+    skills: [
+      "application-intake",
+      "pre-qualification-scoring",
+      "document-collection-request",
+      "rate-quote-comparison",
+      "underwriting-status-tracker",
+      "loan-officer-dashboard",
+      "closing-checklist",
+    ],
+    workflows: [
+      "Inbound Inquiry → Application Intake",
+      "Pre-Qualification Score → Borrower Tier",
+      "Document Collection → Verification",
+      "Rate Quote Generation & Comparison",
+      "Underwriting Status Updates",
+      "Closing Checklist & Funding",
+    ],
   },
 };
 
@@ -140,7 +181,7 @@ export default function OnboardingWizardClient() {
         {step === 2 && (
           <div>
             <h2 className="text-lg font-semibold text-foreground">What type of business are you?</h2>
-            <p className="mt-1 text-sm text-muted-foreground">We'll configure default agents, skills, and workflows.</p>
+            <p className="mt-1 text-sm text-muted-foreground">We&apos;ll configure default agents, skills, and workflows.</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {BUSINESS_TYPES.map((b) => (
                 <button key={b.id} onClick={() => setBusinessType(b.id)} className={cn("flex items-center gap-3 rounded-lg border p-4 text-left transition-colors", businessType === b.id ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-border/50 bg-card/30 hover:bg-card/50")}>
