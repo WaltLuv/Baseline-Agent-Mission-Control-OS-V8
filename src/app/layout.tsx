@@ -96,9 +96,12 @@ export default async function RootLayout({
     <html lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'} className="dark" suppressHydrationWarning>
       <head>
         {/* Blocking script to set 'dark' class before first paint, preventing FOUC.
-            Content is a static string literal — no user input, no XSS vector. */}
+            Content is a static string literal — no user input, no XSS vector.
+            suppressHydrationWarning: the CSP nonce changes per request which would
+            otherwise trigger an attribute hydration mismatch. */}
         <script
           nonce={nonce}
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('theme')||'void';var light=['light','paper'];if(light.indexOf(t)===-1)document.documentElement.classList.add('dark')}catch(e){}})()`,
           }}
