@@ -5,6 +5,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import { NavRail } from '@/components/layout/nav-rail'
 import { HeaderBar } from '@/components/layout/header-bar'
 import { LiveFeed } from '@/components/layout/live-feed'
+import { DemoModeProvider } from '@/components/demo/demo-mode-provider'
+import { ExecutiveBriefing } from '@/components/demo/executive-briefing'
 import { Dashboard } from '@/components/dashboard/dashboard'
 import { LogViewerPanel } from '@/components/panels/log-viewer-panel'
 import { CronManagementPanel } from '@/components/panels/cron-management-panel'
@@ -413,6 +415,7 @@ export default function Home() {
   }
 
   return (
+    <DemoModeProvider>
     <div className="flex h-screen bg-background overflow-hidden">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:text-sm focus:font-medium">
         {tc('skipToMainContent')}
@@ -483,6 +486,7 @@ export default function Home() {
 
       <OnboardingWizard />
     </div>
+    </DemoModeProvider>
   )
 }
 
@@ -531,6 +535,9 @@ function ContentRouter({ tab }: { tab: string }) {
     case 'overview':
       return (
         <>
+          <div className="p-4">
+            <ExecutiveBriefing />
+          </div>
           <Dashboard />
           {!isLocal && (
             <div className="mt-4 mx-4 mb-4 rounded-lg border border-border bg-card overflow-hidden">

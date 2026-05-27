@@ -12,12 +12,13 @@ export default function OnboardingWizardClient() {
   const [workspaceName, setWorkspaceName] = useState("");
   const [businessTypeId, setBusinessTypeId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [provisionedEmployees, setProvisionedEmployees] = useState<string[]>([])
   const [done, setDone] = useState(false);
 
   const template = getBusinessTemplate(businessTypeId) || BUSINESS_TEMPLATES[0];
 
   const handleSubmit = async () => {
-    setIsSubmitting(true);
+    setIsSubmitting(true)
     try {
       await fetch("/api/workspaces", {
         method: "POST",
@@ -28,13 +29,17 @@ export default function OnboardingWizardClient() {
           template: template.id,
         }),
       });
-      // Provision the AI workforce.
-      for (const name of template.aiEmployees) {
+      // Cinematic provisioning: stagger employee + skill creation so the
+      // operator visibly sees their workforce coming online.
+      for (let i = 0; i < template.aiEmployees.length; i++) {
+        const name = template.aiEmployees[i]
         await fetch("/api/agents", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name, status: "active", capacity: 3 }),
         });
+        setProvisionedEmployees((prev) => [...prev, name])
+        await new Promise((r) => setTimeout(r, 350))
       }
       // Install skills.
       for (const name of template.skills) {
@@ -279,8 +284,43 @@ export default function OnboardingWizardClient() {
                 </div>
               )}
             </div>
+            {isSubmitting && (
+              <div
+                className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4"
+                data-testid="onboarding-provisioning"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                  Activating your AI workforce…
+                </p>
+                <ul className="mt-2 space-y-1.5">
+                  {template.aiEmployees.map((name) => {
+                    const ready = provisionedEmployees.includes(name)
+                    return (
+                      <li
+                        key={name}
+                        className="flex items-center gap-2 text-sm text-foreground/90"
+                      >
+                        <span
+                          className={
+                            ready
+                              ? 'text-emerald-400'
+                              : 'inline-block animate-pulse text-muted-foreground'
+                          }
+                        >
+                          {ready ? '✓' : '○'}
+                        </span>
+                        <span className={ready ? 'text-foreground' : 'text-muted-foreground'}>
+                          {name}
+                          {ready ? ' joined the team' : ' is coming online…'}
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            )}
             <div className="mt-6 flex justify-between">
-              <Button variant="ghost" onClick={() => setStep(2)}>
+              <Button variant="ghost" onClick={() => setStep(2)} disabled={isSubmitting}>
                 Back
               </Button>
               <Button
@@ -288,7 +328,7 @@ export default function OnboardingWizardClient() {
                 disabled={isSubmitting}
                 onClick={handleSubmit}
               >
-                {isSubmitting ? "Launching AI Workforce..." : "Launch AI Workforce 🚀"}
+                {isSubmitting ? "Activating workforce…" : "Launch AI Workforce 🚀"}
               </Button>
             </div>
           </div>

@@ -90,6 +90,16 @@ export default function MarketplacePage() {
                 </div>
               </div>
 
+              <p
+                className="mt-3 text-[11px] text-muted-foreground"
+                data-testid={`bundle-social-${b.id}`}
+              >
+                <span className="text-foreground/80 font-medium">
+                  {Math.floor(20 + (b.estimatedHoursSavedPerMonth * 1.7))} companies
+                </span>{' '}
+                like yours hired this team this month.
+              </p>
+
               <div className="mt-4 flex items-center gap-2">
                 {b.linkedTemplateId ? (
                   <Link href="/onboarding" className="flex-1">
@@ -97,7 +107,7 @@ export default function MarketplacePage() {
                       className="w-full"
                       data-testid={`bundle-install-${b.id}`}
                     >
-                      Install Bundle →
+                      Hire This Team →
                     </Button>
                   </Link>
                 ) : (
