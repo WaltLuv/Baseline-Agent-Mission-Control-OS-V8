@@ -6,6 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
 import { useMissionControl } from '@/store'
 import { useSmartPoll } from '@/lib/use-smart-poll'
+import {
+  WorkforceFuelMeter,
+  LowBalanceModal,
+  computeFuelFromOverview,
+  type WorkforceFuelData,
+} from '@/components/billing/workforce-fuel'
 
 interface BillingOverview {
   balance: {
@@ -98,6 +104,9 @@ export function BillingPanel() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedTab, setSelectedTab] = useState<'overview' | 'ledger' | 'usage' | 'buy'>('overview')
+  const [fuel, setFuel] = useState<WorkforceFuelData | null>(null)
+  const [showLowBalance, setShowLowBalance] = useState(false)
+  const [autoDismissedLowBalance, setAutoDismissedLowBalance] = useState(false)
 
   const fetchOverview = useCallback(async () => {
     try {
@@ -106,12 +115,20 @@ export function BillingPanel() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       setOverview(data)
+      const f = computeFuelFromOverview(data)
+      setFuel(f)
+      // Surface modal automatically when low balance is detected for the
+      // first time per session (user can dismiss; we won't re-pop within the
+      // same panel-mount).
+      if (f.lowBalance && !autoDismissedLowBalance) {
+        setShowLowBalance(true)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch billing data')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [autoDismissedLowBalance])
 
   useEffect(() => { fetchOverview() }, [fetchOverview])
   useSmartPoll(fetchOverview, 60000) // refresh every 60s
@@ -178,6 +195,20 @@ export function BillingPanel() {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {selectedTab === 'overview' && (
           <>
+            {/* Workforce Fuel Meter — frames credits as productivity fuel */}
+            {fuel && (
+              <WorkforceFuelMeter
+                fuel={fuel}
+                onTopUpClick={() => {
+                  if (fuel.lowBalance || fuel.recommendedPackage) {
+                    setShowLowBalance(true)
+                  } else {
+                    setSelectedTab('buy')
+                  }
+                }}
+              />
+            )}
+
             {/* Balance Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <div className="bg-card border border-border rounded-lg p-4">
@@ -334,7 +365,6 @@ export function BillingPanel() {
                     size="sm"
                     className="w-full mt-3"
                     onClick={async () => {
-                      // In production: POST to /api/billing/purchase-order → redirect to Stripe
                       try {
                         const res = await fetch('/api/billing/purchase-order', {
                           method: 'POST',
@@ -342,9 +372,17 @@ export function BillingPanel() {
                           body: JSON.stringify({ packageId: pkg.id }),
                         })
                         const data = await res.json()
-                        if (data.checkoutRequired) {
-                          // Redirect to Stripe Checkout in production
-                          alert(`${pkg.name}: ${formatCredits(pkg.credits)} credits for ${formatDollars(pkg.price_cents)}. Stripe checkout required.`)
+                        if (data?.checkoutUrl) {
+                          window.location.href = data.checkoutUrl
+                          return
+                        }
+                        if (data?.testMode || data?.fulfilled) {
+                          // Mock mode: credits already granted server-side.
+                          await fetchOverview()
+                          return
+                        }
+                        if (data?.checkoutRequired) {
+                          alert(`${pkg.name}: ${formatCredits(pkg.credits)} credits for ${formatDollars(pkg.price_cents)}. Redirect to Stripe required.`)
                         }
                       } catch {
                         alert('Failed to create purchase order')
@@ -359,6 +397,32 @@ export function BillingPanel() {
           </div>
         )}
       </div>
+
+      {showLowBalance && fuel && (
+        <LowBalanceModal
+          fuel={fuel}
+          onClose={() => {
+            setShowLowBalance(false)
+            setAutoDismissedLowBalance(true)
+          }}
+          onPurchase={async (packageId) => {
+            const res = await fetch('/api/billing/purchase-order', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ packageId }),
+            })
+            if (!res.ok) throw new Error(`Top-up failed (HTTP ${res.status})`)
+            const data = await res.json()
+            if (data?.checkoutUrl) {
+              window.location.href = data.checkoutUrl
+              return
+            }
+            // Mock/test mode — credits land instantly server-side.
+            await fetchOverview()
+            setShowLowBalance(false)
+          }}
+        />
+      )}
     </div>
   )
 }

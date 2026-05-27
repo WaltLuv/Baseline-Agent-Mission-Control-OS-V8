@@ -96,8 +96,12 @@ export default function Home() {
   const { activeTab, setActiveTab, setCurrentUser, setDashboardMode, setGatewayAvailable, setLocalSessionsAvailable, setCapabilitiesChecked, setSubscription, setDefaultOrgName, setUpdateAvailable, setOpenclawUpdate, showOnboarding, setShowOnboarding, liveFeedOpen, toggleLiveFeed, showProjectManagerModal, setShowProjectManagerModal, fetchProjects, setChatPanelOpen, bootComplete, setBootComplete, setAgents, setSessions, setProjects, setInterfaceMode, setMemoryGraphAgents, setSkillsData } = useMissionControl()
 
   // Sync URL → Zustand activeTab
+  // URLs are shaped like `/app`, `/app/billing`, `/app/onboarding/step-2`.
+  // Strip the leading `/app` segment so the panel id matches the case
+  // statements in ContentRouter (e.g. `billing`, not `app/billing`).
   const pathname = usePathname()
-  const panelFromUrl = pathname === '/' ? 'overview' : pathname.slice(1)
+  const stripped = pathname.replace(/^\/app\/?/, '').replace(/^\//, '')
+  const panelFromUrl = stripped === '' ? 'overview' : stripped
   const normalizedPanel = panelFromUrl === 'sessions' ? 'chat' : panelFromUrl
 
   useEffect(() => {

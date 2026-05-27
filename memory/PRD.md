@@ -1,24 +1,18 @@
-# Mission Control v3.0 — Emergent Production Handoff PRD
+# Mission Control v3.0 — Production Handoff PRD
 
 > Owner: Walter Thornton (Founder/CEO, Baseline Automations)
 > Repo: WaltLuv/baseline-united-mission-control · branch `main`
-> Stack: Next.js 16 (App Router) · React 19 · TypeScript 5 · SQLite (better-sqlite3) · Tailwind CSS 3 · pnpm · Vitest · Playwright
+> Stack: Next.js 16 · React 19 · TypeScript 5 · SQLite (better-sqlite3) · Tailwind 3 · pnpm · Vitest · Playwright
 
 ---
 
-## 1. Problem Statement (verbatim original handoff)
+## 1. Problem Statement
 
-Production handoff for **Mission Control v3.0** with seven prioritised areas:
+Production handoff for Mission Control v3.0. Two iterations completed.
 
-1. **Billing Pipeline Verification** (revenue-critical) — verify `POST /api/tokens` → wholesale → 2.5× markup → credits → ledger; verify `GET /api/billing/margin`; fix type mismatches; test the fallback chain; integrate the gateway phone-home; audit the seeding flow.
-2. **Type Safety & Build** — `pnpm typecheck`, `pnpm lint`, `pnpm test:all`, `pnpm build` all green.
-3. **Database & Migrations** — migration `031_billing_seed_and_usage_columns` runs cleanly; add `idx_usage_events_workspace` and `idx_credit_ledger_workspace` indexes; ledger sum is the source of truth.
-4. **Production Hardening** — auth, error handling, rate limiting, monitoring, backups.
-5. **Tests** — unit / integration / E2E / load coverage of the billing pipeline.
-6. **Documentation & DX** — billing docs, migration docs, troubleshooting docs.
-7. **Polish** — clean logs, dead code, unused deps, low-balance modal, usage history; **add Real Estate Sales Agent (#5) and Mortgage Broker (#6) onboarding templates**.
+**Iteration 1** — Priorities 1, 2, 3, and 7#13: billing pipeline verification, type-safety/build/test green, DB migrations + indexes, and Real Estate / Mortgage Broker onboarding templates.
 
-User chose: **Priorities 1, 2, 3, and Priority 7 #13** for this iteration; Stripe test/mock mode; local `AUTH_USER` / `AUTH_PASS`; targeted billing tests + smoke build only.
+**Iteration 2** — Commercial-product pass: re-frame Mission Control as the operating system for an AI workforce (not a developer dashboard). Build the **wow moment**, **top-up flow**, **trust surfaces**, **workforce fuel meter**, and add three more industry templates (**CPA / Accounting Firm**, **Marketing Agency**, **Law Firm**).
 
 ---
 
@@ -27,101 +21,99 @@ User chose: **Priorities 1, 2, 3, and Priority 7 #13** for this iteration; Strip
 | Persona | Role | Cares about |
 |---------|------|-------------|
 | **Walter (Founder)** | CEO / shipping the launch | Revenue accuracy, no zero-charge bugs, margin visibility |
-| **Operator** | Day-to-day workspace user | Onboarding speed, agent fleet, predictable billing |
-| **Gateway / Agent** | Programmatic caller | Reliable `POST /api/tokens` charge, idempotency, clear 402 on insufficient credits |
+| **Business owner** | Plumbing co, CPA, law firm, real-estate agency, etc. | Relief, leverage, visibility, time saved, ROI |
+| **Operator** | Day-to-day workspace user | Onboarding speed, predictable billing, "no more chaos" |
+| **Gateway / Agent** | Programmatic caller | Reliable POST /api/tokens charge, idempotency, clear 402 on insufficient credits |
 | **Admin** | Workspace owner / accountant | Credit packages, ledger audit, top-ups |
 
 ---
 
-## 3. Core Requirements (static)
+## 3. Core Product Principle
 
-- Billing is **never free**: every action charges at least 1 credit (`Math.max(1, …)` safeguard).
-- Pricing lookup has a **five-step fallback chain** (exact → provider → event_type → DB default → hardcoded 13 credits).
-- All credit mutations are **idempotent** by `idempotency_key`.
-- `getWorkspaceBalance()` is computed from `SUM(credit_ledger.amount)` — single source of truth.
-- Migrations run in order; existing DBs upgrade safely (`INSERT OR IGNORE` after creating proper unique indexes).
-- `POST /api/tokens` must:
-  - Charge credits via `chargeForAgentSession`.
-  - Return HTTP **402** with body `{ error: "INSUFFICIENT_CREDITS", ... }` on shortage.
-  - Record a `usage_events` row with full provenance (wholesale, retail, markup, tokens).
-- 6 onboarding business templates (Property Manager, General Contractor, Home Services, AI Agency, **Real Estate Sales Agent**, **Mortgage Broker**).
+Mission Control v3 is **not the product**. The **AI workforce is the product**.
+Mission Control is the operating system that makes the AI workforce **visible, manageable, trustworthy, and scalable**.
+
+Customers don't buy panels, agents, orchestration, or models — they buy relief, leverage, visibility, automation, time savings, labor reduction, and operational clarity.
 
 ---
 
-## 4. What's Been Implemented (this run, 2026-05-27)
+## 4. What's Been Implemented
 
-### Priority 1 — Billing pipeline verified end-to-end
-- ✅ `POST /api/tokens` now calls `chargeForAgentSession()`: tokens → wholesale → 2.5× markup → credits → deduct → record in `usage_events`.
-  - Returns HTTP `402 INSUFFICIENT_CREDITS` on shortage (verified live; balance unchanged).
-  - Supports caller-supplied `idempotencyKey`; repeat calls do not double-charge (verified live).
-- ✅ `GET /api/billing/margin` now uses `requireRole('viewer')`; computes wholesale/retail/margin% per timeframe (`day` / `week` / `month` / `all`).
-- ✅ Verified live: Sonnet 4 @ 10k input + 5k output = wholesale 11¢, retail 27¢, **margin 59.26 %** (target ≈60 %).
-- ✅ Fixed `getWorkspaceFromAuth` import error in margin route.
-- ✅ Fixed `token-cost-calculator.ts` `CostResult` field name mismatch (`wholesaleCostCents`/`retailCostCents`).
-- ✅ Removed unused imports in `billing.ts`.
+### Iteration 1 (2026-05-27 AM) — Priorities 1, 2, 3, 7#13
+- **Billing pipeline verified end-to-end live.** `POST /api/tokens` now drives the full token → wholesale → 2.5× markup → credit deduct → ledger flow via `chargeForAgentSession`. Sonnet 4 @ 10k/5k → 11¢ → 27¢ → 27 credits. **Margin = 59.26 %** (target ≈60 %). Idempotency works. Insufficient credits → HTTP 402, balance unchanged.
+- **Fallback chain** (exact → provider → event_type → DB default → hardcoded 13 credits) all verified. `Math.max(1, …)` confirms no zero-charge.
+- **DB & migrations**: fixed syntax error joining migration 031, added performance indexes (`idx_usage_events_workspace`, `idx_credit_ledger_workspace`) and **unique indexes** (`ux_pricing_configs_lookup`, `ux_cfp_feature_variant`) to fix the duplicate-insert bug. 14 pricing configs + 12 feature prices + 4 credit packages with correct launch totals.
+- **Type safety**: `tsc` 0 errors, `eslint` 0 errors, `next build` ✓ 60 s.
+- **Real Estate Sales Agent** + **Mortgage Broker** onboarding templates added (#5, #6).
 
-### Priority 2 — Type safety & build
-- ✅ `pnpm typecheck` → **0 errors**.
-- ✅ `pnpm lint` → **0 errors** (10 pre-existing low-priority warnings remain).
-- ✅ `pnpm build` (Turbopack) → **compiled successfully in 60s**; 3 expected warnings (stripe lazy-require, dynamic fs patterns in `super/os-users` route).
-- ✅ Vitest unit tests added: `src/lib/__tests__/billing.test.ts` (18 tests) + `src/lib/__tests__/token-cost-calculator.test.ts` (6 tests) — **all 24 pass**.
-
-### Priority 3 — Database & migrations
-- ✅ Fixed syntax error joining migration `031_billing_seed_and_usage_columns` to the migrations array (missing `},` between `020_memory_metadata` and `031`, and a stray `}`).
-- ✅ Migration 031 is now **idempotent & complete**:
-  - Adds `input_tokens`, `output_tokens`, `markup_multiplier` columns to `usage_events`.
-  - Adds **performance indexes** `idx_usage_events_workspace(workspace_id, created_at)` and `idx_credit_ledger_workspace(workspace_id, created_at)`.
-  - De-dupes pre-existing `pricing_configs` and `credit_feature_pricing` rows, then adds **unique indexes** `ux_pricing_configs_lookup(event_type, provider, model)` and `ux_cfp_feature_variant(feature_name, variant)` — fixes the duplicate-insert bug we caught in QA.
-  - Seeds **14 pricing configs** (11 LLM + voice + image + places + sms + bot + rent_estimate + default).
-  - Seeds **12 feature prices**.
-  - Resets credit_packages to the 4 launch SKUs with **correct totals**: Starter 1 000/$10, Power 2 750/$25, Pro 6 000/$50, Enterprise 25 000/$200 (previously Pro and Enterprise rolled up to 5 500 / 22 500 — fixed).
-- ✅ `scripts/seed-billing-data.ts` now sets `MISSION_CONTROL_TEST_MODE=1` so scheduler doesn't keep the process alive, and exits 0 cleanly.
-
-### Priority 7 #13 — Onboarding templates
-- ✅ Added **Real Estate Sales Agent** template (🏡) with 4 agents (Lead Capture, CMA Analyst, Showing Coordinator, Transaction Coordinator) and 7 skills (lead-capture, buyer-seller-intake, cma-report-generator, showing-scheduling, offer-follow-up, transaction-coordination, post-close-nurture). 5 workflows.
-- ✅ Added **Mortgage Broker** template (💰) with 5 agents (Application Intake, Pre-Qual Scorer, Doc Collection Bot, Rate Quote Engine, Loan Officer Assistant) and 7 skills (application-intake, pre-qualification-scoring, document-collection-request, rate-quote-comparison, underwriting-status-tracker, loan-officer-dashboard, closing-checklist). 6 workflows.
-- ✅ Verified live: Both templates render in onboarding wizard step 2 and review correctly on step 3.
+### Iteration 2 (2026-05-27 PM) — Commercial product pass
+- **Onboarding rebrand to "Set Up Your AI Workforce"**, with explicit time-saved / labor-equivalent / employee-count copy. 3-step wizard, business-friendly language, no AI jargon.
+- **Wow moment screen** ("Your AI Workforce is Ready") shows: estimated hours saved / month, dollar labor-equivalent, AI-employee headcount, the first 5-minute starter task already queued, and (where applicable) the compliance note. Two CTAs: *Open Mission Control →* / *Add Credit Fuel*.
+- **Shared `src/lib/business-templates.ts`** is now the source of truth for all templates. Each template carries `aiEmployees`, `skills`, `workflows`, `starterTaskTitle`, `starterTaskDescription`, `roiMessage`, `estimatedHoursSavedPerMonth`, `recommendedStarterCredits`, and an optional `complianceNote`.
+- **3 new templates** (acceptance criteria for this iteration):
+  - **📊 CPA / Accounting Firm** — 5 AI employees, 9 skills, 6 workflows. Starter task: *Create a missing-document checklist and follow-up email for a tax client*. ROI: *Reduce admin follow-up during tax season and free staff from repetitive document chasing*. Compliance: AI does not give tax advice or sign returns.
+  - **📣 Marketing Agency** — 5 AI employees, 9 skills, 6 workflows. Starter task: *Create a 7-day content calendar for a client campaign*. ROI: *Produce campaign assets and client reports faster without adding more account managers*.
+  - **⚖️ Law Firm** — 5 AI employees, 9 skills, 6 workflows. Starter task: *Summarize a new client intake and draft a consultation follow-up email*. ROI: *Reduce intake bottlenecks, speed up client communication, and keep matters organized*. Compliance: **AI does not provide legal advice or represent the firm to clients.**
+- **9 total business templates** (PM, GC, Home Services, AI Agency, Real Estate, Mortgage, CPA, Marketing, Law).
+- **Workforce Fuel Meter** (`src/components/billing/workforce-fuel.tsx`) reframes credits as fuel:
+  - Big "X,XXX credits" reading + "~N days of runway · M credits/day avg".
+  - Color-graded progress bar (red < 5 days, amber < 10 days, emerald otherwise).
+  - Inline "Top Up" / "⚡ Add Fuel Now" CTA.
+- **Low-Balance Modal** auto-surfaces when balance < 100 credits OR runway < 5 days. Shows recommended package (the smallest pkg covering 30 days of runway), exact dollar cost, projected days-of-runway after top-up, and a 1-click *Top Up — $X* CTA. Dismiss-once-per-mount UX so it doesn't nag.
+- **Stripe checkout continuation in test/mock mode** (`POST /api/billing/purchase-order` auto-fulfills with `fulfillPurchaseOrder()` when `STRIPE_SECRET_KEY` is unset). Verified live: balance 30 → 1,030 in ~3 seconds without leaving the page.
+- **Re-titled BillingPanel** to "AI Workforce Billing" with subtitle "Track credits, usage, and costs for your AI workforce".
+- **Pre-existing routing bug fixed**: `pathname.slice(1)` was producing `'app/billing'` instead of `'billing'`, leaving every panel under `/app/*` blank. Now strips the leading `/app/` segment correctly.
+- **5 new vitest unit tests** for `computeFuelFromOverview` (zero-balance, runway math, recommended-package picker, healthy state, low-balance threshold). **29/29 billing-related unit tests pass.**
 
 ---
 
-## 5. Acceptance Criteria Status (Priorities 1-3 + 7#13)
+## 5. Acceptance Criteria Status (this iteration)
 
 | Item | Status |
 |------|--------|
 | `pnpm typecheck` → zero errors | ✅ |
-| `pnpm lint` → zero errors | ✅ (10 pre-existing warnings) |
-| Billing-targeted vitest → all pass | ✅ 24/24 |
-| `pnpm build` → zero errors | ✅ (3 expected warnings) |
-| `POST /api/tokens` end-to-end pipeline | ✅ verified live |
-| `GET /api/billing/margin` correct calculations | ✅ verified live (59.26 %) |
-| Pricing seed (14 providers, 12 features) | ✅ verified |
-| Credit packages 4 × correct totals (1k / 2.75k / 6k / 25k) | ✅ verified |
-| Insufficient credits returns HTTP 402 | ✅ verified live |
-| Migration 031 runs cleanly + indexes added | ✅ |
-| No `creditsRequired = 0` bug | ✅ `Math.max(1, …)` test green |
-| Onboarding: Real Estate (#5) + Mortgage Broker (#6) | ✅ verified live |
+| `pnpm lint` → zero errors (10 pre-existing warnings) | ✅ |
+| `pnpm build` → zero errors | ✅ Compiled successfully in 58 s; 123/123 pages generated |
+| Billing-targeted vitest → all pass | ✅ 29/29 |
+| All 9 onboarding templates render in wizard | ✅ verified live |
+| CPA / Marketing Agency / Law Firm templates: correct agents / skills / workflows | ✅ verified live |
+| Each new template: ROI message + first 5-minute task + sample starter task seeded | ✅ |
+| Law Firm: no legal-advice claims | ✅ verified ("do not provide legal advice or represent the firm to clients") |
+| CPA: no tax-advice claims | ✅ verified ("do not give tax advice or sign returns") |
+| Workforce Fuel Meter renders on BillingPanel overview | ✅ verified live (1,030 credits / 30+ days runway / Fully fueled) |
+| Low-Balance Modal auto-surfaces when low + 1-click top-up works | ✅ verified live (Starter / $10 / 333 days runway after top-up) |
+| Stripe checkout continuation seamless in test/mock mode | ✅ verified live (balance jumped 30 → 1,030 instantly) |
+| Business-friendly executive language | ✅ "AI Workforce Billing", "Workforce Fuel", "AI Employees" |
 
 ---
 
-## 6. Backlog / Deferred (per user scope)
+## 6. Backlog / Deferred
 
 ### P0 (must complete before public launch)
-- Priority 4: Production hardening — Stripe webhook signature validation, rate limiting on `POST /api/tokens` & `POST /api/billing/purchase-order`, structured logging for credit mutations, health check ledger consistency, daily `recalculateBalance` cron with alert.
-- Priority 5: Add E2E + integration tests for the full sign-up → buy → run → margin loop; webhook idempotency under replay; load test 100 concurrent token reports.
+- Priority 4 hardening — Stripe webhook signature validation (live mode), rate limiting on `POST /api/tokens` and `POST /api/billing/purchase-order`, structured logging for credit mutations, health-check ledger consistency, daily `recalculateBalance` cron with alerts.
+- Live-mode Stripe checkout URL generation in `purchase-order/route.ts` (the playbook already integrates `stripe/checkout/route.ts` — wire it up).
+- Priority 5 — E2E sign-up → buy → run → margin loop; webhook replay idempotency under load; 100 concurrent token reports load test.
 
 ### P1
-- Priority 6: `docs/billing.md`, `docs/migration.md`, `docs/troubleshooting/billing.md`, OpenAPI billing examples, curl snippets.
-- Priority 7: low-balance modal, usage history table on Billing Overview, margin % on Billing Overview, remove `console.log` calls from prod paths, knip pass.
+- Auto-reload (subscription) for credits to prevent the workforce ever pausing.
+- Usage history table + margin % widget on Billing Overview panel (still room beneath the meter).
+- Trust surfaces: workspace-health score, AI workforce-health score, approval logs, AI-action traceability, security-posture indicator.
+- Demo environment (seed all 9 templates with sample activity).
+- Landing & pricing page polish using business templates and ROI language.
+- Marketplace framing ("App Store for AI Employees").
+- Priority 6 docs — `docs/billing.md`, `docs/migration.md`, `docs/troubleshooting/billing.md`, OpenAPI examples.
 
 ### P2
-- Per-agent cost breakdown UI.
+- Per-agent / per-AI-employee cost breakdown UI.
 - API token rotation UI.
+- Flight Deck desktop companion (Tauri v2).
 
 ---
 
 ## 7. Operational Notes
 
 - Local credentials: `AUTH_USER=admin` / `AUTH_PASS=admin12345` (see `/app/memory/test_credentials.md`).
-- Run order: `pnpm install` → migrations auto-apply on first DB open → `MISSION_CONTROL_TEST_MODE=1 pnpm tsx scripts/seed-billing-data.ts` (or simply boot, migration 031 seeds the same data idempotently) → `pnpm dev`.
-- Stripe is in **test/mock mode** (no real keys required; `src/app/api/stripe/checkout/route.ts` returns a mock session when `STRIPE_SECRET_KEY` is unset).
-- Test mode hatch: setting `MISSION_CONTROL_TEST_MODE=1` skips webhook listener + scheduler init (used by seed script and tests).
+- Run order: `pnpm install` → migrations auto-apply on first DB open → `MISSION_CONTROL_TEST_MODE=1 pnpm tsx scripts/seed-billing-data.ts` (or just boot — migration 031 seeds identically) → `pnpm dev`.
+- Stripe runs in **test/mock mode** (no real keys required). `purchase-order` route auto-fulfills credits when `STRIPE_SECRET_KEY` is unset. Set `STRIPE_SECRET_KEY` to switch to real checkout.
+- Test-mode hatch: `MISSION_CONTROL_TEST_MODE=1` skips the webhook listener + scheduler init (used by seed script and tests).
+- Pre-existing routing bug fix: `src/app/app/[[...panel]]/page.tsx` now strips the `/app/` URL segment before matching the panel id. Previously every panel rendered blank.
