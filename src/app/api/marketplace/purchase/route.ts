@@ -31,6 +31,9 @@ import { createStripeCheckoutSession, isLiveStripeMode } from '@/lib/stripe-clie
 interface PurchaseBody {
   type: 'skill' | 'employee' | 'bundle'
   slug: string
+  /** Optional: when installing a skill, attach it directly to an existing AI Employee. */
+  attachToAgentId?: number
+  attachToAgentSlug?: string
 }
 
 function ensureTables(db: ReturnType<typeof getDatabase>) {
@@ -94,21 +97,23 @@ function recordAudit(workspaceId: number, actorId: number, action: string, slug:
   }
 }
 
-function installSkill(workspaceId: number, slug: string, idempotencyKey: string) {
+function installSkill(workspaceId: number, slug: string, idempotencyKey: string, agentSlug?: string | null, agentId?: number | null) {
   const skill = getSkillBySlug(slug)
   if (!skill) throw new Error(`Unknown skill slug: ${slug}`)
   const db = getDatabase()
   ensureTables(db)
   db.prepare(
-    `INSERT OR IGNORE INTO workforce_skills (workspace_id, slug, name, category, price_cents, installed_at, idempotency_key)
-     VALUES (?, ?, ?, ?, ?, strftime('%s','now'), ?)`
-  ).run(workspaceId, skill.slug, skill.name, skill.category, skill.priceUsd * 100, idempotencyKey)
+    `INSERT OR IGNORE INTO workforce_skills (workspace_id, slug, name, category, price_cents, attached_agent_id, installed_at, idempotency_key)
+     VALUES (?, ?, ?, ?, ?, ?, strftime('%s','now'), ?)`
+  ).run(workspaceId, skill.slug, skill.name, skill.category, skill.priceUsd * 100, agentId ?? null, idempotencyKey)
   db.prepare(
-    `INSERT INTO workforce_memory (workspace_id, kind, title, detail, rationale, created_at)
-     VALUES (?, 'skill-installed', ?, ?, ?, strftime('%s','now'))`
+    `INSERT INTO workforce_memory (workspace_id, agent_id, agent_slug, kind, title, detail, rationale, created_at)
+     VALUES (?, ?, ?, 'skill-installed', ?, ?, ?, strftime('%s','now'))`
   ).run(
     workspaceId,
-    `Skill installed: ${skill.name}`,
+    agentId ?? null,
+    agentSlug ?? null,
+    skill.slug,
     `${skill.outcome} Estimated impact: ${skill.timeSaved}.`,
     `Operator added this capability to expand the workforce.`,
   )
@@ -239,7 +244,7 @@ export async function POST(request: NextRequest) {
   // --- TEST / mock mode → fulfill immediately ---
   try {
     if (body.type === 'skill') {
-      installSkill(workspaceId, body.slug, idempotencyKey)
+      installSkill(workspaceId, body.slug, idempotencyKey, body.attachToAgentSlug, body.attachToAgentId)
     } else if (body.type === 'employee') {
       hireEmployee(workspaceId, body.slug, idempotencyKey)
     } else if (body.type === 'bundle') {

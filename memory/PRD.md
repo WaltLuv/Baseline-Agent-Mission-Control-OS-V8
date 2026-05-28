@@ -1236,4 +1236,153 @@ piece of vector jargon leaking into the UI.
 - P2 — Per-AI-employee deep-link on the Skills Inventory rows.
 - P2 — Approval queue panel wired to the new `needsApproval` escalation
   chain.
+
+
+---
+
+## 19. Iteration 14 — Skill-Install Events Tracker (Feb 2026)
+
+User direction after Iteration 13 acceptance: shift the next major leap to
+**operational continuity** — turn the marketplace from a "catalog" into
+"AI workforce infrastructure" by making installed skills measurable
+operational assets. Marketplace installs only become commercially
+meaningful when (a) installed skills activate, (b) usage is visible,
+(c) ROI is measurable, and (d) employees evolve.
+
+### 19.1 — New phone-home channel for skill telemetry
+- **`POST /api/skills/event`** — AI Employees / workflows now phone home
+  every time an installed skill activates:
+  ```
+  { skillSlug, agentSlug?, agentId?, valueImpactCents?, durationMinutes?,
+    success?, taskId?, note? }
+  ```
+  - Rate-limited via the existing `tokenReportLimiter` (120/min).
+  - Requires `operator` role.
+  - Workspace-scoped — fails 404 if the skill isn't installed in the
+    caller's workspace (no cross-tenant leakage).
+  - Writes a `workforce_memory` row (`kind='skill-used'` on success,
+    `'skill-escalated'` on failure) AND increments counters on the
+    `workforce_skills` row: `use_count`, `last_used_at`,
+    `value_impact_cents`, `success_count`, `escalation_count`.
+
+### 19.2 — Schema additions (auto-migrating)
+The route ensures the following counter columns exist on
+`workforce_skills` and ALTERs them in if they're missing — keeping the
+existing data intact:
+```
+use_count            INTEGER NOT NULL DEFAULT 0
+last_used_at         INTEGER
+value_impact_cents   INTEGER NOT NULL DEFAULT 0
+success_count        INTEGER NOT NULL DEFAULT 0
+escalation_count     INTEGER NOT NULL DEFAULT 0
+```
+
+### 19.3 — Marketplace install now attaches employees
+`installSkill()` in `/api/marketplace/purchase` now accepts optional
+`attachToAgentId` / `attachToAgentSlug` and writes them onto both the
+`workforce_skills` row and the `workforce_memory` row. The memory title
+is also normalized to the slug (e.g. `pdf-generation`) instead of the
+human-readable "Skill installed: PDF Document Generation" so the
+inventory merge collapses install + use events for the same skill into
+one card.
+
+### 19.4 — `skillsInventory()` derivation upgraded
+The Live Skills-Active Inventory now merges two truth sources into a
+single ROI-aware list:
+1. **`workforce_skills`** — every installed capability (so installed-
+   but-unused skills surface as `inactive` immediately, rather than
+   waiting for a first event).
+2. **`workforce_memory`** — `skill-used` / `skill-escalated` events for
+   employee attribution + recent-uses-per-day.
+
+New state-derivation rules:
+- `active` — recent uses, escalation rate < 50%
+- `warning` — escalation rate ≥ 50% OR recent activity dropped
+- `inactive` — no use in 7 days OR never used
+
+Recommendation copy is now state-specific:
+- *"Installed but never used — attach it to an AI Employee or workflow."*
+- *"50% of activations escalated — check the upstream workflow."*
+- *"No use in 7 days — consider archiving or attaching elsewhere."*
+
+### 19.5 — Trace view inherits the new counters
+`employeeTrace().skillsUsed` already pulled from `workforce_memory`, so
+phone-home events surface in the trace skills card with `uses` + `lastUsedAt`.
+`valueThisMonthCents` rolls up successful skill events with their
+`value_impact_cents` so the trace cost/value card answers the operator's
+key question: *"is this AI Employee actually creating value?"*
+
+### 19.6 — End-to-end live verification
+Live SQL-backed smoke test against the production server:
+```
+POST /api/marketplace/purchase  {type:"skill",slug:"pdf-generation"}
+  → {ok:true, mode:"fulfilled", priceCents:2500}
+POST /api/skills/event          {skillSlug:"pdf-generation",
+                                 agentSlug:"phil", valueImpactCents:7500,
+                                 success:true}
+  → {ok:true, valueImpactCents:7500}
+POST /api/skills/event          {skillSlug:"pdf-generation",
+                                 agentSlug:"lena", success:false}
+  → {ok:true, success:false}
+GET  /api/baseline-os/skills-inventory
+  → pdf-generation: state="warning", uses=2, value=$75,
+    employees=["lena","phil"],
+    recommendation="50% of activations escalated — check the upstream workflow."
+GET  /api/agents/phil/trace
+  → skillsUsed=[{slug:"pdf-generation", uses:1}],
+    valueThisMonthCents=7500
+```
+The full loop is live: **Install → Use → Phone-home → Trace ROI →
+Inventory state → Operator recommendation**.
+
+### 19.7 — Tests
+- **`skill-event-tracker.test.ts`** (7 tests, all passing):
+  - 400 when `skillSlug` missing
+  - 404 when skill isn't installed in workspace
+  - success event increments `use_count` + `success_count` + value
+  - failure event writes `skill-escalated` row + increments
+    `escalation_count`
+  - `skillsInventory()` shows installed-but-unused as `inactive` with
+    install-recommendation copy
+  - flips to `active` once events arrive and aggregates ROI/employees
+  - flips to `warning` with the escalation-rate recommendation when
+    escalations ≥ 50%
+- **Full suite: 1016 / 1016 passing** (was 1009 before iteration 14).
+
+### 19.8 — Customer-language audit
+No new vector/orchestration jargon introduced. New strings are
+business-owner-friendly: *"50% of activations escalated"*, *"Installed
+but never used — attach it to an AI Employee or workflow"*, *"value
+$75"*, *"~6h saved"*.
+
+### 19.9 — Studios boundary preserved
+No Studios surfaces added. Skill authoring (designing new skills)
+remains a separate-product concern. Mission Control remains the
+deployment/oversight layer.
+
+### 19.10 — Files touched
+```
+new   src/app/api/skills/event/route.ts              (phone-home endpoint)
+new   src/lib/__tests__/skill-event-tracker.test.ts  (7 tests)
+mod   src/lib/baseline-os/trace-derivation.ts        (skillsInventory merge)
+mod   src/app/api/marketplace/purchase/route.ts      (agent attach + slug-titled memory rows)
+```
+
+### 19.11 — Launch readiness
+**9.8 / 10** — the marketplace is now infrastructure: every installed
+skill is a measurable, named operational asset with live ROI, an
+employee owner, and an executive recommendation when something drifts.
+
+### 19.12 — Remaining backlog (deferred)
+- P1 — Wire native Hermes/OpenClaw runtime adapter to call
+  `/api/skills/event` automatically on every skill invocation (today
+  it's a documented contract; one of the runtimes still needs the hook).
+- P1 — "Skill ROI leaderboard" mini-card on the Executive Briefing
+  showing the top 3 value-creating skills this month.
+- P2 — Per-skill detail page (`/app/skills/[slug]`) with the full event
+  timeline + employee breakdown.
+- P2 — De-duplicate legacy `workforce_memory` rows whose title was
+  "Skill installed: <Name>" by backfilling them to the slug form.
+- P3 — Skill "evolved" state — surface when a skill crosses 100 uses
+  with > 90% success as a "mastered capability" badge.
 - P3 — Email SMTP STARTTLS hardening + saved-card auto-reload for Stripe.

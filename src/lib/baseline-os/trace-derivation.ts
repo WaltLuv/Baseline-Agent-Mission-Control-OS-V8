@@ -480,69 +480,178 @@ export function customerSkillLabel(slug: string): string {
 
 export function skillsInventory(workspaceId: number): ActiveSkill[] {
   const db = getDatabase()
-  if (!tableExists(db, 'workforce_memory')) return []
+  if (!tableExists(db, 'workforce_memory') && !tableExists(db, 'workforce_skills')) return []
   const monthAgo = Math.floor(Date.now() / 1000) - 30 * 86_400
   const dayAgo = Math.floor(Date.now() / 1000) - 86_400
 
-  // Derive from `skill-installed` / `skill-used` rows in workforce_memory.
-  // Title for skill rows is the human label (e.g., "PDF Document Generation").
+  // Merge two sources:
+  //   1. `workforce_skills` rows — every installed capability (live ROI counters)
+  //   2. `workforce_memory` rows where kind IN ('skill-used','skill-installed')
+  //      — used to backfill employees / workflows when the counter row is empty.
   type Row = {
     slug: string
+    label: string
     uses: number
     recent_uses: number
     last_used: number
-    agents: string | null
+    employees: string
     value_cents: number
+    success_count: number
+    escalation_count: number
+    installed_at: number | null
   }
-  let rows: Row[] = []
-  try {
-    rows = db
-      .prepare(
-        `SELECT
-            LOWER(REPLACE(REPLACE(title, ' ', '-'), ':', '')) AS slug,
-            COUNT(*) AS uses,
-            SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS recent_uses,
-            MAX(created_at) AS last_used,
-            GROUP_CONCAT(DISTINCT agent_slug) AS agents,
-            COALESCE(SUM(value_impact_cents), 0) AS value_cents
-         FROM workforce_memory
-         WHERE workspace_id = ?
-           AND kind IN ('skill-installed','skill-used')
-           AND created_at >= ?
-         GROUP BY title
-         ORDER BY uses DESC
-         LIMIT 24`,
-      )
-      .all(dayAgo, workspaceId, monthAgo) as Row[]
-  } catch {
-    rows = []
+  const rows = new Map<string, Row>()
+
+  if (tableExists(db, 'workforce_skills')) {
+    try {
+      const installed = db
+        .prepare(
+          `SELECT slug, name AS label,
+                  COALESCE(use_count, 0) AS uses,
+                  COALESCE(last_used_at, 0) AS last_used,
+                  COALESCE(value_impact_cents, 0) AS value_cents,
+                  COALESCE(success_count, 0) AS success_count,
+                  COALESCE(escalation_count, 0) AS escalation_count,
+                  installed_at
+           FROM workforce_skills
+           WHERE workspace_id = ?
+           ORDER BY uses DESC, installed_at DESC
+           LIMIT 24`,
+        )
+        .all(workspaceId) as Array<{
+        slug: string
+        label: string
+        uses: number
+        last_used: number
+        value_cents: number
+        success_count: number
+        escalation_count: number
+        installed_at: number
+      }>
+      for (const r of installed) {
+        rows.set(r.slug, {
+          slug: r.slug,
+          label: r.label,
+          uses: r.uses,
+          recent_uses: 0,
+          last_used: r.last_used,
+          employees: '',
+          value_cents: r.value_cents,
+          success_count: r.success_count,
+          escalation_count: r.escalation_count,
+          installed_at: r.installed_at,
+        })
+      }
+    } catch {
+      // workforce_skills columns may be older; skip the counter merge.
+    }
   }
 
-  return rows.map((r) => {
-    const employees = (r.agents || '').split(',').filter(Boolean)
-    const recentUsesPerDay = Number(r.recent_uses) / 1 // last 24h window
-    const stale = r.last_used < Math.floor(Date.now() / 1000) - 7 * 86_400
-    const state: ActiveSkill['state'] = stale ? 'inactive' : recentUsesPerDay > 0 ? 'active' : 'warning'
-    return {
-      slug: r.slug,
-      label: customerSkillLabel(r.slug),
-      state,
-      employees,
-      workflows: [],
-      uses: r.uses,
-      recentUsesPerDay,
-      estimatedMinutesSaved: r.uses * 15,
-      creditsUsedThisMonth: 0,
-      valueUsdThisMonth: Math.round((r.value_cents ?? 0) / 100),
-      relatedTasks: 0,
-      recommendation:
-        state === 'inactive'
-          ? `No use in 7 days — consider archiving or attaching to a different team`
-          : state === 'warning'
-            ? `Usage dropped in last 24h — check if a workflow stalled`
-            : null,
+  if (tableExists(db, 'workforce_memory')) {
+    try {
+      const events = db
+        .prepare(
+          `SELECT title AS slug_candidate,
+                  COUNT(*) AS uses,
+                  SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS recent_uses,
+                  MAX(created_at) AS last_used,
+                  GROUP_CONCAT(DISTINCT agent_slug) AS agents,
+                  COALESCE(SUM(value_impact_cents), 0) AS value_cents,
+                  SUM(CASE WHEN kind = 'skill-used' THEN 1 ELSE 0 END) AS success_count,
+                  SUM(CASE WHEN kind = 'skill-escalated' THEN 1 ELSE 0 END) AS escalation_count
+           FROM workforce_memory
+           WHERE workspace_id = ?
+             AND kind IN ('skill-installed','skill-used','skill-escalated')
+             AND created_at >= ?
+           GROUP BY title
+           ORDER BY uses DESC
+           LIMIT 24`,
+        )
+        .all(dayAgo, workspaceId, monthAgo) as Array<{
+        slug_candidate: string
+        uses: number
+        recent_uses: number
+        last_used: number
+        agents: string | null
+        value_cents: number
+        success_count: number
+        escalation_count: number
+      }>
+      for (const e of events) {
+        // Memory rows store either the slug or the human label as `title`.
+        // Normalize to slug form so we merge with the workforce_skills row.
+        const slug = e.slug_candidate.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+        const existing = rows.get(slug)
+        if (existing) {
+          // Keep counter-source counters (more authoritative). Add recency + employees from memory.
+          existing.recent_uses = Math.max(existing.recent_uses, Number(e.recent_uses))
+          existing.last_used = Math.max(existing.last_used, Number(e.last_used))
+          existing.employees = e.agents || ''
+        } else {
+          rows.set(slug, {
+            slug,
+            label: e.slug_candidate,
+            uses: Number(e.uses),
+            recent_uses: Number(e.recent_uses),
+            last_used: Number(e.last_used),
+            employees: e.agents || '',
+            value_cents: Number(e.value_cents),
+            success_count: Number(e.success_count),
+            escalation_count: Number(e.escalation_count),
+            installed_at: null,
+          })
+        }
+      }
+    } catch {
+      // ignore
     }
-  })
+  }
+
+  const now = Math.floor(Date.now() / 1000)
+  return Array.from(rows.values())
+    .sort((a, b) => b.uses - a.uses || (b.last_used ?? 0) - (a.last_used ?? 0))
+    .slice(0, 24)
+    .map((r) => {
+      const employees = (r.employees || '').split(',').filter(Boolean)
+      const recentUsesPerDay = r.recent_uses
+      // State derivation:
+      //   active   — recent uses with no escalations OR success-dominant
+      //   warning  — escalations ≥ 50% of uses OR recent activity dropping
+      //   inactive — installed but no use in 7d, OR no use ever
+      const stale = !r.last_used || r.last_used < now - 7 * 86_400
+      const escalationRate = r.uses > 0 ? r.escalation_count / r.uses : 0
+      let state: ActiveSkill['state']
+      if (r.uses === 0 || stale) state = 'inactive'
+      else if (escalationRate >= 0.5) state = 'warning'
+      else if (recentUsesPerDay > 0) state = 'active'
+      else state = 'warning'
+
+      let recommendation: string | null = null
+      if (state === 'inactive' && r.installed_at && r.uses === 0) {
+        recommendation = 'Installed but never used — attach it to an AI Employee or workflow.'
+      } else if (state === 'inactive') {
+        recommendation = 'No use in 7 days — consider archiving or attaching elsewhere.'
+      } else if (state === 'warning' && escalationRate >= 0.5) {
+        recommendation = `${Math.round(escalationRate * 100)}% of activations escalated — check the upstream workflow.`
+      } else if (state === 'warning') {
+        recommendation = 'Usage dropped in last 24h — check if a workflow stalled.'
+      }
+
+      return {
+        slug: r.slug,
+        label: customerSkillLabel(r.slug),
+        state,
+        employees,
+        workflows: [],
+        uses: r.uses,
+        recentUsesPerDay,
+        estimatedMinutesSaved: r.uses * 15,
+        creditsUsedThisMonth: 0,
+        valueUsdThisMonth: Math.round((r.value_cents ?? 0) / 100),
+        relatedTasks: 0,
+        recommendation,
+      }
+    })
 }
 
 // ---------- collaboration graph ----------
