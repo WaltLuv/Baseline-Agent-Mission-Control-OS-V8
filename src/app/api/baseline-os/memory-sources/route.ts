@@ -222,10 +222,16 @@ export async function POST(request: NextRequest) {
       try {
         notionSync = await ingestNotion(db, workspaceId)
         if (notionSync.ok) {
+          const totalCount = notionSync.chunksWritten + notionSync.chunksUnchanged
           db.prepare(
             `UPDATE memory_sources SET document_count = ?, updated_at = ? WHERE workspace_id = ? AND source_type = 'notion'`,
-          ).run(notionSync.chunksWritten, now, workspaceId)
-          ingestNote = `Indexed ${notionSync.pagesIndexed} Notion pages (${notionSync.chunksWritten} chunks).`
+          ).run(totalCount, now, workspaceId)
+          const deltaParts: string[] = []
+          if (notionSync.chunksWritten > 0) deltaParts.push(`${notionSync.chunksWritten} new`)
+          if (notionSync.chunksUnchanged > 0) deltaParts.push(`${notionSync.chunksUnchanged} unchanged`)
+          if (notionSync.chunksRemoved > 0) deltaParts.push(`${notionSync.chunksRemoved} removed`)
+          const deltaSummary = deltaParts.length ? ` · ${deltaParts.join(' · ')}` : ''
+          ingestNote = `Indexed ${notionSync.pagesIndexed} Notion pages${deltaSummary}.`
         } else {
           ingestNote = `Notion sync failed: ${notionSync.reason}.`
         }

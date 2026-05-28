@@ -19,6 +19,7 @@
  */
 import { getDatabase } from '@/lib/db'
 import type { Database } from 'better-sqlite3'
+import { deriveProvenance, obsidianVaultName } from '@/lib/baseline-os/memory-provenance'
 
 // ---------- shared types ----------
 
@@ -29,6 +30,10 @@ export interface MemoryCitation {
   excerpt: string
   rationale: string | null
   createdAt: number
+  /** Relative vault path (Obsidian) or page URL (Notion). Null when unknown. */
+  sourcePath?: string | null
+  /** Clickable deep-link an operator can use to open the upstream document. */
+  deepLink?: string | null
 }
 
 export interface EmployeeTrace {
@@ -219,14 +224,19 @@ export function employeeTrace(workspaceId: number, slugOrName: string): Employee
       rationale: string | null
       created_at: number
     }>)
-      .map((r) => ({
-        id: r.id,
-        source: sourceLabelFromKind(r.kind),
-        title: r.title,
-        excerpt: (r.detail || '').slice(0, 280),
-        rationale: r.rationale,
-        createdAt: r.created_at,
-      }))
+      .map((r) => {
+        const prov = deriveProvenance(r.kind, r.rationale, obsidianVaultName())
+        return {
+          id: r.id,
+          source: prov.source === 'Workforce Memory' ? sourceLabelFromKind(r.kind) : (prov.source as MemoryCitation['source']),
+          title: r.title,
+          excerpt: (r.detail || '').slice(0, 280),
+          rationale: r.rationale,
+          createdAt: r.created_at,
+          sourcePath: prov.sourcePath,
+          deepLink: prov.deepLink,
+        }
+      })
   }
 
   // --- skills used: derived from workforce_memory `skill-used` entries when present

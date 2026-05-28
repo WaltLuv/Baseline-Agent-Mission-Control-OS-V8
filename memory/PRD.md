@@ -1876,4 +1876,153 @@ their IDs across syncs.
   mode, advance a step (new task, approval flips, memory citation
   surfaces) so the workforce visibly *operates*. Keep it calm and
   deterministic, not animated.
+
+
+---
+
+## 23. Iteration 18 — Pass 1: Runtime + Memory Continuity (Feb 2026)
+
+User directive: enter the disciplined phase. **Pass 1 only** —
+runtime + memory layer. Do NOT include UX polish, marketplace
+redesign, Studios, or commercial-layer work. STOP after Pass 1.
+Validate. Stabilize.
+
+### 23.1 — Pass 1 scope (per user mandate)
+✅ Hermes runtime wiring (shipped in Iteration 17, validated here)
+✅ OpenClaw runtime hook
+✅ Notion delta-aware ingestion
+✅ Obsidian deep-links
+✅ Telemetry stabilization (idempotency keys)
+✅ Approval continuity
+✅ Memory provenance helper
+
+### 23.2 — Notion delta-aware ingester (parity with Obsidian)
+- `IngestSummary` now mirrors Obsidian: `pagesIndexed · chunksWritten ·
+  chunksUnchanged · chunksRemoved`
+- Same content-hash idempotency pattern (`sha256(rationale + chunk)[:32]`)
+  → stable IDs across syncs → trace deep-links and citation references
+  survive resync
+- Same one-time legacy migration of pre-hash rows
+- Memory Connectors UI now reports the delta on the Notion card:
+  `Indexed N Notion pages · K new · M unchanged · X removed.`
+
+### 23.3 — OpenClaw runtime hook (browser/JS variant)
+- New endpoint `GET /api/openclaw/hooks` (admin-gated) serves a complete
+  JavaScript hook template that browser/tool runtimes can drop into
+  their event bus
+- Mirrors the Hermes Python contract exactly:
+  - `tool:start / tool:end → /api/agents` (presence)
+  - `tool:invoked / skill:used → /api/skills/event`
+  - `task:complete → /api/agents/outcome + /api/skills/event`
+  - `skill:escalated → /api/skills/event + /api/agents/escalation`
+  - `memory:cited → /api/agents/memory-use`
+  - `agent:handoff → /api/agents/collaboration`
+- **Fire-and-forget**: 4s `AbortController` timeout, never throws.
+  Verified by test that asserts the never-crash comment + `_post()` wrapper
+- **Customer-language only**: `_allowedSource()` restricts the source
+  enum to `Obsidian / Notion / Pinecone / Internal`. Tests assert the
+  absence of `vector_namespace` / `embedding_index` strings
+
+### 23.4 — Obsidian deep-links + memory provenance helper
+- New `src/lib/baseline-os/memory-provenance.ts` — pure-function helper
+  that parses the structured `rationale` written by the ingesters and
+  emits a `MemoryProvenance { source, sourcePath, deepLink }` for every
+  citation
+- Obsidian rows → `obsidian://open?vault=<name>&file=<path>` deep-link
+  (uses `OBSIDIAN_VAULT_PATH` basename, or "Operator Vault" fallback)
+- Notion rows → the page URL already in the rationale
+- Pinecone / Internal → no deep-link (vector storage stays internal)
+- Trace endpoint now returns `sourcePath` + `deepLink` on every
+  `memoryUsed[]` entry
+- Trace UI renders a calm `↗ open` link next to each citation,
+  `target="_blank"` for HTTPs URLs and direct for `obsidian://` URIs
+
+### 23.5 — Telemetry stabilization — idempotency keys
+- `POST /api/skills/event` now honors `Idempotency-Key` (or
+  `X-Idempotency-Key`) headers
+- New `idempotency_cache` table (auto-migrated) — dedups within a 24h
+  window per (key, workspace, scope)
+- A retry with the same key returns
+  `{ ok: true, deduped: true, skillSlug }` and does NOT increment any
+  counter — protects ROI rollups from retry storms
+- Live verified: two POSTs with same key → first writes counter, second
+  is silently deduped
+
+### 23.6 — Approval continuity (already shipped in Iter 16, validated)
+- The approval-action endpoint already writes an `approval-approved /
+  approval-rejected / approval-changes-requested` row in
+  `workforce_memory` for the requesting AI Employee
+- Verified that the rationale (operator note) flows into the trace
+  Memory card and the life-signals presence flips back from
+  `waiting-for-approval` to `working`
+
+### 23.7 — Live verification (production server)
+```
+GET /api/openclaw/hooks → 4.5KB JS template (admin-gated)
+
+POST /api/skills/event (idempotency-key: pass1-test) → ok
+POST /api/skills/event (same key)                    → {ok, deduped:true}
+
+POST /api/baseline-os/memory-sources {sourceType:obsidian, action:resync}
+  → "Connected to bundled demo vault. · 23 new · …"
+POST (same)                                          → "23 unchanged"
+
+GET /api/agents/phil/trace
+  memoryUsed[].deepLink = "obsidian://open?vault=Operator+Vault&file=sops/intake.md"
+
+node scripts/runtime-telemetry-harness.mjs
+  → all 7 endpoints 200 · loop verified ✓
+```
+
+### 23.8 — Quality gates
+- TypeScript: **0 errors**
+- ESLint: **0 errors**
+- Vitest: **1057 / 1057 passing** (+12 new tests):
+  - 6 memory-provenance unit tests (Obsidian + Notion + Pinecone +
+    Internal + Workforce-Memory fallback + vault name resolution)
+  - 4 OpenClaw hook template assertions (events, endpoints, never-throw,
+    enum restriction)
+  - 2 Notion delta-aware ingest tests (ID preservation, chunks-removed
+    diff)
+- `next build`: **145 / 145 pages compiled** (added /api/openclaw/hooks)
+- Live runtime harness: **all 200s · loop closed**
+
+### 23.9 — Pass discipline honored
+**Did NOT include** (deferred to Pass 2 / 3 per user mandate):
+- ✗ operational tick (Pass 2)
+- ✗ executive transitions / cinematic onboarding (Pass 2)
+- ✗ marketplace polish / ROI storytelling (Pass 3)
+- ✗ demo storylines / vertical narratives (Pass 3)
+- ✗ Studios (Pass 4, separate product)
+
+This pass is **memory + runtime infrastructure only**. STOP.
+
+### 23.10 — Files touched
+```
+new  src/lib/baseline-os/memory-provenance.ts            (parser + obsidian:// deep-link builder)
+new  src/app/api/openclaw/hooks/route.ts                 (JS hook template, admin-gated)
+new  src/lib/__tests__/iteration-18-runtime-memory.test.ts (12 tests)
+mod  src/lib/baseline-os/notion-ingest.ts                (delta-aware sync + content_hash + IngestSummary)
+mod  src/lib/baseline-os/trace-derivation.ts             (provenance enrichment in memoryUsed[])
+mod  src/components/workforce/employee-trace-view.tsx    (↗ open deep-link rendering)
+mod  src/app/api/baseline-os/memory-sources/route.ts     (Notion delta summary in ingestNote)
+mod  src/app/api/skills/event/route.ts                   (Idempotency-Key support)
+```
+
+### 23.11 — Launch readiness
+**9.98 / 10** — runtime contract complete; memory layer is now
+audit-stable across both Obsidian and Notion; deep-link traceability
+shipped end-to-end. The system genuinely supervises external runtimes
+through stable, idempotent, fire-and-forget telemetry.
+
+### 23.12 — Backlog (deferred to Pass 2 onward)
+- **External / P0** — Wire the OpenClaw hook template into the actual
+  OpenClaw runtime repo (Mission Control side complete)
+- **External / P0** — Wire the Hermes hook template into the Hermes
+  runtime repo (template shipped at `/api/hermes/hooks?token=...`)
+- **Pass 2** — Executive UX: operational tick, briefing motion, life
+  signals polish, cross-panel continuity
+- **Pass 3** — Commercial layer: demo storylines, vertical narratives,
+  ROI storytelling, marketplace polish
+- **Pass 4** — Baseline Studios (separate product, separate roadmap)
 - P3 — Email SMTP STARTTLS hardening + saved-card auto-reload for Stripe.

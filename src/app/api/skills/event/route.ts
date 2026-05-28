@@ -106,6 +106,28 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // Idempotency: when the runtime supplies an idempotency-key, we
+  // remember it for 24h. A duplicate POST returns the original result
+  // without re-incrementing counters — critical for retry-storms.
+  const idemKey = request.headers.get('idempotency-key') ?? request.headers.get('x-idempotency-key')
+  if (idemKey) {
+    db.exec(`CREATE TABLE IF NOT EXISTS idempotency_cache (
+      key TEXT PRIMARY KEY,
+      workspace_id INTEGER NOT NULL,
+      scope TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    )`)
+    const cached = db
+      .prepare(`SELECT created_at FROM idempotency_cache WHERE key = ? AND workspace_id = ? AND scope = 'skill-event'`)
+      .get(idemKey, workspaceId) as { created_at: number } | undefined
+    if (cached && now - cached.created_at < 86_400) {
+      return NextResponse.json({ ok: true, deduped: true, skillSlug: body.skillSlug })
+    }
+    db.prepare(
+      `INSERT OR IGNORE INTO idempotency_cache (key, workspace_id, scope, created_at) VALUES (?, ?, 'skill-event', ?)`,
+    ).run(idemKey, workspaceId, now)
+  }
+
   // Resolve agent if provided.
   let agentSlug: string | null = body.agentSlug ?? null
   let agentId: number | null = body.agentId ?? null

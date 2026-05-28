@@ -237,6 +237,18 @@ export function EmployeeTraceView({ slug }: { slug: string }) {
                   <Link href={`/app/memory-feed?id=${m.id}`} className="font-semibold text-primary hover:underline">
                     {m.source} · {m.title}
                   </Link>
+                  {m.deepLink && (
+                    <a
+                      href={m.deepLink}
+                      target={m.deepLink.startsWith('obsidian://') ? undefined : '_blank'}
+                      rel="noopener noreferrer"
+                      className="ml-1 text-[10px] text-muted-foreground hover:text-foreground hover:underline"
+                      data-testid={`memory-deeplink-${m.id}`}
+                      title={`Open in ${m.source}`}
+                    >
+                      ↗ open
+                    </a>
+                  )}
                   {m.excerpt && (
                     <p className="mt-0.5 text-muted-foreground italic">&ldquo;{m.excerpt.slice(0, 160)}&rdquo;</p>
                   )}

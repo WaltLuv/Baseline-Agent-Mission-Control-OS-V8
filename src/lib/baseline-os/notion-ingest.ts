@@ -16,6 +16,7 @@
  *   - Writes `kind='operator-memory.notion'` to `workforce_memory` so the
  *     briefing/optimization/AI workforce surfaces it like Obsidian.
  */
+import { createHash } from 'node:crypto'
 import type { Database } from 'better-sqlite3'
 
 export interface NotionSyncResult {
@@ -23,6 +24,8 @@ export interface NotionSyncResult {
   reason?: 'missing-config' | 'fetch-failed' | 'no-pages'
   pagesIndexed: number
   chunksWritten: number
+  chunksUnchanged: number
+  chunksRemoved: number
 }
 
 interface NotionEnv {
@@ -66,6 +69,11 @@ function ensureMemoryTable(db: Database) {
     );
     CREATE INDEX IF NOT EXISTS idx_workforce_memory_kind ON workforce_memory(workspace_id, kind, created_at DESC);
   `)
+  try { db.exec(`ALTER TABLE workforce_memory ADD COLUMN content_hash TEXT`) } catch { /* exists */ }
+}
+
+function chunkHash(content: string, rationale: string): string {
+  return createHash('sha256').update(`${rationale}\n${content}`).digest('hex').slice(0, 32)
 }
 
 const NOTION_HEADERS = (token: string) => ({
@@ -166,32 +174,51 @@ export async function ingestNotion(
 ): Promise<NotionSyncResult> {
   ensureMemoryTable(db)
   const env = readEnv()
-  if (!env) return { ok: false, reason: 'missing-config', pagesIndexed: 0, chunksWritten: 0 }
+  if (!env) return { ok: false, reason: 'missing-config', pagesIndexed: 0, chunksWritten: 0, chunksUnchanged: 0, chunksRemoved: 0 }
 
   let pages: NotionPageRef[]
   try {
     pages = await listPages(env)
   } catch {
-    return { ok: false, reason: 'fetch-failed', pagesIndexed: 0, chunksWritten: 0 }
+    return { ok: false, reason: 'fetch-failed', pagesIndexed: 0, chunksWritten: 0, chunksUnchanged: 0, chunksRemoved: 0 }
   }
   if (pages.length === 0) {
-    return { ok: false, reason: 'no-pages', pagesIndexed: 0, chunksWritten: 0 }
+    return { ok: false, reason: 'no-pages', pagesIndexed: 0, chunksWritten: 0, chunksUnchanged: 0, chunksRemoved: 0 }
   }
 
-  // Drop prior Notion rows for this workspace — idempotent resync.
-  db.prepare(
-    `DELETE FROM workforce_memory WHERE workspace_id = ? AND kind = 'operator-memory.notion'`,
-  ).run(workspaceId)
+  // Load existing hashes for delta diffing — mirror the Obsidian pattern.
+  // Stable IDs across syncs preserves trace deep-links + citation references.
+  const existing = db
+    .prepare(
+      `SELECT id, content_hash FROM workforce_memory
+       WHERE workspace_id = ? AND kind = 'operator-memory.notion'`,
+    )
+    .all(workspaceId) as Array<{ id: number; content_hash: string | null }>
+  const existingByHash = new Map<string, number>()
+  const legacyIds: number[] = []
+  for (const r of existing) {
+    if (r.content_hash) existingByHash.set(r.content_hash, r.id)
+    else legacyIds.push(r.id)
+  }
+  // One-time legacy migration so pre-hash rows repopulate cleanly.
+  if (legacyIds.length > 0) {
+    const placeholders = legacyIds.map(() => '?').join(',')
+    db.prepare(
+      `DELETE FROM workforce_memory WHERE workspace_id = ? AND id IN (${placeholders})`,
+    ).run(workspaceId, ...legacyIds)
+  }
 
   const insert = db.prepare(
     `INSERT INTO workforce_memory
-       (workspace_id, agent_id, agent_slug, kind, title, detail, rationale, value_impact_cents, created_at)
-     VALUES (?, NULL, NULL, 'operator-memory.notion', ?, ?, ?, 0, ?)`,
+       (workspace_id, agent_id, agent_slug, kind, title, detail, rationale, value_impact_cents, created_at, content_hash)
+     VALUES (?, NULL, NULL, 'operator-memory.notion', ?, ?, ?, 0, ?, ?)`,
   )
 
   const now = Math.floor(Date.now() / 1000)
   let chunksWritten = 0
+  let chunksUnchanged = 0
   let pagesIndexed = 0
+  const seenHashes = new Set<string>()
   for (const page of pages) {
     let body = ''
     try {
@@ -204,11 +231,32 @@ export async function ingestNotion(
     pagesIndexed += 1
     const rationale = `Source: Notion · ${page.title} · ${page.url}`
     for (const c of chunks) {
-      insert.run(workspaceId, page.title, c, rationale, now - chunksWritten)
+      const hash = chunkHash(c, rationale)
+      seenHashes.add(hash)
+      if (existingByHash.has(hash)) {
+        chunksUnchanged += 1
+        continue
+      }
+      insert.run(workspaceId, page.title, c, rationale, now - chunksWritten, hash)
       chunksWritten += 1
     }
   }
-  return { ok: true, pagesIndexed, chunksWritten }
+
+  // Remove rows whose hash is no longer present (page deleted or paragraph removed).
+  const toDelete: number[] = []
+  for (const [hash, id] of existingByHash) {
+    if (!seenHashes.has(hash)) toDelete.push(id)
+  }
+  let chunksRemoved = 0
+  if (toDelete.length > 0) {
+    const placeholders = toDelete.map(() => '?').join(',')
+    const r = db
+      .prepare(`DELETE FROM workforce_memory WHERE workspace_id = ? AND id IN (${placeholders})`)
+      .run(workspaceId, ...toDelete)
+    chunksRemoved = Number(r.changes ?? 0)
+  }
+
+  return { ok: true, pagesIndexed, chunksWritten, chunksUnchanged, chunksRemoved }
 }
 
 export function notionConfigured(): boolean {
