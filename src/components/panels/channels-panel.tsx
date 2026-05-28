@@ -672,7 +672,10 @@ export function ChannelsPanel() {
 
   useEffect(() => {
     fetchChannels()
-    const interval = setInterval(fetchChannels, 30000)
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return
+      fetchChannels()
+    }, 180_000)
     return () => clearInterval(interval)
   }, [fetchChannels])
 

@@ -264,7 +264,10 @@ export function SuperAdminPanel() {
 
   useEffect(() => {
     load()
-    const id = setInterval(load, 10000)
+    const id = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return
+      load()
+    }, 120_000)
     return () => clearInterval(id)
   }, [load])
 

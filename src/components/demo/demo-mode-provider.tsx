@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { getDemoNarrative, DEMO_TEMPLATE_IDS, type DemoNarrative } from '@/lib/demo-narratives'
 
 interface DemoContextValue {
@@ -37,7 +37,6 @@ function writeCookie(value: string | null): void {
 }
 
 export function DemoModeProvider({ children }: { children: ReactNode }) {
-  const router = useRouter()
   const params = useSearchParams()
   const [templateId, setTemplateId] = useState<string | null>(null)
 
@@ -60,9 +59,11 @@ export function DemoModeProvider({ children }: { children: ReactNode }) {
   const setDemo = useCallback((id: string | null) => {
     writeCookie(id)
     setTemplateId(id)
-    // Soft-refresh the current route so panels pick up the new narrative.
-    router.refresh()
-  }, [router])
+    // NOTE: we intentionally do NOT call router.refresh() here. Doing so
+    // resets every panel's state (scroll, modals, form inputs, expanded
+    // accordions). The provider's React state is the single source of
+    // truth — every consumer re-renders from this state change alone.
+  }, [])
 
   const narrative = templateId ? getDemoNarrative(templateId) : null
   const active = !!narrative

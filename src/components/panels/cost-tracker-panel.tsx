@@ -163,7 +163,10 @@ export function CostTrackerPanel() {
 
   useEffect(() => { loadData() }, [loadData])
   useEffect(() => {
-    refreshTimer.current = setInterval(loadData, 30_000)
+    refreshTimer.current = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return
+      loadData()
+    }, 180_000)
     return () => { if (refreshTimer.current) clearInterval(refreshTimer.current) }
   }, [loadData])
   useEffect(() => { if (view === 'sessions') loadSessionCosts() }, [view, loadSessionCosts])

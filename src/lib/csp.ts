@@ -1,12 +1,21 @@
 export function buildMissionControlCsp(input: { nonce: string; googleEnabled: boolean }): string {
   const { nonce, googleEnabled } = input
 
+  // In `next dev` (webpack or turbopack) the framework injects inline
+  // bootstrap / HMR scripts that do not carry our request nonce. Because we
+  // use `'strict-dynamic'`, ANY blocked bootstrap script breaks the entire
+  // script chain — React never hydrates, forms fall back to native submit,
+  // and login appears to do nothing. In dev we add `'unsafe-eval'` and
+  // `'unsafe-inline'` so the dev runtime can boot. Production builds use
+  // the strict nonce + `'strict-dynamic'` policy untouched.
+  const devOnly = process.env.NODE_ENV !== 'production' ? ` 'unsafe-eval' 'unsafe-inline'` : ''
+
   return [
     `default-src 'self'`,
     `base-uri 'self'`,
     `object-src 'none'`,
     `frame-ancestors 'none'`,
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' blob:${googleEnabled ? ' https://accounts.google.com' : ''}`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' blob:${devOnly}${googleEnabled ? ' https://accounts.google.com' : ''}`,
     `style-src 'self' 'unsafe-inline'`,
     `style-src-elem 'self' 'unsafe-inline'`,
     `style-src-attr 'unsafe-inline'`,

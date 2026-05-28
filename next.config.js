@@ -10,6 +10,12 @@ const nextConfig = {
   turbopack: {
     root: __dirname,
   },
+  // Native modules must be loaded outside the bundler so the .node binding
+  // is loaded exactly once with the host Node ABI (fixes "Module did not
+  // self-register" in Turbopack dev mode).
+  serverExternalPackages: ['better-sqlite3'],
+  // Allow the Emergent preview proxy origins during dev so /_next/* assets load.
+  allowedDevOrigins: ['*.preview.emergentagent.com', '*.cluster-12.preview.emergentcf.cloud'],
   // Transpile ESM-only packages so they resolve correctly in all environments
   transpilePackages: ['react-markdown', 'remark-gfm'],
   

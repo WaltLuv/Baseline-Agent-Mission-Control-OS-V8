@@ -138,9 +138,10 @@ export function NodesPanel() {
     fetchNodes()
     fetchDevices()
     const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return
       fetchNodes()
       fetchDevices()
-    }, 30000)
+    }, 180_000)
     return () => clearInterval(interval)
   }, [fetchNodes, fetchDevices])
 

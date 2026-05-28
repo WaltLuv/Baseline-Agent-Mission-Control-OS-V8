@@ -610,7 +610,10 @@ export function OfficePanel() {
   }, [isLocalMode])
 
   useEffect(() => {
-    const interval = setInterval(fetchAgents, 10000)
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return
+      fetchAgents()
+    }, 120_000)
     return () => clearInterval(interval)
   }, [fetchAgents])
 

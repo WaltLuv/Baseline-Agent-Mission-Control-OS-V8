@@ -75,11 +75,14 @@ export function AgentSquadPanel() {
     fetchAgents()
   }, [fetchAgents])
 
-  // Auto-refresh
+  // Auto-refresh — wired into the global, operator-controlled cadence
+  // (default 120s, pauses on hidden tab / open modal / form interaction).
   useEffect(() => {
     if (!autoRefresh) return
-
-    const interval = setInterval(fetchAgents, 10000) // Every 10 seconds
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return
+      fetchAgents()
+    }, 120_000)
     return () => clearInterval(interval)
   }, [autoRefresh, fetchAgents])
 

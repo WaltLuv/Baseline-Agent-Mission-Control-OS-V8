@@ -147,8 +147,9 @@ export function SkillsPanel() {
   // Two-way disk sync: poll for external on-disk changes.
   useEffect(() => {
     const id = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return
       loadSkills().catch(() => {})
-    }, 10000)
+    }, 180_000)
     return () => window.clearInterval(id)
   }, [loadSkills])
 

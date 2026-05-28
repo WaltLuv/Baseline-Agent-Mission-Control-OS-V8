@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import { useMissionControl, type ConnectionStatus } from '@/store'
 import { extractWsHost } from '@/lib/agent-card-helpers'
 import { DemoModeSwitcher } from '@/components/demo/demo-mode-switcher'
+import { RefreshControl } from '@/components/layout/refresh-control'
 import { useWebSocket } from '@/lib/websocket'
 import { useNavigateToPanel, usePrefetchPanel } from '@/lib/navigation'
 import { Button } from '@/components/ui/button'
@@ -348,6 +349,9 @@ export function HeaderBar() {
         <div className="flex items-center justify-end gap-1.5 md:gap-2 min-w-0 shrink-0 ml-auto">
           <div className="hidden lg:block">
             <DemoModeSwitcher />
+          </div>
+          <div className="hidden md:block">
+            <RefreshControl />
           </div>
           <div className="hidden xl:flex items-center gap-3">
             <Stat label={th('sessions')} value={`${activeSessions}/${sessions.length}`} />

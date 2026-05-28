@@ -268,7 +268,7 @@ interface UseWorkforceFuelResult {
  * Returns helpers for the workforce fuel meter and one-click top-up flow.
  */
 export function useWorkforceFuel(opts: UseWorkforceFuelOpts = {}): UseWorkforceFuelResult {
-  const pollMs = opts.pollMs ?? 60_000
+  const pollMs = opts.pollMs ?? 180_000
   const [fuel, setFuel] = useState<WorkforceFuelData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -289,7 +289,10 @@ export function useWorkforceFuel(opts: UseWorkforceFuelOpts = {}): UseWorkforceF
 
   useEffect(() => {
     reload()
-    const id = setInterval(reload, pollMs)
+    const id = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return
+      reload()
+    }, pollMs)
     return () => clearInterval(id)
   }, [reload, pollMs])
 

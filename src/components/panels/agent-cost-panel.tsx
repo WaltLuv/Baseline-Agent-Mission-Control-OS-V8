@@ -79,7 +79,7 @@ interface TaskCostsResponse {
   timeframe: string
 }
 
-const REFRESH_INTERVAL = 30_000 // 30s auto-refresh
+const REFRESH_INTERVAL = 180_000 // 3min — non-disruptive background refresh
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#ff6b6b']
 
@@ -315,9 +315,12 @@ export function AgentCostPanel() {
 
   useEffect(() => { loadData() }, [loadData])
 
-  // Auto-refresh every 30s
+  // Auto-refresh — slow & non-disruptive (3min). Pauses on hidden tab.
   useEffect(() => {
-    refreshTimer.current = setInterval(loadData, REFRESH_INTERVAL)
+    refreshTimer.current = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return
+      loadData()
+    }, REFRESH_INTERVAL)
     return () => { if (refreshTimer.current) clearInterval(refreshTimer.current) }
   }, [loadData])
 
