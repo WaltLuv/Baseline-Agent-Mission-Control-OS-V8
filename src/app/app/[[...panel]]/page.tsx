@@ -10,6 +10,8 @@ import { ExecutiveBriefing } from '@/components/demo/executive-briefing'
 import { WorkforceHealthV2 } from '@/components/baseline-os/workforce-health-v2'
 import { BaselineSystemIdentityStrip } from '@/components/baseline-os/baseline-system-identity-strip'
 import { AIEmployeeLifeRoster } from '@/components/workforce/ai-employee-life-roster'
+import { SkillsActiveInventory } from '@/components/baseline-os/skills-active-inventory'
+import { CollaborationOverview } from '@/components/baseline-os/collaboration-overview'
 import { WorkforceActivatedNotice } from '@/components/activation/workforce-activated-notice'
 import { Dashboard } from '@/components/dashboard/dashboard'
 import { LogViewerPanel } from '@/components/panels/log-viewer-panel'
@@ -544,6 +546,10 @@ function ContentRouter({ tab }: { tab: string }) {
             <BaselineSystemIdentityStrip />
             <ExecutiveBriefing />
             <AIEmployeeLifeRoster />
+            <div className="grid gap-4 lg:grid-cols-2">
+              <SkillsActiveInventory />
+              <CollaborationOverview />
+            </div>
             <WorkforceHealthV2 />
           </div>
           <Dashboard />

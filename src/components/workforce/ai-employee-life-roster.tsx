@@ -83,7 +83,8 @@ export function AIEmployeeLifeRoster() {
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <Link
-                  href={`/app/agents?focus=${encodeURIComponent(s.agentName)}`}
+                  href={`/app/agents/${encodeURIComponent(s.agentSlug)}/trace`}
+                  data-testid={`life-roster-trace-link-${s.agentSlug}`}
                   className="block truncate text-sm font-semibold text-foreground hover:underline"
                 >
                   {s.agentName}

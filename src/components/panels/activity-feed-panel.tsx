@@ -111,10 +111,10 @@ function ActivityRow({ activity }: { activity: Activity }) {
             <div className="flex-1">
               <p className="text-foreground text-sm">
                 <Link
-                  href={`/app/agents?focus=${encodeURIComponent(activity.actor)}`}
+                  href={`/app/agents/${encodeURIComponent(activity.actor.toLowerCase().replace(/[^a-z0-9]+/g, '-'))}/trace`}
                   data-testid={`activity-actor-link-${activity.id}`}
                   className="font-medium text-primary hover:underline"
-                  title="Open this AI employee's profile"
+                  title="Open this AI employee's trace"
                 >
                   {activity.actor}
                 </Link>{' '}

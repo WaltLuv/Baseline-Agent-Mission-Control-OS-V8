@@ -341,7 +341,7 @@ export function BillingPanel() {
                   {topAgents.map(a => (
                     <div key={a.agent_id || 'unknown'} className="flex items-center justify-between text-sm">
                       <Link
-                        href={`/app/agents?focus=${encodeURIComponent(a.agent_name || '')}`}
+                        href={`/app/agents/${encodeURIComponent((a.agent_name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'))}/trace`}
                         data-testid={`billing-top-agent-link-${a.agent_id || 'unknown'}`}
                         className="text-foreground hover:underline"
                       >

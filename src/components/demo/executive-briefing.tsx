@@ -289,7 +289,13 @@ function BriefingCard({
           </p>
           {topEmployee ? (
             <>
-              <p className="mt-2 text-sm font-semibold text-foreground">{topEmployee.name}</p>
+              <Link
+                href={`/app/agents/${encodeURIComponent(topEmployee.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'))}/trace`}
+                data-testid="briefing-top-employee-trace-link"
+                className="mt-2 block text-sm font-semibold text-foreground hover:underline"
+              >
+                {topEmployee.name}
+              </Link>
               <p className="mt-1 text-xs text-muted-foreground">{topEmployee.impact}</p>
             </>
           ) : (
@@ -305,7 +311,7 @@ function BriefingCard({
         <div className="mt-4 grid gap-3 sm:grid-cols-3" data-testid="briefing-coo-report">
           {highestRoiEmployee && (
             <Link
-              href={`/app/memory-feed?agent=${encodeURIComponent(highestRoiEmployee.name)}`}
+              href={`/app/agents/${encodeURIComponent(highestRoiEmployee.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'))}/trace`}
               data-testid="briefing-highest-roi"
               className="block rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 transition-colors hover:border-emerald-500/50"
             >
@@ -318,7 +324,7 @@ function BriefingCard({
           )}
           {overloadedEmployee && (
             <Link
-              href={`/app/agents?focus=${encodeURIComponent(overloadedEmployee.name)}`}
+              href={`/app/agents/${encodeURIComponent(overloadedEmployee.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'))}/trace`}
               data-testid="briefing-overloaded"
               className="block rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 transition-colors hover:border-amber-500/50"
             >
