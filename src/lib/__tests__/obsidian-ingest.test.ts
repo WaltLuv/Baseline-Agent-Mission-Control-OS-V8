@@ -5,7 +5,7 @@
  * in the integration smoke pass.
  */
 import { describe, it, expect } from 'vitest'
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import Database from 'better-sqlite3'
@@ -86,5 +86,59 @@ describe('obsidian ingester', () => {
     const cites = recentObsidianCitations(db, 5, 48 * 60 * 60, 3)
     expect(cites.length).toBeGreaterThan(0)
     expect(cites.some((c) => /Yesterday note|Today note/.test(c.title))).toBe(true)
+  })
+
+  it('delta-aware resync preserves IDs for unchanged content and removes deleted chunks', () => {
+    const vault = freshVault()
+    writeFileSync(join(vault, 'stable.md'), `# Stable\n\nThis paragraph never changes.`)
+    writeFileSync(join(vault, 'transient.md'), `# Transient\n\nGoing to be deleted.`)
+    const db = freshDb()
+    const s1 = ingestObsidianVault(db, 11, vault)
+    expect(s1.chunksWritten).toBeGreaterThan(0)
+    const idsBefore = db
+      .prepare(`SELECT id, content_hash FROM workforce_memory WHERE workspace_id = 11 ORDER BY id`)
+      .all() as Array<{ id: number; content_hash: string }>
+    expect(idsBefore.every((r) => !!r.content_hash)).toBe(true)
+    // Second pass with the same content — no new writes, no removals.
+    const s2 = ingestObsidianVault(db, 11, vault)
+    expect(s2.chunksWritten).toBe(0)
+    expect(s2.chunksRemoved).toBe(0)
+    expect(s2.chunksUnchanged).toBe(idsBefore.length)
+    const idsAfter = db
+      .prepare(`SELECT id FROM workforce_memory WHERE workspace_id = 11 ORDER BY id`)
+      .all() as Array<{ id: number }>
+    // IDs are preserved (no delete-then-insert thrash).
+    expect(idsAfter.map((r) => r.id)).toEqual(idsBefore.map((r) => r.id))
+    // Delete a file and re-sync — the removed chunk should drop.
+    rmSync(join(vault, 'transient.md'))
+    const s3 = ingestObsidianVault(db, 11, vault)
+    expect(s3.chunksRemoved).toBeGreaterThan(0)
+    const stableRows = db
+      .prepare(`SELECT id FROM workforce_memory WHERE workspace_id = 11`)
+      .all() as Array<{ id: number }>
+    expect(stableRows.length).toBeLessThan(idsBefore.length)
+    // Stable file rows still have their original IDs.
+    const stillThere = idsBefore
+      .map((r) => r.id)
+      .filter((id) => stableRows.some((s) => s.id === id))
+    expect(stillThere.length).toBeGreaterThan(0)
+  })
+
+  it('isolates workspaces — workspace 1 cannot see workspace 2 memory', () => {
+    const vault = freshVault()
+    writeFileSync(join(vault, 'a.md'), `# Doctrine A\n\nFollow-ups within 48h.`)
+    const db = freshDb()
+    ingestObsidianVault(db, 1, vault)
+    ingestObsidianVault(db, 2, vault)
+    const w1 = db
+      .prepare(`SELECT COUNT(*) c FROM workforce_memory WHERE workspace_id = 1`)
+      .get() as { c: number }
+    const w2 = db
+      .prepare(`SELECT COUNT(*) c FROM workforce_memory WHERE workspace_id = 2`)
+      .get() as { c: number }
+    expect(w1.c).toBeGreaterThan(0)
+    expect(w2.c).toBeGreaterThan(0)
+    // workspaces accumulate independently — no leakage.
+    expect(w1.c).toBe(w2.c)
   })
 })

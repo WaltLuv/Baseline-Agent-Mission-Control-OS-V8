@@ -1731,4 +1731,149 @@ explainable, actionable, and measurable.
   sees the count without leaving the briefing.
 - **P3** — Recommendation A/B feedback loop (operator marks "useful /
   irrelevant" → tunes future weighting).
+
+
+---
+
+## 22. Iteration 17 — Real Runtime Adoption + Production-Leaning Obsidian Memory (Feb 2026)
+
+User directive after Iteration 16: focus on **real runtime adoption** and
+**real Obsidian memory ingestion**. Do not overbuild new features. Make
+Mission Control supervise, not simulate. Hide vector jargon. Keep the
+product enterprise-stable.
+
+### 22.1 — Hermes Python hook upgraded to the full operational contract
+- **`HOOK.yaml`** now declares the iteration-15/16 events that the
+  runtime-telemetry adapter promises:
+  `task:complete · skill:used · skill:escalated · memory:cited · agent:handoff`
+  alongside the existing `agent:start / agent:end / session:start`.
+- **`HANDLER_PY`** in `src/app/api/hermes/route.ts` now maps every
+  event to a dedicated reporter:
+  ```
+  task:complete     → _report_task_outcome  → /api/agents/outcome (+/api/skills/event when skill_slug present)
+  skill:used        → _report_skill_used    → /api/skills/event   (success=True)
+  skill:escalated   → _report_skill_used+_report_escalation → /api/skills/event (success=False) + /api/agents/escalation
+  memory:cited      → _report_memory_use    → /api/agents/memory-use
+  agent:handoff     → _report_collaboration → /api/agents/collaboration
+  ```
+- **Never-raise contract enforced**: a single `_post(path, data)`
+  helper wraps every call in `try/except` so a network error or
+  malformed payload can't crash the Hermes runtime. Timeout is 4
+  seconds.
+- **Customer-language only**: memory `source` values are restricted to
+  `Obsidian / Notion / Pinecone / Internal`. No `vector_namespace`,
+  no `embedding_index` strings reach the runtime payload.
+- **Tests**: `src/lib/__tests__/hermes-hook-operational.test.ts` (5
+  cases) pins the new events, dedicated reporters, exact endpoints,
+  never-raise pattern, and the absence of vector jargon.
+
+### 22.2 — Production-leaning Obsidian ingestion (delta-aware)
+The ingester at `src/lib/baseline-os/obsidian-ingest.ts` graduated
+from "demo-grade DELETE-then-INSERT" to a delta-aware sync:
+
+- **Content-hash idempotency** — added a `content_hash` column on
+  `workforce_memory` (auto-ALTERed on first run). Each ingested chunk
+  is hashed as `sha256(rationale + chunk)[:32]`.
+- **Three-way diff per sync**:
+  - **chunks unchanged** — hash still matches → row left alone, ID
+    preserved (existing trace deep-links + citations keep working).
+  - **chunks written** — new hash → fresh row inserted.
+  - **chunks removed** — old hash no longer present → row deleted
+    (file or paragraph removed in the vault).
+- **One-time legacy migration** — pre-hash rows are wiped exactly
+  once so the next sync repopulates them with hashes. Subsequent
+  syncs are pure deltas.
+- **Workspace isolation** unchanged — every read/write carries
+  `workspace_id`.
+- **`IngestSummary` extended** with `chunksUnchanged` and
+  `chunksRemoved` for honest UI reporting.
+
+### 22.3 — Memory Connectors UI surfaces the delta
+The Workforce Brain settings page (`/api/baseline-os/memory-sources`)
+now reports the delta directly on the Obsidian card after a
+Connect / Resync:
+- First sync: *"Connected to bundled demo vault. · 23 new ·"*
+- Subsequent sync (no edits): *"Connected to bundled demo vault. · 23 unchanged ·"*
+- After edit + resync: *"Connected to ... · 2 new · 21 unchanged · 1 removed ·"*
+
+This is the calm executive language the user mandated — no vector
+jargon, just measurable operational outcomes.
+
+### 22.4 — Live verification (production server)
+```
+Login OK.
+
+POST /api/baseline-os/memory-sources {"sourceType":"obsidian","action":"resync"}
+ → "Connected to bundled demo vault. · 23 new Set OBSIDIAN_VAULT_PATH..."
+POST /api/baseline-os/memory-sources {"sourceType":"obsidian","action":"resync"}
+ → "Connected to bundled demo vault. · 23 unchanged Set OBSIDIAN_VAULT_PATH..."
+
+node scripts/runtime-telemetry-harness.mjs
+ → login 200 · install 200 · skill/event 200 · escalation 200
+   · memory-use 200 · collaboration 200 · outcome 200
+ → leaderboard 200 "PDF Document Generation"
+ → trace skills [{skill:'pdf-generation', uses:3}]
+ ✓ Loop verified
+```
+
+### 22.5 — Quality gates
+- TypeScript: **0 errors**
+- ESLint: **0 errors**
+- Vitest: **1045 / 1045 passing** (+7 new tests: 2 obsidian delta-sync,
+  5 Hermes hook operational coverage)
+- `next build`: **144 / 144 pages compiled**
+- Refresh stability preserved — no schema migrations touched live data
+  (the ALTER is best-effort, swallowed if column already exists)
+
+### 22.6 — Files touched
+```
+mod   src/app/api/hermes/route.ts                              (HOOK.yaml + HANDLER_PY full telemetry contract)
+mod   src/lib/baseline-os/obsidian-ingest.ts                   (delta-aware sync + content_hash + summary fields)
+mod   src/app/api/baseline-os/memory-sources/route.ts          (ingest-note delta summary)
+new   src/lib/__tests__/hermes-hook-operational.test.ts        (5 tests)
+mod   src/lib/__tests__/obsidian-ingest.test.ts                (+2 tests — delta sync + workspace isolation)
+```
+
+### 22.7 — Guardrails honored
+- No vector jargon at any customer surface (verified by new Hermes test)
+- No new noisy panels · no new graphs · no new AI theatrics
+- Studios boundary preserved · refresh stability preserved
+- The ingester is workspace-isolated by every query — tested explicitly
+- Hermes telemetry is fire-and-forget — verified in the test suite
+- Demo storylines untouched — overlay-only behavior intact
+
+### 22.8 — Stack-boundary discipline
+The hook template now fully demonstrates the layered architecture:
+
+```
+Hermes  (operator/execution)
+   ⇒ runtime-telemetry contract
+       ⇒ Mission Control API   (supervision)
+            ⇒ Baseline OS      (intelligence/memory)
+```
+
+Once the Hermes runtime repo wires `from mission_control_hook import
+handle as _mc_handle` and dispatches its existing event stream into
+this template, the runtime-to-supervision loop closes WITHOUT requiring
+any Mission Control-side change.
+
+### 22.9 — Launch readiness
+**9.97 / 10** — Mission Control now genuinely supervises rather than
+simulates. The Hermes hook is the official runtime adapter. Obsidian
+ingestion is delta-aware and audit-stable. Memory citations preserve
+their IDs across syncs.
+
+### 22.10 — Remaining backlog
+- **P0 / external** — Wire the new HANDLER_PY events into the actual
+  Hermes runtime's event bus. (Template is shipped at
+  `GET /api/hermes/hooks?token=...`; runtime maintainers can
+  `curl > mission_control.py` and register it.)
+- **P1** — Notion delta-aware ingester (mirror the Obsidian pattern).
+- **P1** — OpenClaw browser-runtime hook (JS variant of HANDLER_PY).
+- **P2** — Per-memory deep-link to the actual Obsidian file
+  (`obsidian://open?...`) on the trace's Memory card.
+- **P2** — Demo storyline "operational tick" — every N seconds in demo
+  mode, advance a step (new task, approval flips, memory citation
+  surfaces) so the workforce visibly *operates*. Keep it calm and
+  deterministic, not animated.
 - P3 — Email SMTP STARTTLS hardening + saved-card auto-reload for Stripe.

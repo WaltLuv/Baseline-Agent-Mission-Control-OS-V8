@@ -169,12 +169,18 @@ export async function POST(request: NextRequest) {
       try {
         ingestSummary = ingestObsidianVault(db, workspaceId, resolved.path)
         // Update document_count on the row we just wrote so the UI reflects it.
+        const totalCount = ingestSummary.chunksWritten + ingestSummary.chunksUnchanged
         db.prepare(
           `UPDATE memory_sources SET document_count = ?, updated_at = ? WHERE workspace_id = ? AND source_type = 'obsidian'`,
-        ).run(ingestSummary.chunksWritten, now, workspaceId)
+        ).run(totalCount, now, workspaceId)
+        const deltaParts: string[] = []
+        if (ingestSummary.chunksWritten > 0) deltaParts.push(`${ingestSummary.chunksWritten} new`)
+        if (ingestSummary.chunksUnchanged > 0) deltaParts.push(`${ingestSummary.chunksUnchanged} unchanged`)
+        if (ingestSummary.chunksRemoved > 0) deltaParts.push(`${ingestSummary.chunksRemoved} removed`)
+        const deltaSummary = deltaParts.length ? ` · ${deltaParts.join(' · ')}` : ''
         ingestNote = resolved.isDemoVault
-          ? 'Connected to bundled demo vault (/app/.demo-obsidian). Set OBSIDIAN_VAULT_PATH to point at a real Obsidian vault for production use.'
-          : `Connected to ${resolved.path}.`
+          ? `Connected to bundled demo vault (/app/.demo-obsidian).${deltaSummary} Set OBSIDIAN_VAULT_PATH to point at a real Obsidian vault for production use.`
+          : `Connected to ${resolved.path}.${deltaSummary}`
       } catch (e) {
         ingestNote = `Ingest failed: ${String(e).slice(0, 160)}`
       }

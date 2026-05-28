@@ -6,15 +6,19 @@
  * `kind = 'operator-memory.obsidian'` so they show up in the Memory Feed
  * with a clear source badge and can be cited by the Executive Briefing.
  *
- * This is the demo-grade ingester:
- *   - synchronous (small vaults only)
- *   - filesystem-backed (no Pinecone embedding required)
- *   - idempotent per workspace (resync drops prior Obsidian rows first)
- *   - operator-only visibility
- *
- * Production ingestion (chunked embeddings, deltas, ACL filters) is
- * deliberately not in scope for the demo conversion pass.
+ * Iteration 17 — production-leaning hardening:
+ *   - **content-hash idempotency**: re-sync only touches rows whose
+ *     content actually changed. Existing audit IDs and trace deep-links
+ *     are preserved.
+ *   - **structured provenance**: the relative source path lives inside
+ *     the rationale (`Source: Obsidian operator vault · path · #tags`)
+ *     so the UI never has to parse the file system.
+ *   - **workspace isolation**: every query carries `workspace_id`.
+ *   - **secret redaction**: known credential patterns are stripped
+ *     before chunking.
+ *   - operator-only visibility (downstream UI gates on role).
  */
+import { createHash } from 'node:crypto'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import type { Database } from 'better-sqlite3'
@@ -24,6 +28,8 @@ export interface IngestSummary {
   filesScanned: number
   filesIndexed: number
   chunksWritten: number
+  chunksUnchanged: number
+  chunksRemoved: number
   bytesRedacted: number
   startedAt: number
   finishedAt: number
@@ -143,11 +149,29 @@ function ensureWorkforceMemoryTable(db: Database) {
     );
     CREATE INDEX IF NOT EXISTS idx_workforce_memory_kind ON workforce_memory(workspace_id, kind, created_at DESC);
   `)
+  // content_hash column is added once and ignored when already present.
+  try { db.exec(`ALTER TABLE workforce_memory ADD COLUMN content_hash TEXT`) } catch { /* exists */ }
+}
+
+function chunkHash(content: string, rationale: string): string {
+  return createHash('sha256').update(`${rationale}\n${content}`).digest('hex').slice(0, 32)
 }
 
 /**
  * Ingest a vault into `workforce_memory` for one workspace.
  * Idempotent: prior obsidian rows for this workspace are dropped first.
+ */
+/**
+ * Delta-aware ingest. Re-syncs ONLY changed content:
+ *   - Hashes every (rationale, chunk) pair the vault currently produces
+ *   - Loads the existing hash set for this workspace
+ *   - INSERTs rows whose hash is new
+ *   - DELETEs rows whose hash is no longer present (file deleted / chunk removed)
+ *   - Leaves unchanged rows alone — their IDs stay stable so trace
+ *     deep-links and citation references continue to work.
+ *
+ * Always workspace-scoped. Operator-only visibility is enforced
+ * downstream at the UI layer.
  */
 export function ingestObsidianVault(
   db: Database,
@@ -159,21 +183,41 @@ export function ingestObsidianVault(
   const startedAt = Math.floor(Date.now() / 1000)
   const yesterday = startedAt - 26 * 60 * 60 // ~yesterday
 
-  // Wipe prior Obsidian rows so resync is idempotent.
-  db.prepare(
-    `DELETE FROM workforce_memory WHERE workspace_id = ? AND kind = 'operator-memory.obsidian'`,
-  ).run(workspaceId)
+  // Load the current set of hashes for this workspace.
+  const existingRows = db
+    .prepare(
+      `SELECT id, content_hash FROM workforce_memory
+       WHERE workspace_id = ? AND kind = 'operator-memory.obsidian'`,
+    )
+    .all(workspaceId) as Array<{ id: number; content_hash: string | null }>
+  const existingByHash = new Map<string, number>()
+  const legacyIds: number[] = []
+  for (const r of existingRows) {
+    if (r.content_hash) existingByHash.set(r.content_hash, r.id)
+    else legacyIds.push(r.id)
+  }
+  // Legacy rows (pre-hash) get wiped exactly once so the next pass can
+  // populate the hash column. Subsequent syncs will be pure deltas.
+  if (legacyIds.length > 0) {
+    const placeholders = legacyIds.map(() => '?').join(',')
+    db.prepare(
+      `DELETE FROM workforce_memory WHERE workspace_id = ? AND id IN (${placeholders})`,
+    ).run(workspaceId, ...legacyIds)
+  }
 
   const files = walkMarkdown(vaultPath)
   let filesIndexed = 0
   let chunksWritten = 0
+  let chunksUnchanged = 0
   let bytesRedactedTotal = 0
 
   const insert = db.prepare(
     `INSERT INTO workforce_memory
-       (workspace_id, agent_id, agent_slug, kind, title, detail, rationale, value_impact_cents, created_at)
-     VALUES (?, NULL, NULL, 'operator-memory.obsidian', ?, ?, ?, 0, ?)`,
+       (workspace_id, agent_id, agent_slug, kind, title, detail, rationale, value_impact_cents, created_at, content_hash)
+     VALUES (?, NULL, NULL, 'operator-memory.obsidian', ?, ?, ?, 0, ?, ?)`,
   )
+
+  const seenHashes = new Set<string>()
 
   for (const file of files) {
     let raw = ''
@@ -192,16 +236,37 @@ export function ingestObsidianVault(
 
     const rel = relative(vaultPath, file)
     const tagSuffix = tags.length > 0 ? ` · #${tags.join(' #')}` : ''
+    let i = 0
     for (const chunk of chunks) {
       const rationale =
         `Source: Obsidian operator vault · ${rel}${tagSuffix}` +
         (isYesterday ? ' · noted yesterday' : '')
-      // Spread chunks across the last ~26h for files marked "yesterday",
-      // else timestamp them now. Keeps the timeline realistic.
+      const hash = chunkHash(chunk, rationale)
+      seenHashes.add(hash)
+      if (existingByHash.has(hash)) {
+        chunksUnchanged += 1
+        i += 1
+        continue
+      }
       const createdAt = isYesterday ? yesterday + chunksWritten * 60 : startedAt - chunksWritten
-      insert.run(workspaceId, title, chunk, rationale, createdAt)
+      insert.run(workspaceId, title, chunk, rationale, createdAt, hash)
       chunksWritten += 1
+      i += 1
     }
+  }
+
+  // Remove chunks whose hash is no longer present (file or paragraph deleted).
+  const toDelete: number[] = []
+  for (const [hash, id] of existingByHash) {
+    if (!seenHashes.has(hash)) toDelete.push(id)
+  }
+  let chunksRemoved = 0
+  if (toDelete.length > 0) {
+    const placeholders = toDelete.map(() => '?').join(',')
+    const r = db
+      .prepare(`DELETE FROM workforce_memory WHERE workspace_id = ? AND id IN (${placeholders})`)
+      .run(workspaceId, ...toDelete)
+    chunksRemoved = Number(r.changes ?? 0)
   }
 
   return {
@@ -209,6 +274,8 @@ export function ingestObsidianVault(
     filesScanned: files.length,
     filesIndexed,
     chunksWritten,
+    chunksUnchanged,
+    chunksRemoved,
     bytesRedacted: bytesRedactedTotal,
     startedAt,
     finishedAt: Math.floor(Date.now() / 1000),

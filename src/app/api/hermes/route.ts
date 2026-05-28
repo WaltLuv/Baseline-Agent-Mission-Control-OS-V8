@@ -310,11 +310,16 @@ export async function POST(request: NextRequest) {
 
 const HOOK_YAML = `name: mission-control
 description: Reports agent telemetry to Mission Control
-version: "1.0"
+version: "1.1"
 events:
   - agent:start
   - agent:end
   - session:start
+  - task:complete
+  - skill:used
+  - skill:escalated
+  - memory:cited
+  - agent:handoff
 `
 
 const HANDLER_PY = `"""
@@ -361,46 +366,137 @@ async def handle(event_name: str, payload: dict) -> None:
             await _report_agent_end(payload)
         elif event_name == "session:start":
             await _report_session_start(payload)
+        elif event_name == "task:complete":
+            await _report_task_outcome(payload)
+        elif event_name == "skill:used":
+            await _report_skill_used(payload, success=True)
+        elif event_name == "skill:escalated":
+            await _report_skill_used(payload, success=False)
+            await _report_escalation(payload)
+        elif event_name == "memory:cited":
+            await _report_memory_use(payload)
+        elif event_name == "agent:handoff":
+            await _report_collaboration(payload)
     except Exception as exc:
         logger.debug("MC hook error (%s): %s", event_name, exc)
 
 
-async def _report_agent_start(payload: dict) -> None:
+async def _post(path: str, data: dict, timeout: float = 4.0) -> None:
+    """POST helper. Never raises — Hermes execution must never crash on telemetry."""
     import httpx
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            await client.post(f"{MC_URL}{path}", json=data, headers=_headers())
+    except Exception as exc:
+        logger.debug("MC POST %s failed: %s", path, exc)
 
+
+async def _report_agent_start(payload: dict) -> None:
     data = {
         "name": payload.get("agent_name", "hermes"),
         "role": "Hermes Agent",
         "status": "active",
         "source": "hermes-hook",
     }
-    async with httpx.AsyncClient(timeout=2.0) as client:
-        await client.post(f"{MC_URL}/api/agents", json=data, headers=_headers())
+    await _post("/api/agents", data)
 
 
 async def _report_agent_end(payload: dict) -> None:
-    import httpx
-
     data = {
         "name": payload.get("agent_name", "hermes"),
         "status": "idle",
         "source": "hermes-hook",
     }
-    async with httpx.AsyncClient(timeout=2.0) as client:
-        await client.post(f"{MC_URL}/api/agents", json=data, headers=_headers())
+    await _post("/api/agents", data)
 
 
 async def _report_session_start(payload: dict) -> None:
-    import httpx
-
     data = {
         "event": "session:start",
         "session_id": payload.get("session_id", ""),
         "source": payload.get("source", "cli"),
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
-    async with httpx.AsyncClient(timeout=2.0) as client:
-        await client.post(f"{MC_URL}/api/hermes/events", json=data, headers=_headers())
+    await _post("/api/hermes/events", data)
+
+
+async def _report_skill_used(payload: dict, *, success: bool) -> None:
+    """
+    Report a skill activation. Maps to runtime-telemetry contract:
+      POST /api/skills/event
+    """
+    data = {
+        "skillSlug": payload.get("skill_slug") or payload.get("skill") or "",
+        "agentSlug": payload.get("agent_slug") or payload.get("agent_name"),
+        "valueImpactCents": int(payload.get("value_cents", 0) or 0),
+        "durationMinutes": payload.get("duration_min"),
+        "success": success,
+        "taskId": payload.get("task_id"),
+        "note": (payload.get("summary") or payload.get("note") or "")[:240],
+    }
+    if not data["skillSlug"]:
+        return
+    await _post("/api/skills/event", data)
+
+
+async def _report_task_outcome(payload: dict) -> None:
+    """
+    Report a completed/failed/partial task. Maps to:
+      POST /api/agents/outcome
+    Also calls /api/skills/event when the task carries a skill slug.
+    """
+    status = payload.get("status") or ("done" if payload.get("success", True) else "failed")
+    data = {
+        "agentSlug": payload.get("agent_slug") or payload.get("agent_name"),
+        "taskId": payload.get("task_id"),
+        "status": status if status in ("done", "failed", "partial") else "done",
+        "valueImpactCents": int(payload.get("value_cents", 0) or 0),
+        "durationMinutes": payload.get("duration_min"),
+        "summary": (payload.get("summary") or "")[:180],
+    }
+    await _post("/api/agents/outcome", data)
+    if payload.get("skill_slug"):
+        await _report_skill_used(payload, success=(status == "done"))
+
+
+async def _report_escalation(payload: dict) -> None:
+    data = {
+        "agentSlug": payload.get("agent_slug") or payload.get("agent_name"),
+        "taskId": payload.get("task_id"),
+        "reason": (payload.get("reason") or payload.get("summary") or "Escalated by runtime")[:240],
+        "severity": payload.get("severity", "medium"),
+        "source": payload.get("memory_source") or "Internal",
+    }
+    await _post("/api/agents/escalation", data)
+
+
+async def _report_memory_use(payload: dict) -> None:
+    src = payload.get("source") or "Internal"
+    if src not in ("Obsidian", "Notion", "Pinecone", "Internal"):
+        src = "Internal"
+    data = {
+        "agentSlug": payload.get("agent_slug") or payload.get("agent_name"),
+        "taskId": payload.get("task_id"),
+        "source": src,
+        "title": (payload.get("title") or payload.get("memory_title") or "Memory citation")[:180],
+        "excerpt": (payload.get("excerpt") or "")[:240],
+        "rationale": (payload.get("rationale") or "")[:240],
+    }
+    if not data["title"]:
+        return
+    await _post("/api/agents/memory-use", data)
+
+
+async def _report_collaboration(payload: dict) -> None:
+    data = {
+        "fromAgentSlug": payload.get("from_agent_slug") or payload.get("agent_slug"),
+        "toAgentSlug": payload.get("to_agent_slug"),
+        "taskId": payload.get("task_id"),
+        "reason": (payload.get("reason") or "")[:240],
+    }
+    if not data["fromAgentSlug"] or not data["toAgentSlug"]:
+        return
+    await _post("/api/agents/collaboration", data)
 `
 
 export const dynamic = 'force-dynamic'
