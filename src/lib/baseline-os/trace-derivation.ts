@@ -472,6 +472,7 @@ const SKILL_LABEL_OVERRIDE: Record<string, string> = {
   'photo-attach': 'Photo Attachment',
   'tour-scheduling': 'Tour Scheduling',
   'application-review': 'Application Review',
+  'pdf-generation': 'PDF Document Generation',
 }
 
 export function customerSkillLabel(slug: string): string {
@@ -727,4 +728,178 @@ export function collaborationGraph(workspaceId: number): CollaborationGraph {
     : null
 
   return { nodes, edges, topPair }
+}
+
+
+// ---------- skill ROI leaderboard ----------
+
+export interface SkillRoiLeader {
+  slug: string
+  label: string
+  valueUsdThisMonth: number
+  uses: number
+  employees: string[]
+  primaryEmployeeSlug: string | null
+  state: ActiveSkill['state']
+  /** Last-30-day comparison delta in USD (positive = improving). */
+  trend: 'up' | 'flat' | 'down'
+}
+
+/**
+ * Top value-creating skills this month — feeds the Executive Briefing
+ * leaderboard. Returns at most `limit` skills. Honest empty array when
+ * no activity exists.
+ */
+export function skillRoiLeaderboard(workspaceId: number, limit = 3): SkillRoiLeader[] {
+  const all = skillsInventory(workspaceId)
+  if (!all.length) return []
+
+  const candidates = all
+    .filter((s) => s.valueUsdThisMonth > 0 || s.uses > 0)
+    .sort((a, b) => b.valueUsdThisMonth - a.valueUsdThisMonth || b.uses - a.uses)
+    .slice(0, limit)
+
+  // 30-day window from workforce_memory for trend signal.
+  const db = getDatabase()
+  const now = Math.floor(Date.now() / 1000)
+  const monthAgo = now - 30 * 86_400
+  const fortnightAgo = now - 14 * 86_400
+
+  return candidates.map((s) => {
+    let trend: 'up' | 'flat' | 'down' = 'flat'
+    if (tableExists(db, 'workforce_memory') && columnExists(db, 'workforce_memory', 'value_impact_cents')) {
+      try {
+        const row = db
+          .prepare(
+            `SELECT
+               COALESCE(SUM(CASE WHEN created_at >= ? THEN value_impact_cents END), 0) AS recent,
+               COALESCE(SUM(CASE WHEN created_at >= ? AND created_at < ? THEN value_impact_cents END), 0) AS earlier
+             FROM workforce_memory
+             WHERE workspace_id = ?
+               AND title = ?
+               AND kind = 'skill-used'`,
+          )
+          .get(fortnightAgo, monthAgo, fortnightAgo, workspaceId, s.slug) as { recent: number; earlier: number } | undefined
+        const recent = row?.recent ?? 0
+        const earlier = row?.earlier ?? 0
+        if (recent > earlier * 1.2) trend = 'up'
+        else if (recent < earlier * 0.8) trend = 'down'
+      } catch {
+        trend = 'flat'
+      }
+    }
+    return {
+      slug: s.slug,
+      label: s.label,
+      valueUsdThisMonth: s.valueUsdThisMonth,
+      uses: s.uses,
+      employees: s.employees,
+      primaryEmployeeSlug: s.employees[0] ?? null,
+      state: s.state,
+      trend,
+    }
+  })
+}
+
+// ---------- approval queue ----------
+
+export interface ApprovalItem {
+  taskId: number
+  title: string
+  status: string
+  assignedTo: string | null
+  assignedSlug: string | null
+  ageHours: number
+  severity: 'low' | 'medium' | 'high'
+  /** Memory rationale that produced this escalation, if any. */
+  reason: string | null
+  reasonSource: 'Obsidian' | 'Notion' | 'Pinecone' | 'Internal' | null
+}
+
+/**
+ * All open `needs-review / review / waiting-approval` tasks across the
+ * workspace, with the matched memory rationale (so the operator sees
+ * "Why this was escalated" directly on each row).
+ */
+export function approvalQueue(workspaceId: number): ApprovalItem[] {
+  const db = getDatabase()
+  if (!tableExists(db, 'tasks') || !columnExists(db, 'tasks', 'assigned_to')) return []
+  const now = Math.floor(Date.now() / 1000)
+
+  const rows = db
+    .prepare(
+      `SELECT id, title, status, assigned_to,
+              COALESCE(updated_at, created_at) AS since_at
+       FROM tasks
+       WHERE workspace_id = ?
+         AND status IN ('needs-review','review','waiting-approval')
+       ORDER BY since_at ASC
+       LIMIT 50`,
+    )
+    .all(workspaceId) as Array<{
+    id: number
+    title: string
+    status: string
+    assigned_to: string | null
+    since_at: number
+  }>
+
+  if (!rows.length) return []
+
+  // Pull workforce_memory entries that look like rationales for these escalations.
+  const memById = new Map<string, { rationale: string; source: ApprovalItem['reasonSource'] }>()
+  if (tableExists(db, 'workforce_memory')) {
+    try {
+      const memRows = db
+        .prepare(
+          `SELECT agent_slug, kind, rationale, detail, created_at
+           FROM workforce_memory
+           WHERE workspace_id = ?
+             AND (kind LIKE 'operator-memory%' OR kind = 'escalation' OR kind = 'skill-escalated')
+             AND COALESCE(rationale, detail) IS NOT NULL
+           ORDER BY created_at DESC
+           LIMIT 100`,
+        )
+        .all(workspaceId) as Array<{
+        agent_slug: string | null
+        kind: string
+        rationale: string | null
+        detail: string | null
+        created_at: number
+      }>
+      for (const m of memRows) {
+        if (!m.agent_slug) continue
+        const key = m.agent_slug
+        if (memById.has(key)) continue
+        const source: ApprovalItem['reasonSource'] = m.kind.includes('obsidian')
+          ? 'Obsidian'
+          : m.kind.includes('notion')
+            ? 'Notion'
+            : m.kind.includes('pinecone')
+              ? 'Pinecone'
+              : 'Internal'
+        memById.set(key, { rationale: (m.rationale || m.detail || '').slice(0, 220), source })
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return rows.map((r) => {
+    const ageHours = Math.max(0, (now - r.since_at) / 3600)
+    const severity: ApprovalItem['severity'] = ageHours > 48 ? 'high' : ageHours > 12 ? 'medium' : 'low'
+    const slug = r.assigned_to ? r.assigned_to.toLowerCase().replace(/[^a-z0-9]+/g, '-') : null
+    const memHit = slug ? memById.get(slug) : null
+    return {
+      taskId: r.id,
+      title: r.title,
+      status: r.status,
+      assignedTo: r.assigned_to,
+      assignedSlug: slug,
+      ageHours,
+      severity,
+      reason: memHit?.rationale ?? null,
+      reasonSource: memHit?.source ?? null,
+    }
+  })
 }

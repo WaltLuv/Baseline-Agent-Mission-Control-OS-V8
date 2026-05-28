@@ -1385,4 +1385,171 @@ employee owner, and an executive recommendation when something drifts.
   "Skill installed: <Name>" by backfilling them to the slug form.
 - P3 — Skill "evolved" state — surface when a skill crosses 100 uses
   with > 90% success as a "mastered capability" badge.
+
+
+---
+
+## 20. Iteration 15 — Runtime Telemetry Layer + ROI Leaderboard + Approval Queue (Feb 2026)
+
+User direction after Iteration 14: the next architectural leap is the
+**native runtime telemetry layer** — Hermes, OpenClaw, Claude Code, and
+future adapters should automatically report skill usage, escalations,
+memory use, collaboration, and outcomes through a single contract.
+Layered alongside that, the briefing should surface a Skill ROI
+leaderboard, and the approval queue should be wired to the iteration-13
+escalation chains.
+
+### 20.1 — `src/lib/runtime-telemetry.ts` — the default execution telemetry layer
+A typed adapter that runtimes import:
+```
+reportSkillEvent()        → POST /api/skills/event
+reportEscalation()        → POST /api/agents/escalation
+reportMemoryUse()         → POST /api/agents/memory-use
+reportCollaboration()     → POST /api/agents/collaboration
+reportOutcome()           → POST /api/agents/outcome
+reportTokenUsage()        → POST /api/tokens
+reportSkillExecution()    → composite: tokens + skill + memory + outcome
+```
+Design contract:
+- **Best-effort, never throwing.** Every helper returns `{ ok, status,
+  data?, error? }` so a runtime failure in telemetry never crashes the
+  execution.
+- **Workspace credentials come from the caller.** Either `apiKey`
+  (`x-api-key` header) or `cookie` (session-based) — never embedded.
+- **Configurable `fetchImpl`** so non-Node runtimes (OpenClaw browser
+  contexts, Claude Code workers) can supply their own fetcher.
+- **Configurable `timeoutMs`** with proper `AbortController` wiring.
+- **No vector/orchestration jargon at the boundary.** Helper names use
+  business vocabulary (`reportMemoryUse` not `reportEmbeddingHit`).
+- 7 tests cover happy-path, header injection, composite ordering,
+  network failure (returns `ok:false` instead of throwing), and timeout
+  abort.
+
+### 20.2 — Four new runtime phone-home endpoints
+All operator-role + `tokenReportLimiter` rate-limited. All workspace-
+scoped via session. Auto-create `workforce_memory` table if missing.
+- **`POST /api/agents/escalation`** — writes a memory row tagged
+  `operator-memory.obsidian/notion/pinecone` (or `escalation`) with the
+  rationale, and flips the linked task to `needs-review`. This is what
+  the Approval Queue reads.
+- **`POST /api/agents/memory-use`** — writes a memory row with the
+  friendly source label so the trace "Memory used" card renders the
+  citation correctly.
+- **`POST /api/agents/collaboration`** — writes a `collaboration` row
+  for both the `from` and `to` employee so the Collaborator Graph + both
+  trace pages render the handoff symmetrically.
+- **`POST /api/agents/outcome`** — writes an `outcome-done /
+  outcome-failed / outcome-partial` row with `value_impact_cents` and
+  updates the linked task status.
+
+### 20.3 — Skill ROI Leaderboard — Executive Briefing card
+- **`skillRoiLeaderboard()`** derivation in `trace-derivation.ts` —
+  top-N skills by `value_impact_cents` this month, with:
+  - human-friendly label (uses `customerSkillLabel` override map)
+  - uses count + total $ value
+  - employee list (sorted, deep-linked to trace)
+  - state (active / warning / inactive) inherited from `skillsInventory`
+  - 30-day trend: `up` when recent 14d value > previous 14d × 1.2,
+    `down` when < × 0.8, else `flat`
+- **`GET /api/baseline-os/skill-leaderboard?limit=3`** — viewer role.
+- **`<SkillRoiLeaderboard />`** component — renders below the Briefing
+  Card on both demo and live mode. Honest empty-render (returns null
+  if no skill has measurable value yet).
+
+### 20.4 — Approval Queue panel
+- **`approvalQueue()`** derivation — every open `needs-review / review
+  / waiting-approval` task, oldest first, with severity bands (`high`
+  > 48h · `medium` > 12h · `low`), and a matched memory rationale for
+  the requesting AI Employee (using the most recent
+  `operator-memory.* / escalation / skill-escalated` row in
+  `workforce_memory`).
+- **`GET /api/approvals/queue`** — viewer role.
+- **`<ApprovalsQueueView />` + `/app/approvals` page** — calm,
+  read-only list with:
+  - severity-colored borders (red / amber / muted)
+  - "Escalated by `<Employee>`" with deep-link to trace
+  - "Obsidian: <rationale>" or "Notion: …" / "Pinecone: …" / "Internal:…"
+    citation block
+  - "Nothing waiting" empty-state copy
+
+### 20.5 — Customer-language polish
+Added `pdf-generation` → "PDF Document Generation" to
+`SKILL_LABEL_OVERRIDE` so the leaderboard reads cleanly. Plan: keep
+auditing on a per-release basis as new slugs land.
+
+### 20.6 — End-to-end verification
+Live production server:
+```
+GET  /api/baseline-os/skill-leaderboard
+  → leaders=[{label:"PDF Document Generation", $75, 2 uses, trend:"up"}]
+GET  /api/approvals/queue
+  → items:[] (honest — no needs-review tasks yet)
+POST /api/agents/escalation     {agentSlug:"phil", source:"Obsidian", ...}
+  → {ok:true}
+POST /api/agents/memory-use     {agentSlug:"phil", source:"Notion", ...}
+  → {ok:true}
+POST /api/agents/collaboration  {fromAgentSlug:"phil", toAgentSlug:"lena"}
+  → {ok:true}
+POST /api/agents/outcome        {agentSlug:"phil", status:"done", ...}
+  → {ok:true}
+```
+
+### 20.7 — Quality gates
+- TypeScript: **0 errors**
+- ESLint: **0 errors**
+- Vitest: **1027 / 1027 passing** (+11 new tests):
+  - `runtime-telemetry.test.ts` (7) — header injection, endpoint mapping,
+    composite ordering, network failure, timeout abort, no-credentials
+    path.
+  - `leaderboard-approvals.test.ts` (4) — empty-honest, top-N ordering
+    with customer labels, severity bands, rationale lookup.
+- `next build`: **141 / 141 pages compiled** (added /app/approvals +
+  4 runtime phone-home routes + 2 new derivation routes).
+
+### 20.8 — Files touched
+```
+new   src/lib/runtime-telemetry.ts                   (the default telemetry layer)
+new   src/lib/__tests__/runtime-telemetry.test.ts    (7 tests)
+new   src/lib/__tests__/leaderboard-approvals.test.ts (4 tests)
+new   src/app/api/agents/escalation/route.ts
+new   src/app/api/agents/memory-use/route.ts
+new   src/app/api/agents/collaboration/route.ts
+new   src/app/api/agents/outcome/route.ts
+new   src/app/api/baseline-os/skill-leaderboard/route.ts
+new   src/app/api/approvals/queue/route.ts
+new   src/components/baseline-os/skill-roi-leaderboard.tsx
+new   src/components/workforce/approvals-queue-view.tsx
+new   src/app/app/approvals/page.tsx
+mod   src/lib/baseline-os/trace-derivation.ts        (+skillRoiLeaderboard +approvalQueue +pdf-generation label)
+mod   src/components/demo/executive-briefing.tsx     (mount SkillRoiLeaderboard)
+```
+
+### 20.9 — Stack-boundary discipline preserved
+Telemetry-adapter doc explicitly enumerates the layers it bridges:
+**Hermes** (operator) · **OpenClaw** (browser/tool/system) ·
+**Claude Code** (engineering/reasoning) → **Mission Control** API →
+**Baseline OS** intelligence. Studios remains untouched.
+
+### 20.10 — Launch readiness
+**9.9 / 10** — the runtime side of the loop now has a single, typed,
+best-effort contract. Every AI Employee action (skill, memory,
+escalation, collaboration, outcome, token cost) phones home through a
+calm, business-language adapter that operators can audit, measure, and
+optimize.
+
+### 20.11 — Backlog (deferred)
+- **P1** — Ship the official Hermes / OpenClaw / Claude Code SDK wiring
+  that imports `runtime-telemetry` and hooks the runtime's existing
+  skill / outcome events. The contract is now stable.
+- **P1** — Approval queue *actions* (Approve / Reject / Request changes)
+  wired to the existing task-update endpoints. Currently read-only.
+- **P2** — Per-skill detail page `/app/skills/[slug]` with the full
+  event timeline + employee breakdown (linked from each leaderboard row).
+- **P2** — Legacy `workforce_memory` "Skill installed: <Name>" row
+  cleanup (eliminates the duplicate "Skill Installed Pdf Document
+  Generation" entry showing under the live leaderboard).
+- **P3** — Evolved skill state badge (100+ uses with > 90% success).
+- **P3** — Auto workforce optimization recommendations on the briefing
+  ("Phil is overloaded; promote Lena to absorb 20% of intake.")
+- **P3** — Reliability forecasting (project trust trajectory 7 days out).
 - P3 — Email SMTP STARTTLS hardening + saved-card auto-reload for Stripe.

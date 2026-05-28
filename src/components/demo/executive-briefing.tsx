@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useDemoMode } from './demo-mode-provider'
+import { SkillRoiLeaderboard } from '@/components/baseline-os/skill-roi-leaderboard'
 import { ShareBriefingButton } from './share-briefing-button'
 import { CountUp } from '@/components/motion/count-up'
 import { MetricTooltip } from '@/components/ui/metric-tooltip'
@@ -63,42 +64,48 @@ export function ExecutiveBriefing() {
   // ---------- DEMO MODE ----------
   if (active && narrative) {
     return (
-      <BriefingCard
-        testId="executive-briefing"
-        headlineEyebrow={`Your COO briefing — ${formatToday()} · Demo`}
-        headline={narrative.briefingHeadline}
-        subheadline={`Operating as ${narrative.template.icon} ${narrative.template.name}`}
-        valueLabel="Value created · this month"
-        valueUsd={narrative.valueCreatedMonthUsd}
-        hoursSaved={narrative.hoursSavedMonth}
-        dailyWins={narrative.dailyWins}
-        attentionItems={narrative.attentionItems}
-        topEmployee={narrative.topEmployee}
-        nextAction={narrative.nextAction}
-      />
+      <div className="space-y-4">
+        <BriefingCard
+          testId="executive-briefing"
+          headlineEyebrow={`Your COO briefing — ${formatToday()} · Demo`}
+          headline={narrative.briefingHeadline}
+          subheadline={`Operating as ${narrative.template.icon} ${narrative.template.name}`}
+          valueLabel="Value created · this month"
+          valueUsd={narrative.valueCreatedMonthUsd}
+          hoursSaved={narrative.hoursSavedMonth}
+          dailyWins={narrative.dailyWins}
+          attentionItems={narrative.attentionItems}
+          topEmployee={narrative.topEmployee}
+          nextAction={narrative.nextAction}
+        />
+        <SkillRoiLeaderboard />
+      </div>
     )
   }
 
   // ---------- LIVE MODE, REAL DATA ----------
   if (loaded && live && (live.dailyWins.length > 0 || live.attentionItems.length > 0 || live.creditsUsedMonth > 0)) {
     return (
-      <BriefingCard
-        testId="executive-briefing-live"
-        headlineEyebrow={`Your COO briefing — ${formatToday()}`}
-        headline={live.briefingHeadline}
-        subheadline={`${live.creditsUsedMonth.toLocaleString()} workforce credits used this month`}
-        valueLabel="Value created · this month"
-        valueUsd={live.valueCreatedMonthUsd}
-        hoursSaved={live.hoursSavedMonth}
-        dailyWins={live.dailyWins}
-        attentionItems={live.attentionItems}
-        topEmployee={live.topEmployee}
-        highestRoiEmployee={live.highestRoiEmployee ?? null}
-        overloadedEmployee={live.overloadedEmployee ?? null}
-        blockedAwaitingApprovalCount={live.blockedAwaitingApprovalCount ?? 0}
-        memoryCitations={live.memoryCitations ?? []}
-        nextAction={live.nextAction}
-      />
+      <div className="space-y-4">
+        <BriefingCard
+          testId="executive-briefing-live"
+          headlineEyebrow={`Your COO briefing — ${formatToday()}`}
+          headline={live.briefingHeadline}
+          subheadline={`${live.creditsUsedMonth.toLocaleString()} workforce credits used this month`}
+          valueLabel="Value created · this month"
+          valueUsd={live.valueCreatedMonthUsd}
+          hoursSaved={live.hoursSavedMonth}
+          dailyWins={live.dailyWins}
+          attentionItems={live.attentionItems}
+          topEmployee={live.topEmployee}
+          highestRoiEmployee={live.highestRoiEmployee ?? null}
+          overloadedEmployee={live.overloadedEmployee ?? null}
+          blockedAwaitingApprovalCount={live.blockedAwaitingApprovalCount ?? 0}
+          memoryCitations={live.memoryCitations ?? []}
+          nextAction={live.nextAction}
+        />
+        <SkillRoiLeaderboard />
+      </div>
     )
   }
 
