@@ -27,21 +27,34 @@ interface ApprovalItem {
 export function ApprovalsQueueView() {
   const [items, setItems] = useState<ApprovalItem[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState<number | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
+  const load = () => {
     fetch('/api/approvals/queue', { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((d) => {
-        if (!cancelled) setItems(d.items ?? [])
-      })
-      .catch((e) => {
-        if (!cancelled) setError(String(e).slice(0, 200))
-      })
-    return () => {
-      cancelled = true
-    }
+      .then((d) => setItems(d.items ?? []))
+      .catch((e) => setError(String(e).slice(0, 200)))
+  }
+
+  useEffect(() => {
+    load()
   }, [])
+
+  const act = async (taskId: number, action: 'approve' | 'reject' | 'request-changes') => {
+    setBusy(taskId)
+    try {
+      await fetch('/api/approvals/action', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taskId, action }),
+      })
+      // optimistic: drop the item
+      setItems((prev) => (prev ? prev.filter((x) => x.taskId !== taskId) : prev))
+    } finally {
+      setBusy(null)
+    }
+  }
 
   if (error) {
     return (
@@ -150,6 +163,32 @@ export function ApprovalsQueueView() {
                 {item.reason}
               </p>
             )}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                onClick={() => act(item.taskId, 'approve')}
+                disabled={busy === item.taskId}
+                data-testid={`approval-approve-${item.taskId}`}
+                className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-[11px] font-medium text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-50"
+              >
+                Approve work
+              </button>
+              <button
+                onClick={() => act(item.taskId, 'request-changes')}
+                disabled={busy === item.taskId}
+                data-testid={`approval-changes-${item.taskId}`}
+                className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-[11px] font-medium text-amber-200 hover:bg-amber-500/20 disabled:opacity-50"
+              >
+                Request changes
+              </button>
+              <button
+                onClick={() => act(item.taskId, 'reject')}
+                disabled={busy === item.taskId}
+                data-testid={`approval-reject-${item.taskId}`}
+                className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1 text-[11px] font-medium text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+              >
+                Reject output
+              </button>
+            </div>
           </li>
         ))}
       </ol>

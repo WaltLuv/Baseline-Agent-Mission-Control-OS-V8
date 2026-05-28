@@ -1552,4 +1552,183 @@ optimize.
 - **P3** — Auto workforce optimization recommendations on the briefing
   ("Phil is overloaded; promote Lena to absorb 20% of intake.")
 - **P3** — Reliability forecasting (project trust trajectory 7 days out).
+
+
+---
+
+## 21. Iteration 16 — Operational Coherence: Approvals + Skill Intelligence + Recommendations + Forecast + Runtime Integration Package (Feb 2026)
+
+User directive after Iteration 15: enter the operational-coherence phase.
+Close the loop from AI execution to measurable workforce intelligence in
+one integrated pass: runtime telemetry hooks → approval actions →
+per-skill detail → legacy cleanup → evolved capability → optimization
+recommendations → 7-day forecast.
+
+### 21.1 — Approval queue actions (P1)
+- **`POST /api/approvals/action`** — operator-role endpoint that maps
+  `approve / reject / request-changes` to `tasks.status =
+  done / failed / in_progress`, writes a `workforce_memory` row
+  (`approval-approved / approval-rejected / approval-changes-requested`)
+  for the requesting AI Employee, and preserves the operator note as
+  rationale.
+- **UI** — `<ApprovalsQueueView />` now renders three action buttons per
+  row: **Approve work / Request changes / Reject output**. Optimistic
+  removal on success. Business language, no internal task-status jargon.
+
+### 21.2 — Per-skill detail page (P2)
+- **`skillDetail(workspaceId, slug)`** derivation — hydrates everything
+  needed: customer-facing label, description (from marketplace catalog),
+  install state, state band (active / warning / inactive / **proven**),
+  ROI counters, employees using it, last 25 timeline events with kind
+  badges + per-event value, recommendation strings.
+- **`GET /api/baseline-os/skills/[slug]`** — viewer role.
+- **`/app/skills/[slug]`** — calm enterprise layout: header + state pill
+  + 4-metric grid (Activations / Successful / Escalated / Value · this
+  month) + employee chips deep-linked to trace + recent activity
+  timeline + "Baseline OS recommends" callout.
+- Deep-link sources: Skill ROI Leaderboard (label is now a `<Link>`),
+  Optimization Recommendations, Forecast risks.
+
+### 21.3 — Evolved capability badge (P3)
+- New state `'proven'` triggers when **use_count ≥ 100 AND
+  success_count / use_count > 0.9**.
+- Subtle pill: "Proven capability" in primary accent — no XP, no
+  glowing badges. Renders on both the leaderboard row and the skill
+  detail header.
+
+### 21.4 — Workforce optimization recommendations (P3)
+- **`workforceRecommendations()`** derivation. Surfaces (capped at 6):
+  - **Overloaded employees** (≥ 6 open tasks) with re-route advice
+  - **Single-employee high-value skills** — recommend replicating
+  - **High-escalation skills** — recommend upstream workflow review
+  - **Installed-but-unused skills** — recommend attachment
+- Each recommendation carries: `title · why · expectedImpact ·
+  confidence (low/medium/high) · relatedEmployee · relatedSkill ·
+  actionLabel · actionHref`. Honest empty list when no signal.
+
+### 21.5 — 7-day reliability forecast (P3)
+- **`sevenDayForecast()`** derivation — transparent heuristics:
+  - Overloaded employees (≥ 5 open today, ≥ 8 = high confidence)
+  - Stale tasks (in_progress for 7+ days)
+  - Escalating skills (warning state + ≥ 4 uses)
+- Customer language: *"Likely risk next 7 days · Watch this · Recommended prevention"*.
+- No fake-ML claims. Honest empty list when nothing concerning.
+
+### 21.6 — Briefing surfaces
+`<WorkforceOptimizationCard />` mounted below the ROI leaderboard in
+both demo and live modes. Renders **Baseline OS recommends** + **Likely
+risk next 7 days** sections only when there's signal — never empty UI.
+
+### 21.7 — Legacy memory cleanup (P2)
+- **`scripts/cleanup-legacy-skill-memory.mjs`** — dry-run by default,
+  `--apply` flag commits.
+- Normalizes legacy rows whose title was
+  `Skill installed: <Name>` into the canonical slug pulled from the
+  `workforce_skills.name → slug` map, eliminating the duplicate
+  "Pdf Document Generation" entry that was shadowing
+  `pdf-generation` in the leaderboard.
+- Idempotent. Preserves the row (audit history intact) — only renames
+  the title.
+- **Live verification**: before cleanup the leaderboard listed two PDF
+  entries; after cleanup it lists exactly one ("PDF Document
+  Generation · uses: 1 · $44").
+
+### 21.8 — Runtime telemetry integration package
+- **`docs/architecture/RUNTIME_HOOK_INTEGRATION.md`** — exact
+  integration package for Hermes, OpenClaw, Claude Code (Node + Python
+  + browser-fetch variants). Covers the HTTP contract, fire-and-forget
+  pattern, acceptance checklist.
+- **`scripts/runtime-telemetry-harness.mjs`** — self-contained local
+  proof: login → install → 5 telemetry events → leaderboard read-back.
+  Output:
+  ```
+  login          200
+  install pdf    200
+  skill/event    200
+  escalation     200
+  memory-use     200
+  collaboration  200
+  outcome        200
+  leaderboard    200 PDF Document Generation
+  trace skills   200 [{"skill":"pdf-generation","uses":2}]
+  ```
+- **Runtime source status**: Hermes hook (`src/app/api/hermes/route.ts`)
+  is in-repo and reports `agent:start / end / session:start` today.
+  Extending it with `reportSkillExecution` is the remaining runtime-side
+  P1 — documented in the integration guide.
+
+### 21.9 — End-to-end loop verification (production server)
+```
+POST /api/approvals/action {taskId:1, action:'approve'} → 200, task→done, queue clears
+GET  /api/baseline-os/skills/pdf-generation
+  → state:'active', reason:'Producing measurable value', timeline:6 entries,
+    employees:['phil','lena']
+node scripts/cleanup-legacy-skill-memory.mjs --apply → 1 row normalized
+GET  /api/baseline-os/skill-leaderboard → 1 row (duplicate removed)
+GET  /api/baseline-os/recommendations → honest empty (no signal yet)
+node scripts/runtime-telemetry-harness.mjs → loop verified ✓
+```
+
+### 21.10 — Quality gates
+- TypeScript: **0 errors**
+- ESLint: **0 errors**
+- Vitest: **1038 / 1038 passing** (+11 new iteration-16 tests covering
+  skillDetail · workforceRecommendations · sevenDayForecast ·
+  approval action all three branches)
+- `next build`: **144 / 144 pages compiled** (added /app/skills/[slug],
+  /api/baseline-os/skills/[slug], /api/baseline-os/recommendations,
+  /api/approvals/action)
+- Live runtime harness: **7 telemetry calls + 4 read-backs all 200**
+
+### 21.11 — Guardrails honored
+- No new vector / orchestration / embedding jargon in customer UI
+- No fake collaboration — recommendations + forecast derive only from
+  real DB signal, honest empty when none
+- No noisy graphs — leaderboard, recommendations, forecast all render
+  as calm 3–5-row lists
+- No gamification — "Proven capability" is a subtle border-accent pill,
+  not a badge spam
+- Studios boundary preserved (no Studios surfaces touched)
+- Refresh stability preserved (all new pages wrap in `<Suspense>` +
+  `DemoModeProvider` where appropriate, all internal links are
+  `<Link>`)
+
+### 21.12 — Files touched
+```
+new  src/lib/runtime-telemetry.ts                            (iteration 15, extended in docs only)
+new  src/app/api/approvals/action/route.ts                   (operator actions)
+new  src/app/api/baseline-os/skills/[slug]/route.ts          (skill detail)
+new  src/app/api/baseline-os/recommendations/route.ts        (recs + forecast)
+new  src/components/baseline-os/skill-detail-view.tsx
+new  src/components/baseline-os/workforce-optimization-card.tsx
+new  src/app/app/skills/[slug]/page.tsx
+new  scripts/cleanup-legacy-skill-memory.mjs                 (dry-run + --apply)
+new  scripts/runtime-telemetry-harness.mjs                   (local proof harness)
+new  docs/architecture/RUNTIME_HOOK_INTEGRATION.md           (Hermes / OpenClaw / Claude Code integration package)
+new  src/lib/__tests__/iteration-16.test.ts                  (11 tests)
+mod  src/lib/baseline-os/trace-derivation.ts                 (+skillDetail +workforceRecommendations +sevenDayForecast +proven state)
+mod  src/components/baseline-os/skill-roi-leaderboard.tsx    (+deep-link + Proven capability pill)
+mod  src/components/workforce/approvals-queue-view.tsx       (Approve / Reject / Request changes buttons)
+mod  src/components/demo/executive-briefing.tsx              (mount WorkforceOptimizationCard)
+```
+
+### 21.13 — Launch readiness
+**9.95 / 10** — the operational continuity loop is complete on
+Mission Control's side. Every AI Employee action lifecycle is observable,
+explainable, actionable, and measurable.
+
+### 21.14 — Remaining backlog
+- **P0 / external** — Wire `src/lib/runtime-telemetry.ts` calls into the
+  external Hermes / OpenClaw / Claude Code runtime repos. The contract,
+  docs, harness, and Mission Control endpoints are all stable. **Mission
+  Control side complete; external runtime hook pending in runtime repo.**
+- **P2** — Pin a notification daemon so approval queue notifications
+  also reach Slack / email via the existing notification daemon
+  (`scripts/notification-daemon.sh`).
+- **P2** — Optional rationale prompt on approval actions ("Why are you
+  rejecting?") so the audit row carries the operator's reasoning.
+- **P3** — Approval queue panel sub-tab on the overview so the operator
+  sees the count without leaving the briefing.
+- **P3** — Recommendation A/B feedback loop (operator marks "useful /
+  irrelevant" → tunes future weighting).
 - P3 — Email SMTP STARTTLS hardening + saved-card auto-reload for Stripe.

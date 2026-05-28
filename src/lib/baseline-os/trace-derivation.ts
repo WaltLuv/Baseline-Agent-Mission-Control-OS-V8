@@ -740,7 +740,8 @@ export interface SkillRoiLeader {
   uses: number
   employees: string[]
   primaryEmployeeSlug: string | null
-  state: ActiveSkill['state']
+  /** Includes 'proven' once a skill crosses 100 uses with > 90% success. */
+  state: ActiveSkill['state'] | 'proven'
   /** Last-30-day comparison delta in USD (positive = improving). */
   trend: 'up' | 'flat' | 'down'
 }
@@ -767,6 +768,22 @@ export function skillRoiLeaderboard(workspaceId: number, limit = 3): SkillRoiLea
 
   return candidates.map((s) => {
     let trend: 'up' | 'flat' | 'down' = 'flat'
+    // Detect proven capability (≥100 uses, >90% success) for the badge.
+    let state: SkillRoiLeader['state'] = s.state
+    if (tableExists(db, 'workforce_skills')) {
+      try {
+        const row = db
+          .prepare(
+            `SELECT COALESCE(use_count,0) AS uses,
+                    COALESCE(success_count,0) AS succ
+             FROM workforce_skills WHERE workspace_id = ? AND slug = ? LIMIT 1`,
+          )
+          .get(workspaceId, s.slug) as { uses: number; succ: number } | undefined
+        if (row && row.uses >= 100 && row.succ / row.uses > 0.9) state = 'proven'
+      } catch {
+        // ignore
+      }
+    }
     if (tableExists(db, 'workforce_memory') && columnExists(db, 'workforce_memory', 'value_impact_cents')) {
       try {
         const row = db
@@ -795,7 +812,7 @@ export function skillRoiLeaderboard(workspaceId: number, limit = 3): SkillRoiLea
       uses: s.uses,
       employees: s.employees,
       primaryEmployeeSlug: s.employees[0] ?? null,
-      state: s.state,
+      state,
       trend,
     }
   })
@@ -902,4 +919,398 @@ export function approvalQueue(workspaceId: number): ApprovalItem[] {
       reasonSource: memHit?.source ?? null,
     }
   })
+}
+
+// ---------- skill detail ----------
+
+export interface SkillDetail {
+  slug: string
+  label: string
+  description: string | null
+  installed: boolean
+  installedAt: number | null
+  state: 'active' | 'warning' | 'inactive' | 'proven'
+  stateReason: string
+  uses: number
+  successCount: number
+  escalationCount: number
+  lastUsedAt: number | null
+  valueUsdThisMonth: number
+  estimatedHoursSaved: number
+  employees: string[]
+  timeline: Array<{
+    id: number
+    when: number
+    kind: 'used' | 'escalated' | 'installed'
+    agentSlug: string | null
+    detail: string | null
+    valueCents: number
+  }>
+  recommendations: string[]
+}
+
+/**
+ * Derive a full per-skill detail bundle for `/app/skills/[slug]`.
+ * Honest-empty: returns null when the skill is not installed in this workspace
+ * AND has no event history.
+ */
+export function skillDetail(workspaceId: number, slug: string): SkillDetail | null {
+  const db = getDatabase()
+  if (!tableExists(db, 'workforce_memory') && !tableExists(db, 'workforce_skills')) return null
+  const normalized = slug.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+
+  let installed = false
+  let installedAt: number | null = null
+  let uses = 0
+  let successCount = 0
+  let escalationCount = 0
+  let valueCents = 0
+  let lastUsedAt: number | null = null
+  let label = customerSkillLabel(normalized)
+  let description: string | null = null
+
+  if (tableExists(db, 'workforce_skills')) {
+    try {
+      const row = db
+        .prepare(
+          `SELECT name, installed_at,
+                  COALESCE(use_count, 0) AS uses,
+                  COALESCE(success_count, 0) AS success_count,
+                  COALESCE(escalation_count, 0) AS escalation_count,
+                  COALESCE(value_impact_cents, 0) AS value_cents,
+                  last_used_at
+           FROM workforce_skills WHERE workspace_id = ? AND slug = ? LIMIT 1`,
+        )
+        .get(workspaceId, normalized) as
+        | { name: string; installed_at: number; uses: number; success_count: number; escalation_count: number; value_cents: number; last_used_at: number | null }
+        | undefined
+      if (row) {
+        installed = true
+        installedAt = row.installed_at
+        label = customerSkillLabel(normalized) // override-aware
+        uses = row.uses
+        successCount = row.success_count
+        escalationCount = row.escalation_count
+        valueCents = row.value_cents
+        lastUsedAt = row.last_used_at
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // Pull events from workforce_memory for timeline + employees.
+  const timeline: SkillDetail['timeline'] = []
+  const employeeSet = new Set<string>()
+  if (tableExists(db, 'workforce_memory')) {
+    try {
+      const events = db
+        .prepare(
+          `SELECT id, agent_slug, kind, detail, value_impact_cents, created_at
+           FROM workforce_memory
+           WHERE workspace_id = ? AND LOWER(REPLACE(title,' ','-')) = ?
+             AND kind IN ('skill-used','skill-escalated','skill-installed')
+           ORDER BY created_at DESC LIMIT 25`,
+        )
+        .all(workspaceId, normalized) as Array<{ id: number; agent_slug: string | null; kind: string; detail: string | null; value_impact_cents: number; created_at: number }>
+      for (const e of events) {
+        if (e.agent_slug) employeeSet.add(e.agent_slug)
+        timeline.push({
+          id: e.id,
+          when: e.created_at,
+          kind: e.kind === 'skill-escalated' ? 'escalated' : e.kind === 'skill-installed' ? 'installed' : 'used',
+          agentSlug: e.agent_slug,
+          detail: e.detail,
+          valueCents: e.value_impact_cents,
+        })
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // Fall back to catalog description.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const cat = require('@/lib/marketplace-catalog')
+    const cs = cat.getSkillBySlug?.(normalized)
+    if (cs) {
+      label = label === customerSkillLabel(normalized) ? (cs.name ?? label) : label
+      description = cs.outcome ?? null
+    }
+  } catch {
+    // catalog not available
+  }
+
+  if (!installed && timeline.length === 0) return null
+
+  // State derivation (mirrors skillsInventory + adds 'proven').
+  const now = Math.floor(Date.now() / 1000)
+  const escalationRate = uses > 0 ? escalationCount / uses : 0
+  const successRate = uses > 0 ? successCount / uses : 0
+  const stale = !lastUsedAt || lastUsedAt < now - 7 * 86_400
+  let state: SkillDetail['state']
+  let stateReason: string
+  if (uses >= 100 && successRate > 0.9) {
+    state = 'proven'
+    stateReason = `Proven capability — ${uses} activations with ${(successRate * 100).toFixed(0)}% success rate.`
+  } else if (uses === 0 && installed) {
+    state = 'inactive'
+    stateReason = 'Installed but never used — attach it to an AI Employee or workflow.'
+  } else if (stale && uses > 0) {
+    state = 'inactive'
+    stateReason = 'No use in 7 days — consider archiving or attaching elsewhere.'
+  } else if (escalationRate >= 0.5 && uses > 1) {
+    state = 'warning'
+    stateReason = `${Math.round(escalationRate * 100)}% of activations escalated — check the upstream workflow.`
+  } else {
+    state = 'active'
+    stateReason = `Producing measurable value — ${uses} activations, ${(successRate * 100).toFixed(0)}% successful.`
+  }
+
+  const recommendations: string[] = []
+  if (state === 'inactive' && installed && uses === 0) {
+    recommendations.push('Attach this skill to an AI Employee to activate it.')
+  }
+  if (state === 'warning' && escalationRate >= 0.5) {
+    recommendations.push('Review the upstream workflow — the skill is escalating more than half its activations.')
+  }
+  if (state === 'proven') {
+    recommendations.push('Replicate the workflow that uses this skill into a second team or business unit.')
+  }
+  if (employeeSet.size === 1 && uses > 10) {
+    recommendations.push(`Only ${[...employeeSet][0]} is using this skill — consider promoting it to another AI Employee.`)
+  }
+
+  return {
+    slug: normalized,
+    label,
+    description,
+    installed,
+    installedAt,
+    state,
+    stateReason,
+    uses,
+    successCount,
+    escalationCount,
+    lastUsedAt,
+    valueUsdThisMonth: Math.round(valueCents / 100),
+    estimatedHoursSaved: Math.round((uses * 15) / 60),
+    employees: [...employeeSet],
+    timeline,
+    recommendations,
+  }
+}
+
+// ---------- workforce optimization recommendations ----------
+
+export interface OptimizationRecommendation {
+  id: string
+  title: string
+  why: string
+  expectedImpact: string
+  confidence: 'low' | 'medium' | 'high'
+  relatedEmployee: string | null
+  relatedSkill: string | null
+  actionLabel: string
+  actionHref: string | null
+}
+
+/**
+ * Derive a small set of Baseline OS optimization recommendations from
+ * workload, skill usage, escalation rate, outcome history, memory
+ * citations, billing/value data, and collaboration bottlenecks.
+ *
+ * Honest empty array when there's not enough signal. No fake claims.
+ */
+export function workforceRecommendations(workspaceId: number): OptimizationRecommendation[] {
+  const db = getDatabase()
+  const recs: OptimizationRecommendation[] = []
+  const seen = new Set<string>()
+  const push = (r: OptimizationRecommendation) => {
+    if (seen.has(r.id)) return
+    seen.add(r.id)
+    recs.push(r)
+  }
+
+  // (1) Overloaded employees → recommend re-routing
+  if (tableExists(db, 'tasks') && columnExists(db, 'tasks', 'assigned_to')) {
+    try {
+      const rows = db
+        .prepare(
+          `SELECT assigned_to AS name, COUNT(*) AS open_count
+           FROM tasks
+           WHERE workspace_id = ? AND status IN ('open','in_progress')
+           GROUP BY assigned_to
+           HAVING open_count >= 6
+           ORDER BY open_count DESC LIMIT 2`,
+        )
+        .all(workspaceId) as Array<{ name: string; open_count: number }>
+      for (const r of rows) {
+        if (!r.name) continue
+        push({
+          id: `overloaded:${r.name}`,
+          title: `${r.name} is carrying ${r.open_count} open tasks`,
+          why: `Workload is above the balanced range — risk of slipping deadlines.`,
+          expectedImpact: 'Re-route ~20% of intake to a teammate; lowers response time.',
+          confidence: 'medium',
+          relatedEmployee: r.name,
+          relatedSkill: null,
+          actionLabel: 'Open trace',
+          actionHref: `/app/agents/${encodeURIComponent(r.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'))}/trace`,
+        })
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // (2) High-value skills → recommend wider attachment
+  const leaderboard = skillRoiLeaderboard(workspaceId, 5)
+  for (const l of leaderboard) {
+    if (l.valueUsdThisMonth >= 50 && l.employees.length === 1) {
+      push({
+        id: `expand-skill:${l.slug}`,
+        title: `${l.label} is creating measurable value`,
+        why: `Only ${l.employees[0]} is using it — others could benefit.`,
+        expectedImpact: `Replicating to a second AI Employee could compound the $${l.valueUsdThisMonth} monthly value.`,
+        confidence: 'medium',
+        relatedEmployee: l.employees[0],
+        relatedSkill: l.slug,
+        actionLabel: 'Open skill',
+        actionHref: `/app/skills/${encodeURIComponent(l.slug)}`,
+      })
+    }
+  }
+
+  // (3) High-escalation skills → recommend upstream review
+  const allSkills = skillsInventory(workspaceId)
+  for (const s of allSkills) {
+    if (s.state === 'warning' && s.recommendation?.includes('escalated')) {
+      push({
+        id: `escalate-rate:${s.slug}`,
+        title: `${s.label} is escalating too often`,
+        why: s.recommendation ?? 'Escalation rate above 50%.',
+        expectedImpact: 'Fixing the upstream workflow restores autonomous execution.',
+        confidence: 'high',
+        relatedEmployee: s.employees[0] ?? null,
+        relatedSkill: s.slug,
+        actionLabel: 'Open skill',
+        actionHref: `/app/skills/${encodeURIComponent(s.slug)}`,
+      })
+    }
+  }
+
+  // (4) Installed-but-unused → recommend attachment
+  for (const s of allSkills) {
+    if (s.state === 'inactive' && s.uses === 0 && s.recommendation?.includes('Installed but never used')) {
+      push({
+        id: `unused:${s.slug}`,
+        title: `${s.label} is installed but unused`,
+        why: 'No AI Employee has activated this skill yet.',
+        expectedImpact: 'Attaching it to the right workflow recovers the install cost.',
+        confidence: 'low',
+        relatedEmployee: null,
+        relatedSkill: s.slug,
+        actionLabel: 'Open skill',
+        actionHref: `/app/skills/${encodeURIComponent(s.slug)}`,
+      })
+    }
+  }
+
+  return recs.slice(0, 6)
+}
+
+// ---------- 7-day reliability forecast ----------
+
+export interface ForecastRisk {
+  id: string
+  kind: 'overloaded-employee' | 'stale-task' | 'escalating-skill' | 'credit-runway' | 'collaboration-bottleneck'
+  title: string
+  watchFor: string
+  recommendedPrevention: string
+  confidence: 'low' | 'medium' | 'high'
+  href: string | null
+}
+
+/**
+ * Simple transparent heuristics — never "ML claims". Surfaces the
+ * "Likely risk next 7 days" items on the briefing/forecast panel.
+ */
+export function sevenDayForecast(workspaceId: number): ForecastRisk[] {
+  const db = getDatabase()
+  const risks: ForecastRisk[] = []
+
+  // Overloaded employees
+  if (tableExists(db, 'tasks') && columnExists(db, 'tasks', 'assigned_to')) {
+    try {
+      const rows = db
+        .prepare(
+          `SELECT assigned_to AS name, COUNT(*) AS open_count
+           FROM tasks WHERE workspace_id = ? AND status IN ('open','in_progress')
+           GROUP BY assigned_to HAVING open_count >= 5
+           ORDER BY open_count DESC LIMIT 2`,
+        )
+        .all(workspaceId) as Array<{ name: string; open_count: number }>
+      for (const r of rows) {
+        if (!r.name) continue
+        risks.push({
+          id: `risk-overload-${r.name}`,
+          kind: 'overloaded-employee',
+          title: `${r.name} may slip deliverables this week`,
+          watchFor: `${r.open_count} open tasks today — anything > 6 historically slips.`,
+          recommendedPrevention: 'Re-route ~20% of intake to a teammate or pause non-urgent work.',
+          confidence: r.open_count >= 8 ? 'high' : 'medium',
+          href: `/app/agents/${encodeURIComponent(r.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'))}/trace`,
+        })
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // Stale in-progress tasks
+  if (tableExists(db, 'tasks') && columnExists(db, 'tasks', 'updated_at')) {
+    try {
+      const cutoff = Math.floor(Date.now() / 1000) - 7 * 86_400
+      const row = db
+        .prepare(
+          `SELECT COUNT(*) AS stale FROM tasks
+           WHERE workspace_id = ? AND status IN ('open','in_progress')
+             AND COALESCE(updated_at, created_at) < ?`,
+        )
+        .get(workspaceId, cutoff) as { stale: number } | undefined
+      const stale = row?.stale ?? 0
+      if (stale >= 2) {
+        risks.push({
+          id: 'risk-stale-tasks',
+          kind: 'stale-task',
+          title: `${stale} tasks have not moved in 7+ days`,
+          watchFor: 'Stale work tends to age into missed deadlines or rework.',
+          recommendedPrevention: 'Open the task board and close, reassign, or re-prioritize each.',
+          confidence: 'medium',
+          href: '/app/tasks',
+        })
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // Escalating skills
+  for (const s of skillsInventory(workspaceId)) {
+    if (s.state === 'warning' && s.uses >= 4) {
+      risks.push({
+        id: `risk-escalating-${s.slug}`,
+        kind: 'escalating-skill',
+        title: `${s.label} likely to escalate again`,
+        watchFor: s.recommendation ?? 'Escalation rate trending up.',
+        recommendedPrevention: 'Review the upstream workflow before its next activation.',
+        confidence: 'medium',
+        href: `/app/skills/${encodeURIComponent(s.slug)}`,
+      })
+    }
+  }
+
+  return risks.slice(0, 5)
 }

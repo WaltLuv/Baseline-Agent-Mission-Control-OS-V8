@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useDemoMode } from './demo-mode-provider'
 import { SkillRoiLeaderboard } from '@/components/baseline-os/skill-roi-leaderboard'
+import { WorkforceOptimizationCard } from '@/components/baseline-os/workforce-optimization-card'
 import { ShareBriefingButton } from './share-briefing-button'
 import { CountUp } from '@/components/motion/count-up'
 import { MetricTooltip } from '@/components/ui/metric-tooltip'
@@ -79,6 +80,7 @@ export function ExecutiveBriefing() {
           nextAction={narrative.nextAction}
         />
         <SkillRoiLeaderboard />
+        <WorkforceOptimizationCard />
       </div>
     )
   }
@@ -105,6 +107,7 @@ export function ExecutiveBriefing() {
           nextAction={live.nextAction}
         />
         <SkillRoiLeaderboard />
+        <WorkforceOptimizationCard />
       </div>
     )
   }

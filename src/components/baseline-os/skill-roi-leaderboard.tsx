@@ -10,7 +10,7 @@ interface SkillLeader {
   uses: number
   employees: string[]
   primaryEmployeeSlug: string | null
-  state: 'active' | 'warning' | 'inactive'
+  state: 'active' | 'warning' | 'inactive' | 'proven'
   trend: 'up' | 'flat' | 'down'
 }
 
@@ -69,7 +69,23 @@ export function SkillRoiLeaderboard() {
             </span>
             <div className="flex-1">
               <div className="flex items-baseline justify-between gap-2">
-                <p className="text-sm font-medium text-foreground">{s.label}</p>
+                <p className="text-sm font-medium text-foreground">
+                  <Link
+                    href={`/app/skills/${encodeURIComponent(s.slug)}`}
+                    className="hover:underline"
+                    data-testid={`skill-roi-link-${s.slug}`}
+                  >
+                    {s.label}
+                  </Link>
+                  {s.state === 'proven' && (
+                    <span
+                      data-testid={`skill-proven-badge-${s.slug}`}
+                      className="ml-2 inline-flex items-center rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[9px] uppercase tracking-wider text-primary"
+                    >
+                      Proven capability
+                    </span>
+                  )}
+                </p>
                 <p
                   className={`text-sm font-semibold ${
                     s.valueUsdThisMonth > 0 ? 'text-emerald-300' : 'text-muted-foreground'
