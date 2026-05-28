@@ -499,6 +499,40 @@ export function AgentSquadPanelPhase3() {
                     </div>
                   </div>
 
+                  {/* Currently working on — keeps the workforce feeling alive. */}
+                  <div
+                    className="mb-3 flex items-center gap-1.5 text-[11px]"
+                    data-testid={`ai-employee-working-on-${agent.id}`}
+                  >
+                    <span
+                      className={`inline-block h-1.5 w-1.5 rounded-full ${
+                        agent.status === 'busy'
+                          ? 'bg-emerald-400 motion-safe:animate-pulse'
+                          : agent.status === 'idle'
+                          ? 'bg-sky-400'
+                          : agent.status === 'error'
+                          ? 'bg-red-400'
+                          : 'bg-muted-foreground/40'
+                      }`}
+                    />
+                    {agent.last_activity ? (
+                      <span className="truncate text-foreground/80">
+                        <span className="text-muted-foreground">Working on </span>
+                        {agent.last_activity}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground/80">
+                        {agent.status === 'busy'
+                          ? 'Executing a task right now'
+                          : agent.status === 'idle'
+                          ? 'Available · standing by'
+                          : agent.status === 'error'
+                          ? 'Needs attention'
+                          : 'Offline'}
+                      </span>
+                    )}
+                  </div>
+
                   {/* Task stats — inline */}
                   {taskStatsLine && (
                     <div className="text-xs text-muted-foreground mb-2 pl-0.5">

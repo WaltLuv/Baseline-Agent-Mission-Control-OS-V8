@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useRefreshConfig } from '@/lib/refresh-prefs'
 
 /**
@@ -55,6 +56,22 @@ export function WorkforceMemoryFeed({ agentSlug, limit = 25 }: { agentSlug?: str
   const refresh = useRefreshConfig()
   const [items, setItems] = useState<MemoryItem[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // Cinematic deep-link continuity:
+  //   Briefing citation → /app/memory-feed?id=<id>
+  //   This block scrolls that row into view and pulses it gently so the
+  //   operator immediately sees why they landed here.
+  const searchParams = useSearchParams()
+  const focusId = searchParams?.get('id')
+  const focusAgent = searchParams?.get('agent')
+  const focusedRef = useRef<HTMLLIElement | null>(null)
+  useEffect(() => {
+    if (!focusId || !items || items.length === 0) return
+    const t = window.setTimeout(() => {
+      focusedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 200)
+    return () => window.clearTimeout(t)
+  }, [focusId, items])
 
   useEffect(() => {
     let cancelled = false
@@ -119,11 +136,21 @@ export function WorkforceMemoryFeed({ agentSlug, limit = 25 }: { agentSlug?: str
         <ol className="space-y-2.5" data-testid="memory-feed-list">
           {items.map((it) => {
             const meta = KIND_LABEL[it.kind] ?? { label: it.kind, tone: 'text-muted-foreground border-border/40 bg-card/30' }
+            const isFocused = focusId && String(it.id) === focusId
+            const matchesAgent = focusAgent && it.agentSlug && it.agentSlug === focusAgent
             return (
               <li
                 key={it.id}
+                ref={isFocused ? focusedRef : undefined}
                 data-testid={`memory-item-${it.id}`}
-                className="rounded-lg border border-border/40 bg-card/20 p-3 transition-colors hover:border-border/60"
+                data-focused={isFocused ? 'true' : undefined}
+                className={`rounded-lg border p-3 transition-colors ${
+                  isFocused
+                    ? 'border-primary/70 bg-primary/[0.06] ring-1 ring-primary/40 motion-safe:animate-[pulseSoft_2.4s_ease-in-out_2]'
+                    : matchesAgent
+                    ? 'border-primary/40 bg-primary/[0.03]'
+                    : 'border-border/40 bg-card/20 hover:border-border/60'
+                }`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">

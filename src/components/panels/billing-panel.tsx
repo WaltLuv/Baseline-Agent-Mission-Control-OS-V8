@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
@@ -339,21 +340,21 @@ export function BillingPanel() {
                 <div className="space-y-2">
                   {topAgents.map(a => (
                     <div key={a.agent_id || 'unknown'} className="flex items-center justify-between text-sm">
-                      <a
+                      <Link
                         href={`/app/agents?focus=${encodeURIComponent(a.agent_name || '')}`}
                         data-testid={`billing-top-agent-link-${a.agent_id || 'unknown'}`}
                         className="text-foreground hover:underline"
                       >
                         {a.agent_name || 'Unknown AI Employee'}
-                      </a>
+                      </Link>
                       <div className="flex gap-4">
-                        <a
+                        <Link
                           href={`/app/tasks/kanban?agent=${encodeURIComponent(a.agent_name || '')}`}
                           data-testid={`billing-top-agent-tasks-link-${a.agent_id || 'unknown'}`}
                           className="text-muted-foreground hover:text-primary hover:underline"
                         >
                           {a.task_count} tasks completed
-                        </a>
+                        </Link>
                         <span className="font-mono text-amber-400">{formatCredits(a.total_credits)} credits</span>
                       </div>
                     </div>

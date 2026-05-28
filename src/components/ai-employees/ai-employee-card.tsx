@@ -10,6 +10,8 @@ interface AIEmployeeCardProps {
   workloadPercent?: number
   recentTaskCount?: number
   trustScore?: number
+  /** One-line "what they're working on right now" — surfaces life. */
+  currentlyWorkingOn?: string | null
   onClick?: () => void
   className?: string
   testIdSuffix?: string
@@ -32,6 +34,7 @@ export function AIEmployeeCard({
   workloadPercent,
   recentTaskCount,
   trustScore,
+  currentlyWorkingOn,
   onClick,
   className,
   testIdSuffix,
@@ -87,6 +90,35 @@ export function AIEmployeeCard({
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground italic">{identity.personality}</p>
           <p className="mt-1 text-xs text-foreground/90">{identity.mission}</p>
+
+          {/* Currently working on — keeps the workforce feeling alive. */}
+          <div
+            className="mt-2 flex items-center gap-1.5 text-[11px]"
+            data-testid={`ai-employee-status-${slug}`}
+          >
+            <span
+              className={cn(
+                'inline-block h-1.5 w-1.5 rounded-full',
+                status === 'active' && 'bg-emerald-400 motion-safe:animate-pulse',
+                status === 'idle' && 'bg-sky-400',
+                status === 'paused' && 'bg-amber-400',
+                status === 'offline' && 'bg-muted-foreground/40',
+              )}
+            />
+            {currentlyWorkingOn ? (
+              <span className="truncate text-foreground/80">
+                <span className="text-muted-foreground">Working on </span>
+                {currentlyWorkingOn}
+              </span>
+            ) : (
+              <span className="text-muted-foreground/80">
+                {status === 'active' && 'Available · standing by'}
+                {status === 'idle' && 'Idle · waiting for work'}
+                {status === 'paused' && 'Paused by operator'}
+                {status === 'offline' && 'Offline'}
+              </span>
+            )}
+          </div>
 
           <div className="mt-2 flex flex-wrap gap-1">
             {identity.strengths.map((s) => (

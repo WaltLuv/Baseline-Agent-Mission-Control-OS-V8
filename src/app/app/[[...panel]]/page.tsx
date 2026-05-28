@@ -8,6 +8,8 @@ import { LiveFeed } from '@/components/layout/live-feed'
 import { DemoModeProvider } from '@/components/demo/demo-mode-provider'
 import { ExecutiveBriefing } from '@/components/demo/executive-briefing'
 import { WorkforceHealthV2 } from '@/components/baseline-os/workforce-health-v2'
+import { BaselineSystemIdentityStrip } from '@/components/baseline-os/baseline-system-identity-strip'
+import { WorkforceActivatedNotice } from '@/components/activation/workforce-activated-notice'
 import { Dashboard } from '@/components/dashboard/dashboard'
 import { LogViewerPanel } from '@/components/panels/log-viewer-panel'
 import { CronManagementPanel } from '@/components/panels/cron-management-panel'
@@ -536,7 +538,9 @@ function ContentRouter({ tab }: { tab: string }) {
     case 'overview':
       return (
         <>
+          <WorkforceActivatedNotice />
           <div className="p-4 space-y-4">
+            <BaselineSystemIdentityStrip />
             <ExecutiveBriefing />
             <WorkforceHealthV2 />
           </div>

@@ -793,3 +793,100 @@ mod   src/app/globals.css                              (hireShimmer keyframe)
 - **P3** Email SMTP inline send path (current SMTP_HOST flag returns
   copy fallback)
 
+
+---
+
+## 16. Iteration 10 — Polish + Identity Pass (Feb 2026)
+
+User mandate: shift from feature accumulation to **polish + identity**.
+Continuity. Responsiveness. Cinematic UX. Emotional clarity. No
+scope explosion. No Studios. Make Mission Control feel like Apple-level
+AI workforce software, not an engineering experiment.
+
+### 16.1 — Kill jitter on every internal deep-link
+- Converted all `<a href>` internal navigation to `next/link` in:
+  - `executive-briefing.tsx` — COO row, next-action, memory citations
+  - `panels/activity-feed-panel.tsx` — actor, task, cost, agent, memory links (6 points)
+  - `panels/billing-panel.tsx` — top-employee profile + tasks links
+- Result: clicks now SPA-navigate. No full-page reload. No demo-mode
+  reset. No scroll jump. No briefing flash.
+
+### 16.2 — Cinematic continuity: briefing → memory feed
+- Memory feed now reads `?id=<n>` and `?agent=<name>` from the URL.
+- When a citation link from the briefing is clicked, the matching row
+  in the memory feed:
+  - **scrolls into view** smoothly (200ms after mount)
+  - **highlights** with a primary-color ring + soft pulse for 2 cycles
+- Agent-scoped deep-links (`?agent=…`) tint the agent's rows
+  differently so the operator can scan that employee's recent thinking.
+
+### 16.3 — Onboarding wow: workforce-activated notice
+- New `<WorkforceActivatedNotice>` mounts on `/app/overview`.
+- Reads `?activated=1&source=onboarding|setup|manual` from the URL.
+- Source-aware copy:
+  - onboarding → "Workforce activated from your starter template. Today's briefing is below."
+  - setup → "Account created. Your AI workforce is online and reporting in."
+  - manual → "Workforce reactivated. Reading today's briefing."
+- Auto-dismisses after 6 seconds. Calm emerald pill, bottom-center,
+  one-line. Single dismiss control. Never traps the operator.
+- `<WorkforceActivationSequence>` now forwards `source` into the final
+  redirect target so the loop completes.
+
+### 16.4 — Workforce realism: "currently working on"
+- New `currentlyWorkingOn` prop on `<AIEmployeeCard>` plus matching
+  visual treatment in the live squad panel.
+- For each AI employee:
+  - If `last_activity` is present → renders **"Working on <activity>"**
+  - Else, surfaces a calm status copy:
+    - busy → "Executing a task right now"
+    - idle → "Available · standing by"
+    - error → "Needs attention"
+    - offline → "Offline"
+- Status dot pulses softly only when the employee is actively `busy`.
+  No constant pulsing on idle — calm, not nervous.
+
+### 16.5 — Baseline OS identity made visible
+- New `<BaselineSystemIdentityStrip>` mounts at the top of
+  `/app/overview`: a single-row, premium pill that reads
+  **Mission Control · supervises · Baseline OS · directs · AI Workforce**
+  with the subtitle "Dashboard · Intelligence · Execution".
+- Not interactive. Not animated. Just the executive "Powered by" of
+  the AI workforce world — operators internalize the 3-layer model in
+  a glance.
+
+### 16.6 — Verification
+| Gate | Status |
+|------|--------|
+| `tsc --noEmit` | ✅ 0 errors |
+| `eslint .` | ✅ 0 errors |
+| `vitest run` | ✅ **976 / 976 passing** |
+| `next build` | ✅ Compiled in 61s, 137/137 pages |
+| `/app/overview?activated=1&source=onboarding` | ✅ identity strip + activation notice visible |
+| `/app/memory-feed?id=6` | ✅ focused row scrolled into view + ring + pulse |
+| `/app/agents` (squad panel) | ✅ each card shows "Working on …" / status copy |
+| Briefing memory citation click | ✅ SPA navigation, no full reload, no demo reset |
+
+### 16.7 — Files touched
+```
+new   src/components/activation/workforce-activated-notice.tsx
+new   src/components/baseline-os/baseline-system-identity-strip.tsx
+mod   src/components/demo/executive-briefing.tsx                  (a → Link x4)
+mod   src/components/panels/activity-feed-panel.tsx               (a → Link x6)
+mod   src/components/panels/billing-panel.tsx                     (a → Link x2)
+mod   src/components/workforce/workforce-memory-feed.tsx          (id/agent focus + scroll + pulse)
+mod   src/components/activation/workforce-activation-sequence.tsx (forwards source to overview)
+mod   src/components/ai-employees/ai-employee-card.tsx            (currentlyWorkingOn prop)
+mod   src/components/panels/agent-squad-panel-phase3.tsx          (live "Working on …" line)
+mod   src/app/app/[[...panel]]/page.tsx                           (mount notice + identity strip)
+```
+
+### 16.8 — Backlog still deferred (per mandate)
+- Baseline Studios authoring app — separate product roadmap (NOT in
+  Mission Control)
+- Live Pinecone & Notion ingestion — Obsidian carries the demo story
+- Demo workspace storylines (CPA / Law / Property) — pre-seeded
+  narratives that play out across the day
+- Full AI Employee "Life" signals (collaboration graph, escalation
+  history, confidence trajectory)
+- SMTP inline send path (Resend / SendGrid already covered)
+

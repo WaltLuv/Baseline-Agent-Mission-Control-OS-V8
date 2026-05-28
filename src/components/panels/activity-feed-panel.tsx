@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
@@ -109,14 +110,14 @@ function ActivityRow({ activity }: { activity: Activity }) {
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1">
               <p className="text-foreground text-sm">
-                <a
+                <Link
                   href={`/app/agents?focus=${encodeURIComponent(activity.actor)}`}
                   data-testid={`activity-actor-link-${activity.id}`}
                   className="font-medium text-primary hover:underline"
                   title="Open this AI employee's profile"
                 >
                   {activity.actor}
-                </a>{' '}
+                </Link>{' '}
                 <span className={activityColors[activity.type] || 'text-muted-foreground'}>
                   {activity.description}
                 </span>
@@ -127,38 +128,38 @@ function ActivityRow({ activity }: { activity: Activity }) {
                   {activity.entity.type === 'task' && (
                     <div>
                       <span className="text-muted-foreground">{t('entityTask')}</span>
-                      <a
+                      <Link
                         href={`/app/tasks/kanban${activity.entity.id ? `#task-${activity.entity.id}` : ''}`}
                         data-testid={`activity-task-link-${activity.id}`}
                         className="text-foreground ml-1 hover:underline"
                       >
                         {activity.entity.title}
-                      </a>
+                      </Link>
                       {activity.entity.status && (
                         <span className="ml-2 px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[10px]">
                           {activity.entity.status}
                         </span>
                       )}
-                      <a
+                      <Link
                         href={`/app/billing?event=task-${activity.entity.id ?? ''}`}
                         data-testid={`activity-cost-link-${activity.id}`}
                         className="ml-2 text-[10px] text-muted-foreground/70 hover:text-primary hover:underline"
                         title="See the credit cost of this task"
                       >
                         cost →
-                      </a>
+                      </Link>
                     </div>
                   )}
                   {activity.entity.type === 'comment' && (
                     <div>
                       <span className="text-muted-foreground">{t('entityCommentOn')}</span>
-                      <a
+                      <Link
                         href={`/app/tasks/kanban${activity.entity.id ? `#task-${activity.entity.id}` : ''}`}
                         data-testid={`activity-comment-task-link-${activity.id}`}
                         className="text-foreground ml-1 hover:underline"
                       >
                         {activity.entity.task_title}
-                      </a>
+                      </Link>
                       {activity.entity.content_preview && (
                         <div className="mt-1 text-muted-foreground/70 italic">
                           &quot;{activity.entity.content_preview}...&quot;
@@ -169,26 +170,26 @@ function ActivityRow({ activity }: { activity: Activity }) {
                   {activity.entity.type === 'agent' && (
                     <div>
                       <span className="text-muted-foreground">{t('entityAgent')}</span>
-                      <a
+                      <Link
                         href={`/app/agents?focus=${encodeURIComponent(activity.entity.name ?? '')}`}
                         data-testid={`activity-agent-link-${activity.id}`}
                         className="text-foreground ml-1 hover:underline"
                       >
                         {activity.entity.name}
-                      </a>
+                      </Link>
                       {activity.entity.status && (
                         <span className="ml-2 px-1.5 py-0.5 bg-green-500/10 text-green-400 rounded text-[10px]">
                           {activity.entity.status}
                         </span>
                       )}
-                      <a
+                      <Link
                         href={`/app/memory-feed?agent=${encodeURIComponent(activity.entity.name ?? '')}`}
                         data-testid={`activity-agent-memory-link-${activity.id}`}
                         className="ml-2 text-[10px] text-muted-foreground/70 hover:text-primary hover:underline"
                         title="See this employee's memory feed"
                       >
                         memory →
-                      </a>
+                      </Link>
                     </div>
                   )}
                 </div>

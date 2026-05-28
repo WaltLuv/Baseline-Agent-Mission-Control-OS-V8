@@ -38,7 +38,10 @@ export function WorkforceActivationSequence() {
   const reducedMotion = useReducedMotion()
 
   const [step, setStep] = useState(reducedMotion ? STEPS.length : 0)
-  const target = useMemo(() => '/app/overview', [])
+  const target = useMemo(
+    () => `/app/overview?activated=1&source=${encodeURIComponent(source)}`,
+    [source],
+  )
 
   // Esc to skip
   useEffect(() => {
