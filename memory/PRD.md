@@ -484,3 +484,170 @@ mod   src/components/demo/executive-briefing.tsx
 - Onboarding chained into `/app/activate` post-setup.
 - "Why this matters" copy layer on every metric.
 - Cross-system identity alignment doc.
+
+
+---
+
+## 14. Iteration 8 — Operator-grade polish + Baseline OS doctrine (Feb 2026)
+
+User mandate: execute as ONE integrated pass — full validation first, then
+ship every high-payoff polish item + integrate the Baseline OS intelligence
+/ memory architecture + phone-home docs + self-hosted clarity. No
+mini-phases. One consolidated report.
+
+### 14.1 — Validation gate (baseline + final)
+- TypeScript: `tsc --noEmit` → **0 errors**.
+- ESLint: `eslint .` → **0 errors** (1 pre-existing Next.js warning).
+- Vitest: **972 / 972 passing** (was 964; +8 new tests for CountUp easing
+  and optimization-report validator).
+- `next build` → **Compiled successfully in 60s**, 138/138 pages.
+- Fixed pre-existing `refresh-prefs.tsx` "Cannot update ref during render"
+  React 19 violation (moved `loaderRef.current = loader` into an effect).
+- Fixed pre-existing unescaped apostrophe in `agent-history-panel.tsx`.
+
+### 14.2 — Cinematic onboarding hand-off (WS2)
+- `src/app/setup/page.tsx` → after successful account creation, routes to
+  `/app/activate?source=setup` instead of dumping straight into the
+  dashboard.
+- `src/app/onboarding/page.tsx` → "Open Mission Control" CTA renamed to
+  **"Activate Workforce →"** and routes to `/app/activate?source=onboarding`.
+- `src/components/activation/workforce-activation-sequence.tsx` rewritten
+  to be **operator-safe**:
+  - Adds a **Skip activation →** pill button (always visible, top-right).
+  - Listens for **Escape** to skip.
+  - Respects `prefers-reduced-motion` — collapses to a 700ms fade and
+    routes immediately, no scanline, no pulse.
+  - `data-source` attribute reflects the funnel origin (`manual` |
+    `onboarding` | `setup`) so analytics can split-cohort.
+  - Source-aware copy: "Account created. Workforce initialization in
+    progress." vs. "Template deployed. Workforce initialization in
+    progress."
+  - Subtitle now reads **"Workforce Activation · Powered by Baseline OS"**.
+  - No `router.refresh`, no full reload, no demo reset.
+
+### 14.3 — Briefing motion (WS3)
+- New `src/components/motion/count-up.tsx` — calm easeOutCubic CountUp
+  honoring `prefers-reduced-motion`. CFO-grade, no bounce, no spring.
+- Wired into Executive Briefing:
+  - `$value` and `hours saved` animate up on mount and on data change.
+  - New `briefing-last-updated` line — "Updated 3:42 AM" so the operator
+    knows the numbers are live.
+  - Attention card gets a calm `pulseSoft` keyframe (3.6s loop, 0→6px
+    amber halo). No flash, no neon.
+  - Star AI Employee card carries a subtle ring + hover-intensifier.
+- Easing math locked in by 5 vitest unit tests.
+
+### 14.4 — Cross-panel deep-links (WS4)
+- Activity Feed now links every meaningful entity:
+  - **Actor** → `/app/agents?focus=<name>`
+  - **Task entity** → `/app/tasks/kanban#task-<id>` + a `cost →` deep-link
+    to the billing event
+  - **Comment entity** → task deep-link
+  - **Agent entity** → `/app/agents?focus=<name>` + `memory →` to
+    `/app/memory-feed?agent=<name>`
+- Billing panel "Top AI Employees by Workforce Credit Usage" rows are now
+  three-way clickable: employee profile, that employee's tasks, credits
+  column.
+- Executive Briefing COO row already deep-linked (iter 13) — preserved.
+- The complete activity → employee → memory → billing → task loop is now
+  navigable from any starting point.
+
+### 14.5 — Baseline OS doctrine wired (WS5–WS7)
+- `WorkforceHealthV2` mounted at the top of `/app/overview` directly under
+  the Executive Briefing. Renders 8 sub-dimensions with score · trend ·
+  "why changed" · "fix" — computed by Baseline OS, rendered by Mission
+  Control.
+- `POST /api/optimization/report` — new phone-home endpoint for AI
+  Employees to push optimization signals (`bottleneck` · `underused` ·
+  `overloaded` · `roi` · `cost` · `risk`) with impact, confidence,
+  rationale, and a suggested next action. Persisted into
+  `workforce_memory` with `kind='baseline-os.optimization'` for full
+  provenance. Live-verified: `{"ok":true,"id":4,"kind":"bottleneck","impact":"high"}`.
+
+### 14.6 — Memory architecture documentation (WS6)
+Five canonical docs created so the customer + integrators understand
+exactly what each layer does and what stays private:
+- `docs/architecture/BASELINE_OS_MEMORY_LAYERS.md` — the 3-layer model
+  (Operator Memory · Knowledge Intelligence · Business Knowledge Base)
+  + Layer 0 internal memory.
+- `docs/security/MEMORY_PRIVACY_MODEL.md` — hard rules, threat model,
+  operator controls, what we deliberately don't do.
+- `docs/integrations/OBSIDIAN_CONNECTOR.md`
+- `docs/integrations/PINECONE_CONNECTOR.md`
+- `docs/integrations/NOTION_CONNECTOR.md`
+
+### 14.7 — Phone-home architecture documentation (WS7)
+- `docs/architecture/AGENT_PHONE_HOME.md` — canonical reference for AI
+  Employee integrators. Documents all six endpoints, the workspace-
+  scoped security model, and the Native Triple Threat Stack (Hermes /
+  OpenClaw / Claude Code) with framework adapters as optional.
+
+### 14.8 — Cross-system identity alignment (WS5)
+- `docs/architecture/SYSTEM_IDENTITY_ALIGNMENT.md` — canonical doc
+  explaining where Baseline OS · Mission Control · Hermes · OpenClaw ·
+  Claude Code · Baseline Studios end and begin. Sets customer-facing
+  naming rules (Agents → AI Employees, Tokens → Workforce Credits,
+  Claude OS → Baseline OS, etc.).
+
+### 14.9 — Self-hosted / cost clarity (WS9)
+- `docs/self-hosting/COST_AND_DEPLOYMENT.md` — the "Mission Control costs
+  zero tokens; AI employees do" message in operator language, with
+  ASCII architecture diagram + production go-live checklist.
+
+### 14.10 — Verification (WS11)
+| Gate | Status |
+|------|--------|
+| `tsc --noEmit` | ✅ 0 errors |
+| `eslint .` | ✅ 0 errors |
+| `vitest run` | ✅ 972 / 972 green |
+| `next build` | ✅ Compiled in 60s, 138/138 pages |
+| `/api/briefing` | ✅ returns `{ valueCreatedMonthUsd: 2432, hoursSavedMonth: 51, highestRoiEmployee: {…} }` |
+| `/api/baseline-os/workforce-health` | ✅ 8 sub-dimensions, overall 82 |
+| `/api/baseline-os/memory-sources` | ✅ 4 layers (1 connected, 3 ready) |
+| `/api/optimization/report` | ✅ `{ ok:true, id:4, kind:'bottleneck' }` |
+| `/app/activate?source=onboarding` | ✅ cinematic sequence + Skip + reduced-motion |
+| `/app/overview` | ✅ briefing + COO row + WorkforceHealthV2 + count-up animation + last-updated stamp |
+| `/app/overview?demo=cpa` | ✅ "Tax season pressure is dropping. One reconciliation needs you." $11,900 |
+| `/app/settings/baseline-os-memory` | ✅ 4 layer cards render with connect/resync/disconnect controls |
+| Refresh stability | ✅ no router.refresh in demo switch; no scroll/state reset |
+
+### 14.11 — Files touched
+```
+new   src/components/motion/count-up.tsx
+new   src/components/motion/__tests__/count-up.test.tsx
+new   src/lib/__tests__/optimization-report.test.ts
+new   src/app/api/optimization/report/route.ts
+new   docs/architecture/BASELINE_OS_MEMORY_LAYERS.md
+new   docs/architecture/AGENT_PHONE_HOME.md
+new   docs/architecture/SYSTEM_IDENTITY_ALIGNMENT.md
+new   docs/security/MEMORY_PRIVACY_MODEL.md
+new   docs/integrations/OBSIDIAN_CONNECTOR.md
+new   docs/integrations/PINECONE_CONNECTOR.md
+new   docs/integrations/NOTION_CONNECTOR.md
+new   docs/self-hosting/COST_AND_DEPLOYMENT.md
+mod   src/components/activation/workforce-activation-sequence.tsx  (skip + reduced-motion + source-aware)
+mod   src/components/demo/executive-briefing.tsx                  (CountUp + pulseSoft + last-updated)
+mod   src/components/panels/activity-feed-panel.tsx               (5 deep-link points)
+mod   src/components/panels/billing-panel.tsx                     (top-employee deep links)
+mod   src/app/setup/page.tsx                                      (route to /app/activate)
+mod   src/app/onboarding/page.tsx                                 (route to /app/activate)
+mod   src/app/app/[[...panel]]/page.tsx                           (mount WorkforceHealthV2 under briefing)
+mod   src/app/globals.css                                         (+ pulseSoft keyframe)
+mod   src/lib/refresh-prefs.tsx                                   (React 19 ref-in-render fix)
+mod   src/components/panels/agent-history-panel.tsx               (escape apostrophe)
+```
+
+### 14.12 — Remaining backlog (P1/P2/P3)
+- P1 — Marketplace install animation on card click (modal showing
+  deployment progress) — *covered by `MarketplaceInstallModal` in iter
+  13, but could go even more cinematic with a sub-second hire shimmer*.
+- P1 — Wire Notion / Pinecone / Obsidian connectors to real sync jobs
+  (settings UI + docs are shipped; ingest workers are stubbed).
+- P2 — "Why this matters" hover/tooltip copy layer on every metric in
+  the briefing + workforce-health (currently in copy on the card; could
+  surface on hover too).
+- P2 — Baseline Studios authoring app for new skills/employees (separate
+  product).
+- P3 — Email provider integration (Resend / SendGrid send path) for the
+  briefing share channel — copy fallback still works.
+

@@ -117,9 +117,9 @@ export default function OnboardingWizardClient() {
             <Button
               className="flex-1"
               data-testid="onboarding-open-dashboard"
-              onClick={() => router.push("/")}
+              onClick={() => router.push("/app/activate?source=onboarding")}
             >
-              Open Mission Control →
+              Activate Workforce →
             </Button>
             <Button
               className="flex-1"

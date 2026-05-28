@@ -168,7 +168,8 @@ export default function SetupPage() {
       updateProgress(3, 'done')
 
       await new Promise((r) => setTimeout(r, 500))
-      window.location.href = '/app'
+      // Route into the cinematic Workforce Activation sequence, not raw dashboard.
+      window.location.href = '/app/activate?source=setup'
     } catch {
       updateProgress(1, 'error')
       setError(t('networkError'))

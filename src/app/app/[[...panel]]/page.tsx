@@ -7,6 +7,7 @@ import { HeaderBar } from '@/components/layout/header-bar'
 import { LiveFeed } from '@/components/layout/live-feed'
 import { DemoModeProvider } from '@/components/demo/demo-mode-provider'
 import { ExecutiveBriefing } from '@/components/demo/executive-briefing'
+import { WorkforceHealthV2 } from '@/components/baseline-os/workforce-health-v2'
 import { Dashboard } from '@/components/dashboard/dashboard'
 import { LogViewerPanel } from '@/components/panels/log-viewer-panel'
 import { CronManagementPanel } from '@/components/panels/cron-management-panel'
@@ -535,8 +536,9 @@ function ContentRouter({ tab }: { tab: string }) {
     case 'overview':
       return (
         <>
-          <div className="p-4">
+          <div className="p-4 space-y-4">
             <ExecutiveBriefing />
+            <WorkforceHealthV2 />
           </div>
           <Dashboard />
           {!isLocal && (

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useDemoMode } from './demo-mode-provider'
 import { ShareBriefingButton } from './share-briefing-button'
+import { CountUp } from '@/components/motion/count-up'
 
 interface LiveBriefing {
   briefingHeadline: string
@@ -190,9 +191,14 @@ function BriefingCard({
               {valueLabel}
             </p>
             <p className="mt-0.5 text-3xl font-bold text-emerald-400">
-              ${valueUsd.toLocaleString()}
+              <CountUp to={valueUsd} prefix="$" data-testid="briefing-value-amount" />
             </p>
-            <p className="text-xs text-muted-foreground">{hoursSaved} hours saved</p>
+            <p className="text-xs text-muted-foreground">
+              <CountUp to={hoursSaved} data-testid="briefing-hours-saved" /> hours saved
+            </p>
+            <p className="mt-1 text-[10px] text-muted-foreground/70" data-testid="briefing-last-updated">
+              Updated {new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+            </p>
           </div>
         </div>
       </div>
@@ -221,8 +227,9 @@ function BriefingCard({
         </div>
 
         <div
-          className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4"
+          className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 motion-safe:animate-[pulseSoft_3.6s_ease-in-out_infinite]"
           data-testid="briefing-attention"
+          data-has-items={attentionItems.length > 0 ? 'true' : 'false'}
         >
           <p className="text-xs font-semibold uppercase tracking-wider text-amber-400">
             Attention required ({attentionItems.length})
@@ -256,7 +263,7 @@ function BriefingCard({
           )}
         </div>
 
-        <div className="rounded-xl border border-primary/30 bg-primary/5 p-4" data-testid="briefing-top-employee">
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 ring-1 ring-primary/10 transition-shadow hover:ring-primary/30" data-testid="briefing-top-employee">
           <p className="text-xs font-semibold uppercase tracking-wider text-primary">Star AI employee</p>
           {topEmployee ? (
             <>

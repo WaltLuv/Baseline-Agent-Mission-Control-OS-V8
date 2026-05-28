@@ -339,9 +339,21 @@ export function BillingPanel() {
                 <div className="space-y-2">
                   {topAgents.map(a => (
                     <div key={a.agent_id || 'unknown'} className="flex items-center justify-between text-sm">
-                      <span className="text-foreground">{a.agent_name || 'Unknown AI Employee'}</span>
+                      <a
+                        href={`/app/agents?focus=${encodeURIComponent(a.agent_name || '')}`}
+                        data-testid={`billing-top-agent-link-${a.agent_id || 'unknown'}`}
+                        className="text-foreground hover:underline"
+                      >
+                        {a.agent_name || 'Unknown AI Employee'}
+                      </a>
                       <div className="flex gap-4">
-                        <span className="text-muted-foreground">{a.task_count} tasks completed</span>
+                        <a
+                          href={`/app/tasks/kanban?agent=${encodeURIComponent(a.agent_name || '')}`}
+                          data-testid={`billing-top-agent-tasks-link-${a.agent_id || 'unknown'}`}
+                          className="text-muted-foreground hover:text-primary hover:underline"
+                        >
+                          {a.task_count} tasks completed
+                        </a>
                         <span className="font-mono text-amber-400">{formatCredits(a.total_credits)} credits</span>
                       </div>
                     </div>

@@ -318,6 +318,13 @@
     50% { transform: scale(1.3); opacity: 0.7; }
   }
 
+  /* Briefing attention card — calm, premium pulse (CFO-grade, not gaming) */
+  @keyframes pulseSoft {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+    50%      { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.06); }
+  }
+
+
   /* Shimmer loading */
   .shimmer {
     background: linear-gradient(

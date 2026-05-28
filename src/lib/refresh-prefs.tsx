@@ -177,7 +177,9 @@ export function useAutoRefresh(
 ): () => void {
   const cfg = useRefreshConfig()
   const loaderRef = useRef(loader)
-  loaderRef.current = loader
+  useEffect(() => {
+    loaderRef.current = loader
+  }, [loader])
 
   const runNow = useCallback(() => {
     try {
