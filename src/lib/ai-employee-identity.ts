@@ -24,6 +24,91 @@ export interface AIEmployeeIdentity {
   avatar: string
   /** Trust band default. */
   trustBand: 'high' | 'medium' | 'building'
+  /** Operational style — how this employee approaches work. */
+  operationalStyle?:
+    | 'Precise & Analytical'
+    | 'Aggressive Follow-Up'
+    | 'High-Touch Client Tone'
+    | 'Fast Execution / Low Creativity'
+    | 'Strategic / Executive Reporting'
+    | 'Calm & Tenant-Empathetic'
+    | 'Detail-Obsessed'
+    | 'Numbers-First'
+  /** Communication tone the operator should expect in chat/handoffs. */
+  communicationTone?: string
+  /** Escalation style — when this employee asks the operator for help. */
+  escalationStyle?: 'asks-early' | 'asks-late' | 'self-resolves'
+  /** Execution preference. */
+  executionPreference?: 'speed' | 'precision' | 'balanced'
+  /** Memory profile — what context this employee builds over time. */
+  memoryProfile?: 'customer-relationships' | 'operational-state' | 'compliance-history' | 'financial-history' | 'pipeline-history'
+}
+
+/**
+ * Derive operational dimensions from a base identity. We keep the catalog
+ * lightweight; dimensions are derived deterministically from existing fields
+ * (personality, strengths) so we don't need to author them by hand. This
+ * function is pure — same input always returns the same output.
+ */
+export function deriveOperationalDimensions(
+  base: AIEmployeeIdentity,
+): Required<Pick<AIEmployeeIdentity, 'operationalStyle' | 'communicationTone' | 'escalationStyle' | 'executionPreference' | 'memoryProfile'>> {
+  const p = base.personality.toLowerCase()
+  const strengths = base.strengths.map((s) => s.toLowerCase()).join(' ')
+
+  const operationalStyle: AIEmployeeIdentity['operationalStyle'] = p.includes('strategic')
+    ? 'Strategic / Executive Reporting'
+    : p.includes('numbers') || p.includes('frugal')
+    ? 'Numbers-First'
+    : p.includes('detail') || p.includes('precise') || p.includes('thorough')
+    ? 'Precise & Analytical'
+    : p.includes('persistent') || strengths.includes('follow-up')
+    ? 'Aggressive Follow-Up'
+    : p.includes('warm') || p.includes('friendly')
+    ? 'High-Touch Client Tone'
+    : p.includes('quick') || p.includes('fast')
+    ? 'Fast Execution / Low Creativity'
+    : p.includes('calm')
+    ? 'Calm & Tenant-Empathetic'
+    : 'Precise & Analytical'
+
+  const communicationTone = p.includes('warm')
+    ? 'Plain-spoken, warm, owner-facing.'
+    : p.includes('skeptical')
+    ? 'Direct, evidence-led, honest about risk.'
+    : p.includes('numbers')
+    ? 'Concise, numeric, no fluff.'
+    : p.includes('strategic')
+    ? 'Executive-level, business-first.'
+    : p.includes('cool')
+    ? 'Calm under pressure, operational.'
+    : 'Polite, clear, action-oriented.'
+
+  const escalationStyle: NonNullable<AIEmployeeIdentity['escalationStyle']> =
+    base.trustBand === 'high'
+      ? 'asks-late'
+      : base.trustBand === 'medium'
+      ? 'asks-early'
+      : 'asks-early'
+
+  const executionPreference: NonNullable<AIEmployeeIdentity['executionPreference']> =
+    p.includes('quick') || p.includes('fast')
+      ? 'speed'
+      : p.includes('detail') || p.includes('precise') || p.includes('thorough') || p.includes('skeptical')
+      ? 'precision'
+      : 'balanced'
+
+  const memoryProfile: NonNullable<AIEmployeeIdentity['memoryProfile']> = strengths.includes('client')
+    ? 'customer-relationships'
+    : strengths.includes('compliance')
+    ? 'compliance-history'
+    : strengths.includes('cost') || strengths.includes('margin') || strengths.includes('pricing')
+    ? 'financial-history'
+    : strengths.includes('lead') || strengths.includes('pipeline') || strengths.includes('quote')
+    ? 'pipeline-history'
+    : 'operational-state'
+
+  return { operationalStyle, communicationTone, escalationStyle, executionPreference, memoryProfile }
 }
 
 const CATALOG: AIEmployeeIdentity[] = [

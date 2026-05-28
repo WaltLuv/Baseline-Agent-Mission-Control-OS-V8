@@ -11,6 +11,28 @@ export default defineConfig(async () => {
     test: {
       environment: 'jsdom',
       globals: true,
+      // Run tests inside worker threads instead of forked child processes so
+      // they share the parent Vitest's Node ABI. This avoids a recurring
+      // "Module did not self-register" / NODE_MODULE_VERSION mismatch when
+      // the test files load native modules (better-sqlite3) — the system
+      // /usr/bin/node may be a different major version than the Node we
+      // build the binding against. With `pool: 'threads'` the workers run
+      // in-process via worker_threads, so the binding loaded once in the
+      // parent is reused.
+      pool: 'threads' as const,
+      poolOptions: {
+        threads: {
+          singleThread: true,
+        },
+        forks: {
+          singleFork: true,
+        },
+      },
+      // Files that mutate process.cwd() can't run in worker_threads. Route
+      // them through the forks pool which spawns child processes.
+      poolMatchGlobs: [
+        ['**/security-scan-fix-route.test.ts', 'forks'],
+      ] as Array<[string, 'forks' | 'threads']>,
       setupFiles: ['src/test/setup.ts'],
       include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
       coverage: {

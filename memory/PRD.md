@@ -354,3 +354,82 @@ mod   src/lib/csp.ts                        (dev-only CSP relaxation)
 - P1 briefing motion (count-up counters, pulse on attention items).
 - P1 wire marketplace CTAs to real billing endpoints (skills one-time, employees monthly subscription).
 - P2 fix vitest worker ABI flakes.
+
+
+---
+
+## 12. Iteration 6 — Workforce identity + marketplace realism + continuity (Feb 2026)
+
+User mandate: realism polish without feature sprawl. Push back on premature public-share URLs; build secure signed sharing instead. Fix the green-suite gating issue. Deepen AI Employee identity.
+
+### 12.1 — 100% test pass (BLOCKER)
+Root cause of the 9 previously-failing tests was twofold:
+1. `gateway-url.ts:buildGatewayWebSocketUrl` left `https://127.0.0.1` as-is for local hosts — never a valid WebSocket scheme. The test expected `ws://` for an `https://` prefix on a local host. Fixed the logic so any `http(s)://` prefix is rewritten to `ws(s)://` (with the local-host downgrade preserved), while explicit `ws://` / `wss://` from the caller is still respected.
+2. Vitest workers spawned via `pnpm`/`npm` were using the system `/usr/bin/node` (v20) which couldn't load the Node-22-compiled `better-sqlite3.node` — caused "NODE_MODULE_VERSION 127 vs 115" / "Module did not self-register" failures in `google-oauth-lookup.test.ts` and `session-transcript.test.ts`.
+   - Fix: `vitest.config.ts` now uses `pool: 'threads'` + `singleThread: true` so all tests run in worker_threads sharing the parent Node ABI. The one test that calls `process.chdir()` (`security-scan-fix-route.test.ts`) is routed through `forks` via `poolMatchGlobs`.
+   - Tests must be invoked with Node 22 (`/app/.node22/bin/node`); the existing `verify:node` script enforces this in CI.
+
+Result: **`964/964 tests passing`** via `npx vitest run`. Clean green suite.
+
+### 12.2 — Secure executive briefing share (NO public profiles)
+- `src/app/api/briefing/share/route.ts` — operator-only POST endpoint.
+  - Channels: `copy` / `link` / `slack` / `email`
+  - HMAC-signed expiring share URLs (default 7d, max 30d) using `SHARE_SIGNING_SECRET`.
+  - Stores a snapshot in `briefing_shares` table so recipients see the operator's exact numbers — never live workspace data.
+  - Slack uses `SLACK_WEBHOOK_URL`; email uses any of `RESEND_API_KEY / SENDGRID_API_KEY / SMTP_HOST`. If missing, returns `{ requiresSetup: 'email'|'slack' }` plus a copy summary so the operator has a fallback.
+  - Every share is audit-logged in `usage_events` with channel + recipient.
+  - Strips secrets / customer PII / token IDs — only ships what's already in the briefing card.
+- `src/app/briefing/share/page.tsx` — read-only signed-link view with explicit `valid` / `expired` / `revoked` / `tampered` states. Live tested:
+  - **Valid signed link** → renders briefing snapshot with $2,432 value.
+  - **Tampered signature** → "This link can't be verified" + tamper warning.
+  - **Expired link** → "This briefing link has expired".
+- `src/components/demo/share-briefing-button.tsx` — operator UI: pill button in the briefing card opens a modal with 3 actions (Copy / Slack / Email). Wired into `executive-briefing.tsx`. `data-testid`s: `share-briefing-button`, `share-briefing-modal`, `share-action-copy`, `share-action-slack`, `share-action-email`, `share-result`.
+- `src/proxy.ts` allow-lists `/briefing/share/*` so recipients (no Mission Control account) can read it.
+
+### 12.3 — Gateway URL regression fixed
+- `src/lib/gateway-url.ts:buildGatewayWebSocketUrl` rewrites `http(s)://` → `ws(s)://` for any prefixed input, with local-host downgrade preserved. Explicit `ws://`/`wss://` from the caller is respected. 15/15 gateway-url tests passing.
+
+### 12.4 — AI Employee Identity v2 (operational dimensions)
+- `src/lib/ai-employee-identity.ts` extended with five new dimensions:
+  - `operationalStyle` — Precise & Analytical · Aggressive Follow-Up · High-Touch Client Tone · Fast Execution / Low Creativity · Strategic / Executive Reporting · Calm & Tenant-Empathetic · Detail-Obsessed · Numbers-First
+  - `communicationTone` — derived from personality (e.g., "Plain-spoken, warm, owner-facing")
+  - `escalationStyle` — asks-early / asks-late / self-resolves
+  - `executionPreference` — speed / precision / balanced
+  - `memoryProfile` — customer-relationships / operational-state / compliance-history / financial-history / pipeline-history
+- `deriveOperationalDimensions()` is pure & deterministic (same employee → same dimensions every render).
+- Wired into `agent-squad-panel-phase3.tsx` AI Employee Card with `data-testid="ai-employee-style-${id}"`. Visible chip row: operationalStyle (primary color), exec preference, escalation style. Live verified on `/app/agents`: agent-browser shows "Aggressive Follow-Up", "balanced exec", "escalates early".
+
+### 12.5 — Files touched
+```
+new   src/app/api/briefing/share/route.ts
+new   src/app/briefing/share/page.tsx
+new   src/components/demo/share-briefing-button.tsx
+mod   src/lib/gateway-url.ts                       (http(s):// → ws(s):// rewrite)
+mod   src/lib/ai-employee-identity.ts              (5 operational dimensions + deriver)
+mod   src/components/panels/agent-squad-panel-phase3.tsx  (render dim chips)
+mod   src/components/demo/executive-briefing.tsx   (mount ShareBriefingButton)
+mod   src/proxy.ts                                 (allow /briefing/share/*)
+mod   vitest.config.ts                             (threads pool + per-file forks override)
+```
+
+### 12.6 — Verification (Verification gates)
+- TypeScript: 0 errors.
+- Vitest: **964/964 passed** — 100% green.
+- Live API: `POST /api/briefing/share { channel: 'copy', briefing }` returns `{ ok: true, shareUrl, summary }`.
+- Live signed-link page: valid / expired / tampered states all render the expected copy.
+- Live `/app/agents` shows the new operational style chips on every AI Employee card.
+- Live demo switch `?demo=cpa` still works (no router refresh; pure state).
+
+### 12.7 — Pushback delivered
+- Did **NOT** build public "share my workforce" URLs (the user originally suggested this; later they confirmed pushback). Built signed expiring snapshots instead — privacy-safe, operator-controlled, auditable.
+
+### 12.8 — Remaining backlog (P1/P2/P3)
+- P1 — Cinematic onboarding hand-off: when `setup` completes, route to `/app/activate` instead of `/app/overview`. Currently `/app/activate` exists and works standalone but isn't yet on the post-onboarding path.
+- P1 — Marketplace install animation on card click (modal showing deployment progress).
+- P1 — Cross-panel deep-links (activity → employee → billing → ROI).
+- P1 — Briefing motion (count-up counters; attention pulse).
+- P1 — Wire marketplace CTAs to billing (skills → one-time purchase; employees → monthly subscription).
+- P2 — Workforce memory feed (employee timeline with decisions, learnings, "why this recommendation").
+- P2 — Workforce Health Score breakdown into 8 sub-dimensions with trend & "why changed".
+- P2 — Cross-system identity alignment doc (Mission Control / Hermes / OpenClaw / Claude OS / VisionOps / VoiceOps — explicit role boundaries).
+- P3 — Email provider integration (currently the email channel returns a copy fallback; needs real `Resend`/`SendGrid` send).

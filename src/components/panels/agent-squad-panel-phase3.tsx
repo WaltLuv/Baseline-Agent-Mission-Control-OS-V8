@@ -23,7 +23,7 @@ import {
 } from './agent-detail-tabs'
 import { formatModelName, buildTaskStatParts } from '@/lib/agent-card-helpers'
 import { useMissionControl, type Agent } from '@/store'
-import { getAIEmployeeIdentity } from '@/lib/ai-employee-identity'
+import { getAIEmployeeIdentity, deriveOperationalDimensions } from '@/lib/ai-employee-identity'
 import { PanelStoryHeader } from './_story-header'
 
 const log = createClientLogger('AgentSquadPhase3')
@@ -399,6 +399,7 @@ export function AgentSquadPanelPhase3() {
               const modelName = formatModelName(agent.config)
               const taskStatsLine = buildTaskStatParts(agent.taskStats)
               const identity = getAIEmployeeIdentity(agent.name)
+              const opDims = deriveOperationalDimensions(identity)
 
               return (
                 <div
@@ -482,6 +483,18 @@ export function AgentSquadPanelPhase3() {
                         }`}
                       >
                         {identity.trustBand} trust
+                      </span>
+                    </div>
+                    {/* Operational dimensions — communication tone, style, escalation */}
+                    <div className="mt-2 flex flex-wrap gap-1" data-testid={`ai-employee-style-${agent.id}`}>
+                      <span className="rounded border border-primary/30 bg-primary/5 px-1.5 py-0.5 text-[10px] text-primary">
+                        {opDims.operationalStyle}
+                      </span>
+                      <span className="rounded border border-border/40 bg-card/30 px-1.5 py-0.5 text-[10px] text-muted-foreground" title={opDims.communicationTone}>
+                        {opDims.executionPreference === 'speed' ? 'fast exec' : opDims.executionPreference === 'precision' ? 'precise exec' : 'balanced exec'}
+                      </span>
+                      <span className="rounded border border-border/40 bg-card/30 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                        escalates {opDims.escalationStyle === 'asks-early' ? 'early' : opDims.escalationStyle === 'asks-late' ? 'late' : 'self-resolves'}
                       </span>
                     </div>
                   </div>

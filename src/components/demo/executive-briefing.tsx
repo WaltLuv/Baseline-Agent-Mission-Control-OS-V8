@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useDemoMode } from './demo-mode-provider'
+import { ShareBriefingButton } from './share-briefing-button'
 
 interface LiveBriefing {
   briefingHeadline: string
@@ -160,14 +161,27 @@ function BriefingCard({
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">{subheadline}</p>
         </div>
-        <div className="text-right" data-testid="briefing-value-counter">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {valueLabel}
-          </p>
-          <p className="mt-0.5 text-3xl font-bold text-emerald-400">
-            ${valueUsd.toLocaleString()}
-          </p>
-          <p className="text-xs text-muted-foreground">{hoursSaved} hours saved</p>
+        <div className="flex items-start gap-3">
+          <ShareBriefingButton
+            briefing={{
+              headline,
+              valueCreatedMonthUsd: valueUsd,
+              hoursSavedMonth: hoursSaved,
+              dailyWins,
+              attentionItems,
+              topEmployee,
+              nextAction,
+            }}
+          />
+          <div className="text-right" data-testid="briefing-value-counter">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {valueLabel}
+            </p>
+            <p className="mt-0.5 text-3xl font-bold text-emerald-400">
+              ${valueUsd.toLocaleString()}
+            </p>
+            <p className="text-xs text-muted-foreground">{hoursSaved} hours saved</p>
+          </div>
         </div>
       </div>
 
