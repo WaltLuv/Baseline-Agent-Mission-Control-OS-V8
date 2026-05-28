@@ -12,6 +12,9 @@ interface LiveBriefing {
   hoursSavedMonth: number
   creditsUsedMonth: number
   topEmployee: { name: string; impact: string } | null
+  highestRoiEmployee?: { name: string; impact: string } | null
+  overloadedEmployee?: { name: string; impact: string } | null
+  blockedAwaitingApprovalCount?: number
   nextAction: { label: string; href: string }
 }
 
@@ -86,6 +89,9 @@ export function ExecutiveBriefing() {
         dailyWins={live.dailyWins}
         attentionItems={live.attentionItems}
         topEmployee={live.topEmployee}
+        highestRoiEmployee={live.highestRoiEmployee ?? null}
+        overloadedEmployee={live.overloadedEmployee ?? null}
+        blockedAwaitingApprovalCount={live.blockedAwaitingApprovalCount ?? 0}
         nextAction={live.nextAction}
       />
     )
@@ -130,6 +136,9 @@ interface BriefingCardProps {
   dailyWins: { title: string; impact: string; valueUsd: number }[]
   attentionItems: { title: string; severity: 'low' | 'medium' | 'high'; reason: string }[]
   topEmployee: { name: string; impact: string } | null
+  highestRoiEmployee?: { name: string; impact: string } | null
+  overloadedEmployee?: { name: string; impact: string } | null
+  blockedAwaitingApprovalCount?: number
   nextAction: { label: string; href: string }
 }
 
@@ -144,6 +153,9 @@ function BriefingCard({
   dailyWins,
   attentionItems,
   topEmployee,
+  highestRoiEmployee = null,
+  overloadedEmployee = null,
+  blockedAwaitingApprovalCount = 0,
   nextAction,
 }: BriefingCardProps) {
   return (
@@ -258,6 +270,53 @@ function BriefingCard({
           )}
         </div>
       </div>
+
+      {/* COO Daily Operating Report — v2 fields */}
+      {(highestRoiEmployee || overloadedEmployee || blockedAwaitingApprovalCount > 0) && (
+        <div className="mt-4 grid gap-3 sm:grid-cols-3" data-testid="briefing-coo-report">
+          {highestRoiEmployee && (
+            <a
+              href={`/app/memory-feed?agent=${encodeURIComponent(highestRoiEmployee.name)}`}
+              data-testid="briefing-highest-roi"
+              className="block rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 transition-colors hover:border-emerald-500/50"
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
+                Highest ROI employee
+              </p>
+              <p className="mt-1 text-sm font-semibold text-foreground">{highestRoiEmployee.name}</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">{highestRoiEmployee.impact}</p>
+            </a>
+          )}
+          {overloadedEmployee && (
+            <a
+              href={`/app/agents?focus=${encodeURIComponent(overloadedEmployee.name)}`}
+              data-testid="briefing-overloaded"
+              className="block rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 transition-colors hover:border-amber-500/50"
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-400">
+                Most overloaded employee
+              </p>
+              <p className="mt-1 text-sm font-semibold text-foreground">{overloadedEmployee.name}</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">{overloadedEmployee.impact}</p>
+            </a>
+          )}
+          {blockedAwaitingApprovalCount > 0 && (
+            <a
+              href="/app/approvals"
+              data-testid="briefing-blocked-approvals"
+              className="block rounded-xl border border-red-500/30 bg-red-500/5 p-3 transition-colors hover:border-red-500/50"
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-red-400">
+                Blocked awaiting approval
+              </p>
+              <p className="mt-1 text-2xl font-bold text-foreground">{blockedAwaitingApprovalCount}</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                Tasks paused until you approve. Review now to unblock.
+              </p>
+            </a>
+          )}
+        </div>
+      )}
 
       <div className="mt-5 flex items-center justify-between rounded-lg border border-border/40 bg-muted/30 p-4">
         <div>

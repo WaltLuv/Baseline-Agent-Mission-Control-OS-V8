@@ -433,3 +433,54 @@ mod   vitest.config.ts                             (threads pool + per-file fork
 - P2 — Workforce Health Score breakdown into 8 sub-dimensions with trend & "why changed".
 - P2 — Cross-system identity alignment doc (Mission Control / Hermes / OpenClaw / Claude OS / VisionOps / VoiceOps — explicit role boundaries).
 - P3 — Email provider integration (currently the email channel returns a copy fallback; needs real `Resend`/`SendGrid` send).
+
+
+---
+
+## 13. Iteration 7 — Closed-loop commercialization + memory + continuity (Feb 2026)
+
+### 13.1 — Marketplace → Billing → Deployment loop CLOSED
+- `POST /api/marketplace/purchase` — one endpoint handles skill (one-time) / employee (monthly) / bundle (team) installs.
+  - LIVE Stripe mode → returns Checkout URL via existing `createStripeCheckoutSession`.
+  - TEST/mock mode → immediately fulfills install: writes to `workforce_skills` / `workforce_subscriptions`, provisions an `agents` row, queues a first task in `tasks`, writes a memory entry with rationale. Idempotency-Key supported.
+  - Live-verified: `{"ok":true,"mode":"fulfilled","type":"employee","slug":"agent-phil","priceCents":60000,"billingMode":"monthly","nextStep":"first-task-queued"}` and same for skill installs.
+- `MarketplaceInstallModal` (`src/components/marketplace/install-modal.tsx`) — premium 5-stage deployment UI: Provisioning workforce unit · Initializing memory layer · Attaching workflows · Queueing first assignment · Updating executive briefing.
+  - Pre-deploy summary shows role / for-whom / hours saved / labor value / monthly cost.
+  - Post-deploy "Welcome aboard" card with "View workforce →" deep-link.
+  - Wired into all three marketplace tabs.
+
+### 13.2 — Workforce Memory Feed
+- New tables `workforce_skills`, `workforce_subscriptions`, `workforce_memory` (auto-created on first install).
+- `GET /api/workforce/memory[?agentSlug=...&limit=...]` returns the operator-visible timeline.
+- `WorkforceMemoryFeed` component + `/app/memory-feed` page. Each entry shows kind, title, detail, italic "Why:" rationale.
+
+### 13.3 — Executive Briefing v2 ("AI COO Daily Operating Report")
+- `/api/briefing` now also returns `highestRoiEmployee` (best cost-per-action), `overloadedEmployee` (busiest, when distinct), `blockedAwaitingApprovalCount`.
+- `<BriefingCard>` renders a 3-up COO row below the existing grid; each card deep-links to its panel:
+  - Highest-ROI → `/app/memory-feed?agent=<name>`
+  - Overloaded → `/app/agents?focus=<name>`
+  - Blocked approvals → `/app/approvals`
+
+### 13.4 — Files
+```
+new   src/app/api/marketplace/purchase/route.ts
+new   src/app/api/workforce/memory/route.ts
+new   src/components/marketplace/install-modal.tsx
+new   src/components/workforce/workforce-memory-feed.tsx
+new   src/app/app/memory-feed/page.tsx
+mod   src/app/marketplace/page.tsx
+mod   src/app/api/briefing/route.ts
+mod   src/components/demo/executive-briefing.tsx
+```
+
+### 13.5 — Verification
+- TS 0 errors. Vitest 964/964 green.
+- Live end-to-end: hire Phil → 200 fulfilled → workforce_memory entry → memory-feed UI shows "Hired Phil as PM Division Chief" with rationale.
+- UI screenshots: hire modal summary → 5 deployment stages → ✓ Welcome aboard → Memory Feed with 3 timeline entries.
+
+### 13.6 — Deliberately deferred
+- Workforce Health Score v2 (9 sub-dimensions + trend + why-changed).
+- Activity ↔ billing ↔ employee back-links (only briefing → ... done).
+- Onboarding chained into `/app/activate` post-setup.
+- "Why this matters" copy layer on every metric.
+- Cross-system identity alignment doc.

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { MarketplaceInstallModal } from '@/components/marketplace/install-modal'
 import {
   SKILLS,
   EMPLOYEES,
@@ -11,6 +12,9 @@ import {
   SKILL_CATEGORIES,
   EMPLOYEE_DIVISIONS,
   type Difficulty,
+  type SkillProduct,
+  type EmployeeProduct,
+  type Bundle,
 } from '@/lib/marketplace-catalog'
 
 /**
@@ -35,6 +39,13 @@ export default function MarketplacePage() {
   const [difficulty, setDifficulty] = useState<'all' | Difficulty>('all')
   const [maxPrice, setMaxPrice] = useState<number>(0) // 0 = no limit
   const [query, setQuery] = useState<string>('')
+
+  // Install modal target — null when modal is closed.
+  type InstallTarget =
+    | { kind: 'skill'; product: SkillProduct }
+    | { kind: 'employee'; product: EmployeeProduct }
+    | { kind: 'bundle'; product: Bundle }
+  const [installing, setInstalling] = useState<InstallTarget | null>(null)
 
   // ---------- AI EMPLOYEES ----------
   const filteredEmployees = useMemo(() => {
@@ -198,7 +209,7 @@ export default function MarketplacePage() {
                     <span className="text-2xl font-bold text-primary">${e.monthlyUsd}</span>
                     <span className="text-xs text-muted-foreground">/mo</span>
                   </div>
-                  <Button size="sm" data-testid={`hire-${e.slug}`}>Hire AI Employee</Button>
+                  <Button size="sm" data-testid={`hire-${e.slug}`} onClick={() => setInstalling({ kind: 'employee', product: e })}>Hire AI Employee</Button>
                 </div>
               </article>
             ))}
@@ -235,7 +246,7 @@ export default function MarketplacePage() {
                 </div>
                 <div className="mt-4 flex items-end justify-between">
                   <span className="text-2xl font-bold text-primary">${s.priceUsd}</span>
-                  <Button size="sm" variant="outline" data-testid={`install-${s.slug}`}>Install Skill</Button>
+                  <Button size="sm" variant="outline" data-testid={`install-${s.slug}`} onClick={() => setInstalling({ kind: 'skill', product: s })}>Install Skill</Button>
                 </div>
               </article>
             ))}
@@ -277,7 +288,7 @@ export default function MarketplacePage() {
                       </Button>
                     </Link>
                   ) : null}
-                  <Button className="flex-1" data-testid={`deploy-${b.slug}`}>
+                  <Button className="flex-1" data-testid={`deploy-${b.slug}`} onClick={() => setInstalling({ kind: 'bundle', product: b })}>
                     Deploy Team →
                   </Button>
                 </div>
@@ -291,6 +302,46 @@ export default function MarketplacePage() {
           <Link href="/contact" className="underline">Talk to us</Link> about custom AI employees or skills for your business.
         </p>
       </div>
+
+      {installing && (
+        <MarketplaceInstallModal
+          target={
+            installing.kind === 'employee'
+              ? {
+                  type: 'employee',
+                  slug: installing.product.slug,
+                  title: installing.product.name,
+                  subtitle: installing.product.role,
+                  priceLine: `$${installing.product.monthlyUsd.toLocaleString()}/mo`,
+                  outcome: installing.product.outcome,
+                  forWhom: installing.product.forWhom,
+                  estimatedValueLine: `~$${(installing.product.monthlyUsd * 8).toLocaleString()}/mo of labor replaced`,
+                }
+              : installing.kind === 'skill'
+              ? {
+                  type: 'skill',
+                  slug: installing.product.slug,
+                  title: installing.product.name,
+                  subtitle: installing.product.category,
+                  priceLine: `$${installing.product.priceUsd}`,
+                  outcome: installing.product.outcome,
+                  forWhom: installing.product.forWhom,
+                  expectedHoursSaved: installing.product.timeSaved,
+                }
+              : {
+                  type: 'bundle',
+                  slug: installing.product.slug,
+                  title: installing.product.name,
+                  subtitle: installing.product.tagline,
+                  priceLine: `$${installing.product.monthlyUsd.toLocaleString()}/mo + $${installing.product.oneTimeUsd} one-time`,
+                  outcome: installing.product.tagline,
+                  forWhom: 'Teams that want a turnkey workforce',
+                  expectedHoursSaved: `${installing.product.estimatedHoursSavedPerMonth} hours/month`,
+                }
+          }
+          onClose={() => setInstalling(null)}
+        />
+      )}
     </div>
   )
 }

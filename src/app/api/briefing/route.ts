@@ -145,6 +145,52 @@ export async function GET(request: NextRequest) {
     balance = null
   }
 
+  // --- Workforce utilization v2 — highest-ROI vs most-overloaded employees ---
+  let highestRoiEmployee: { name: string; impact: string } | null = null
+  let overloadedEmployee: { name: string; impact: string } | null = null
+  let blockedAwaitingApprovalCount = 0
+  try {
+    const monthAgoTs = Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60
+    const usageByAgent = db.prepare(
+      `SELECT a.name as name, COUNT(*) as cnt, COALESCE(SUM(ue.retail_cost_cents),0) as cost_cents
+       FROM usage_events ue
+       LEFT JOIN agents a ON ue.agent_id = a.id
+       WHERE ue.workspace_id = ? AND ue.created_at >= ? AND a.name IS NOT NULL
+       GROUP BY ue.agent_id
+       ORDER BY cnt DESC LIMIT 5`,
+    ).all(workspaceId, monthAgoTs) as { name: string; cnt: number; cost_cents: number }[]
+    if (usageByAgent.length > 0) {
+      // Highest ROI = most actions for lowest cost-per-action.
+      const ranked = usageByAgent
+        .filter((r) => r.cnt > 0)
+        .map((r) => ({ ...r, cpa: r.cost_cents / r.cnt }))
+      const cheapest = [...ranked].sort((a, b) => a.cpa - b.cpa)[0]
+      const busiest = [...ranked].sort((a, b) => b.cnt - a.cnt)[0]
+      if (cheapest) {
+        highestRoiEmployee = {
+          name: cheapest.name,
+          impact: `${cheapest.cnt} actions at ~$${(cheapest.cpa / 100).toFixed(2)}/action — best ROI this month.`,
+        }
+      }
+      if (busiest && busiest.name !== cheapest?.name) {
+        overloadedEmployee = {
+          name: busiest.name,
+          impact: `${busiest.cnt} actions this month — consider hiring a peer or reroute work.`,
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+  try {
+    const row = db.prepare(
+      `SELECT COUNT(*) as c FROM tasks WHERE status IN ('needs_approval','review')`
+    ).get() as { c: number } | undefined
+    blockedAwaitingApprovalCount = Number(row?.c ?? 0)
+  } catch {
+    // ignore
+  }
+
   return NextResponse.json({
     mode: 'live',
     briefingHeadline,
@@ -154,6 +200,9 @@ export async function GET(request: NextRequest) {
     hoursSavedMonth,
     valueCreatedMonthUsd,
     topEmployee,
+    highestRoiEmployee,
+    overloadedEmployee,
+    blockedAwaitingApprovalCount,
     nextAction,
     balance,
   })
