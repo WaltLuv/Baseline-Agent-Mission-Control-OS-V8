@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
 import { getDatabase } from '@/lib/db'
 import { getWorkspaceBalance } from '@/lib/billing'
+import { recentObsidianCitations } from '@/lib/baseline-os/obsidian-ingest'
 
 /**
  * Executive Morning Briefing — real-data endpoint.
@@ -191,6 +192,27 @@ export async function GET(request: NextRequest) {
     // ignore
   }
 
+  // --- Obsidian operator-memory citations (Layer 1 / Baseline OS) ---
+  // If the operator has Obsidian connected and there are notes touched in
+  // the last ~48h, the briefing prefaces its headline with the literal
+  // "Based on your operator notes from yesterday…" line and surfaces up to
+  // 3 citations the operator can click through to in the Memory Feed.
+  let memoryCitations: Array<{ id: number; title: string; rationale: string | null; createdAt: number }> = []
+  try {
+    const rows = recentObsidianCitations(db, workspaceId, 48 * 60 * 60, 3)
+    memoryCitations = rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      rationale: r.rationale,
+      createdAt: r.created_at,
+    }))
+  } catch {
+    memoryCitations = []
+  }
+  if (memoryCitations.length > 0) {
+    briefingHeadline = `Based on your operator notes from yesterday — ${briefingHeadline}`
+  }
+
   return NextResponse.json({
     mode: 'live',
     briefingHeadline,
@@ -205,5 +227,6 @@ export async function GET(request: NextRequest) {
     blockedAwaitingApprovalCount,
     nextAction,
     balance,
+    memoryCitations,
   })
 }

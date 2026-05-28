@@ -651,3 +651,145 @@ mod   src/components/panels/agent-history-panel.tsx               (escape apostr
 - P3 — Email provider integration (Resend / SendGrid send path) for the
   briefing share channel — copy fallback still works.
 
+
+---
+
+## 15. Iteration 9 — Mission Control Demo Conversion Pass (Feb 2026)
+
+User mandate: tight, focused 4-item pass to convert Mission Control from
+8.5 → demo/sales-ready. No scope creep. No Studios in this pass. No real
+Pinecone or Notion ingestion. Goal: deliver the demo moment
+**"Based on your operator notes from yesterday — …"**.
+
+### 15.1 — Real Obsidian ingestion ★ breakthrough moment
+- Bundled demo vault at `/app/.demo-obsidian/` with 3 realistic operator
+  notes (Q1 Operations Doctrine · Partner sync — yesterday · SOP outreach
+  cadence). Files use `> Date: yesterday` + `> Tags:` frontmatter and are
+  picked up automatically when `OBSIDIAN_VAULT_PATH` is unset.
+- New ingester at `src/lib/baseline-os/obsidian-ingest.ts`:
+  - Walks the vault, skips `.private/`, `node_modules`, hidden dirs
+  - Chunks markdown by paragraph (≤ 600 chars, max 12 chunks/file)
+  - **Redacts** 6 secret patterns before writing (OpenAI / Anthropic /
+    Stripe / AWS / GitHub PAT / JWT)
+  - Idempotent — resync deletes prior `operator-memory.obsidian` rows
+    for the workspace then re-inserts
+  - Yesterday-dated files get a `created_at` shifted ~26h into the past
+    so the briefing timeline reflects reality
+- Wired into `POST /api/baseline-os/memory-sources { sourceType:'obsidian', action:'connect'|'resync' }`:
+  - Resolves vault path → ingester → updates `memory_sources.document_count`
+  - Returns `{ ingest: { filesScanned, filesIndexed, chunksWritten, bytesRedacted }, ingestNote }`
+- Briefing route now calls `recentObsidianCitations(db, workspaceId, 48h, 3)`
+  and, if there are any, **prepends the headline** with
+  `"Based on your operator notes from yesterday — "` and returns a
+  `memoryCitations` array with `{ id, title, rationale, createdAt }`.
+- Briefing UI renders a new **"From your Operator Memory · Baseline OS"**
+  block listing each citation as a deep-link to `/app/memory-feed?id=<id>`.
+- Memory Feed renders a new "Operator Memory · Obsidian" badge for any
+  entry with kind `operator-memory.obsidian`.
+
+### 15.2 — Marketplace hire-shimmer micro-animation
+- New `hireShimmer` keyframe in globals.css — 700ms, single pass, calm
+  cyan halo (rgba(45,212,191,0.4) ring + 32px inset glow). Premium,
+  not childish.
+- Hooked into all three marketplace card variants (AI Employee, Skill,
+  Bundle). Clicking **Hire / Install / Deploy** sets the card's slug as
+  the active shimmer target for 750ms, holds the modal mount for 320ms,
+  then opens. Feels like committing a hire, not opening a tab.
+
+### 15.3 — "Why this matters" tooltips on key metrics
+- New `<MetricTooltip>` (`src/components/ui/metric-tooltip.tsx`) — CSS-only,
+  no portal, 150ms fade-in, accessible via `aria-label` for keyboard /
+  screen-reader users.
+- Wired into the 4 highest-value briefing metrics:
+  - **Value created this month** — explains the $ benchmark
+  - **Hours saved** — explains the 5-min/credit assumption
+  - **Today's wins** — defines "closed work"
+  - **Attention required** — defines what stalls work
+  - **Star AI employee** — explains the spotlight
+- Wired into Workforce Health:
+  - **Overall** score
+  - All 8 sub-dimension labels (execution-health, responsiveness,
+    workload-balance, cost-efficiency, quality, memory-continuity,
+    automation-reliability, customer-experience)
+
+### 15.4 — Resend / SendGrid live send for briefing share
+- `POST /api/briefing/share` `channel='email'` now:
+  - Tries **Resend** first if `RESEND_API_KEY` set
+  - Falls back to **SendGrid** if `SENDGRID_API_KEY` set
+  - SMTP_HOST flag still recognized but inline SMTP send not wired
+    (returns copy fallback with `requiresSetup='email-smtp'`)
+- Email payload includes both plain text + premium HTML (`buildSummaryHtml`):
+  dark-background email card with $ pill, cyan accent, signed share link.
+  HTML inputs are escaped (`escapeHtml`) before insertion.
+- Recipient validated against `email` regex.
+- Audit log records the provider name and success/failure for every send.
+- No secret ever returned to the frontend. No customer data publicly
+  exposed beyond the signed-link content the operator already
+  authorised.
+
+### 15.5 — Verification (live)
+```
+=== Trigger Obsidian connect+resync ===
+{
+  "ok": true, "status": "connected",
+  "ingest": { "vaultPath": "/app/.demo-obsidian", "filesScanned": 3,
+              "filesIndexed": 3, "chunksWritten": 23, "bytesRedacted": 0 },
+  "ingestNote": "Connected to bundled demo vault…"
+}
+
+=== Briefing now ===
+headline: Based on your operator notes from yesterday — Quiet morning. Workforce ready.
+memoryCitations: [
+  { "title": "Q1 Operations Doctrine", "rationale": "Source: Obsidian operator vault · 00-operations-doctrine.md · #doctrine #operations #q1" },
+  { "title": "SOP — Client outreach cadence (Q1)", "rationale": "Source: Obsidian operator vault · 02-sop-outreach-cadence.md · #sop #outreach #cpa" },
+  { "title": "Meeting — partner sync, yesterday", "rationale": "Source: Obsidian operator vault · 01-partner-sync-yesterday.md · #meeting #partner-sync #cpa · noted yesterday" }
+]
+```
+
+| Gate | Status |
+|------|--------|
+| `tsc --noEmit` | ✅ 0 errors |
+| `eslint .` | ✅ 0 errors |
+| `vitest run` | ✅ **976 / 976 passing** (+4 new Obsidian ingester tests) |
+| `next build` | ✅ Compiled in 61s |
+| `POST /api/baseline-os/memory-sources` (obsidian connect) | ✅ 23 chunks written from 3 files |
+| `GET /api/briefing` | ✅ headline + 3 memoryCitations |
+| `GET /api/workforce/memory` | ✅ entries carry `kind='operator-memory.obsidian'` |
+| Memory Feed UI | ✅ Renders **Operator Memory · Obsidian** badge with full provenance |
+| Marketplace hire-shimmer | ✅ Cyan ring + glow visible on clicked card |
+| Tooltips | ✅ Hover/focus over value / hours / wins / attention / star / health dims |
+| Email share (no provider) | ✅ Returns `requiresSetup:'email'` + signed share link summary |
+| Email share (invalid email) | ✅ Properly rejected before provider call |
+
+### 15.6 — Files touched
+```
+new   .demo-obsidian/00-operations-doctrine.md
+new   .demo-obsidian/01-partner-sync-yesterday.md
+new   .demo-obsidian/02-sop-outreach-cadence.md
+new   src/lib/baseline-os/obsidian-ingest.ts
+new   src/lib/__tests__/obsidian-ingest.test.ts
+new   src/components/ui/metric-tooltip.tsx
+mod   src/app/api/baseline-os/memory-sources/route.ts  (wired ingester)
+mod   src/app/api/briefing/route.ts                    (citations)
+mod   src/app/api/briefing/share/route.ts              (Resend/SendGrid live send + HTML body)
+mod   src/components/demo/executive-briefing.tsx       (memoryCitations block + tooltips)
+mod   src/components/workforce/workforce-memory-feed.tsx (obsidian + optimization badges)
+mod   src/components/baseline-os/workforce-health-v2.tsx (per-dimension tooltips)
+mod   src/app/marketplace/page.tsx                     (hire-shimmer wiring)
+mod   src/app/globals.css                              (hireShimmer keyframe)
+```
+
+### 15.7 — Remaining backlog (deferred)
+- **P1** Live Pinecone ingestion (the Obsidian demo proves the brain story)
+- **P1** Live Notion ingestion with OAuth + ACL enforcement
+- **P1** Baseline Studios authoring app — separate product roadmap
+- **P2** AI Employee Life: presence, "currently working on", confidence
+  level, collaboration graph, escalation history
+- **P2** Real execution traceability: optimization → employee → task →
+  memory → billing → ROI → quality gate (deep-links exist; backing
+  events need wiring)
+- **P2** Demo workspace storylines: pre-seeded CPA / Law Firm / Property
+  Mgmt narratives that play out across the day
+- **P3** Email SMTP inline send path (current SMTP_HOST flag returns
+  copy fallback)
+

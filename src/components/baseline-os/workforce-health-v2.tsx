@@ -2,6 +2,18 @@
 
 import { useEffect, useState } from 'react'
 import { useRefreshConfig } from '@/lib/refresh-prefs'
+import { MetricTooltip } from '@/components/ui/metric-tooltip'
+
+const DIM_RATIONALE: Record<string, string> = {
+  'execution-health': 'Are tasks actually closing? Drops when work piles up in draft / blocked.',
+  'responsiveness': 'Are AI employees acting on heartbeats? A low score means workers are idle when work is queued.',
+  'workload-balance': 'Is work spread sensibly? A 100% score with one busy employee means you need a peer.',
+  'cost-efficiency': 'Credits per closed action. Low score = the workforce is spinning expensive cycles for thin output.',
+  'quality': 'Approvals + needs-review backlog. High = consistent output you can trust; low = humans gatekeeping too often.',
+  'memory-continuity': 'Is the workforce learning? Drops when no decisions / rationales are being captured.',
+  'automation-reliability': 'Error / failure rate across recent events. Low = the workforce is humming, not erroring.',
+  'customer-experience': 'How many customer-facing items are blocked or SLA-at-risk. Low = customers are waiting.',
+}
 
 /**
  * Workforce Health Score v2 — 8-dimension breakdown.
@@ -93,7 +105,9 @@ export function WorkforceHealthV2() {
           <h2 className="mt-1 text-base font-bold text-foreground">{data.headline}</h2>
         </div>
         <div data-testid="workforce-health-overall" className={`shrink-0 rounded-xl border px-3 py-2 text-center ${scoreTone(data.overall)}`}>
-          <div className="text-2xl font-bold">{data.overall}</div>
+          <MetricTooltip body="Composite of all 8 sub-dimensions, weighted by what matters for an operator running an AI workforce. A score below 60 means it's time to act today.">
+            <div className="text-2xl font-bold">{data.overall}</div>
+          </MetricTooltip>
           <div className="text-[10px] uppercase tracking-wider opacity-80">Overall {TREND[data.overallTrend].icon}</div>
         </div>
       </header>
@@ -106,7 +120,11 @@ export function WorkforceHealthV2() {
             className="rounded-lg border border-border/40 bg-card/20 p-3"
           >
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-foreground">{d.label}</p>
+              <p className="text-sm font-semibold text-foreground">
+                <MetricTooltip body={DIM_RATIONALE[d.key] ?? 'Baseline OS sub-dimension contributing to the overall workforce health score.'}>
+                  {d.label}
+                </MetricTooltip>
+              </p>
               <span className={`inline-flex items-center gap-1 text-sm font-bold ${TREND[d.trend].tone}`}>
                 {d.score} <span>{TREND[d.trend].icon}</span>
               </span>

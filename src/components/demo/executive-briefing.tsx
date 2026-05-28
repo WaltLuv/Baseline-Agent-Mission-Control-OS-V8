@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useDemoMode } from './demo-mode-provider'
 import { ShareBriefingButton } from './share-briefing-button'
 import { CountUp } from '@/components/motion/count-up'
+import { MetricTooltip } from '@/components/ui/metric-tooltip'
 
 interface LiveBriefing {
   briefingHeadline: string
@@ -16,6 +17,7 @@ interface LiveBriefing {
   highestRoiEmployee?: { name: string; impact: string } | null
   overloadedEmployee?: { name: string; impact: string } | null
   blockedAwaitingApprovalCount?: number
+  memoryCitations?: { id: number; title: string; rationale: string | null; createdAt: number }[]
   nextAction: { label: string; href: string }
 }
 
@@ -93,6 +95,7 @@ export function ExecutiveBriefing() {
         highestRoiEmployee={live.highestRoiEmployee ?? null}
         overloadedEmployee={live.overloadedEmployee ?? null}
         blockedAwaitingApprovalCount={live.blockedAwaitingApprovalCount ?? 0}
+        memoryCitations={live.memoryCitations ?? []}
         nextAction={live.nextAction}
       />
     )
@@ -140,6 +143,7 @@ interface BriefingCardProps {
   highestRoiEmployee?: { name: string; impact: string } | null
   overloadedEmployee?: { name: string; impact: string } | null
   blockedAwaitingApprovalCount?: number
+  memoryCitations?: { id: number; title: string; rationale: string | null; createdAt: number }[]
   nextAction: { label: string; href: string }
 }
 
@@ -157,6 +161,7 @@ function BriefingCard({
   highestRoiEmployee = null,
   overloadedEmployee = null,
   blockedAwaitingApprovalCount = 0,
+  memoryCitations = [],
   nextAction,
 }: BriefingCardProps) {
   return (
@@ -188,13 +193,21 @@ function BriefingCard({
           />
           <div className="text-right" data-testid="briefing-value-counter">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {valueLabel}
+              <MetricTooltip
+                body="Estimated labor value created this month — workforce credits used × $4 (≈ 5 minutes of human work per credit at a $48/hr benchmark). This is what your AI workforce would cost in payroll."
+              >
+                {valueLabel}
+              </MetricTooltip>
             </p>
             <p className="mt-0.5 text-3xl font-bold text-emerald-400">
               <CountUp to={valueUsd} prefix="$" data-testid="briefing-value-amount" />
             </p>
             <p className="text-xs text-muted-foreground">
-              <CountUp to={hoursSaved} data-testid="briefing-hours-saved" /> hours saved
+              <MetricTooltip
+                body="Operator hours your AI workforce gave back this month. We assume each workforce credit saves ~5 minutes of focused human work."
+              >
+                <CountUp to={hoursSaved} data-testid="briefing-hours-saved" /> hours saved
+              </MetricTooltip>
             </p>
             <p className="mt-1 text-[10px] text-muted-foreground/70" data-testid="briefing-last-updated">
               Updated {new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
@@ -206,7 +219,9 @@ function BriefingCard({
       <div className="mt-5 grid gap-4 lg:grid-cols-3">
         <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4" data-testid="briefing-wins">
           <p className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
-            Today&apos;s wins ({dailyWins.length})
+            <MetricTooltip body="Tasks your AI workforce closed in the last 24 hours. Each win is a unit of work that didn't need a human hand.">
+              Today&apos;s wins ({dailyWins.length})
+            </MetricTooltip>
           </p>
           {dailyWins.length === 0 ? (
             <p className="mt-2 text-xs text-muted-foreground">
@@ -232,7 +247,9 @@ function BriefingCard({
           data-has-items={attentionItems.length > 0 ? 'true' : 'false'}
         >
           <p className="text-xs font-semibold uppercase tracking-wider text-amber-400">
-            Attention required ({attentionItems.length})
+            <MetricTooltip body="Items the AI workforce paused on you — usually because a decision needs your authority, a compliance gate triggered, or a customer reply is needed. Clear these to keep work flowing.">
+              Attention required ({attentionItems.length})
+            </MetricTooltip>
           </p>
           {attentionItems.length === 0 ? (
             <p className="mt-2 text-xs text-muted-foreground">
@@ -264,7 +281,11 @@ function BriefingCard({
         </div>
 
         <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 ring-1 ring-primary/10 transition-shadow hover:ring-primary/30" data-testid="briefing-top-employee">
-          <p className="text-xs font-semibold uppercase tracking-wider text-primary">Star AI employee</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+            <MetricTooltip body="The AI employee with the most completed actions this week. Use this to spot who's carrying the load — and where you might want to hire a peer.">
+              Star AI employee
+            </MetricTooltip>
+          </p>
           {topEmployee ? (
             <>
               <p className="mt-2 text-sm font-semibold text-foreground">{topEmployee.name}</p>
@@ -340,6 +361,37 @@ function BriefingCard({
           Go →
         </a>
       </div>
+
+      {memoryCitations.length > 0 && (
+        <div
+          data-testid="briefing-memory-citations"
+          className="mt-3 rounded-lg border border-primary/20 bg-primary/[0.04] p-3"
+        >
+          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-primary/90">
+            From your Operator Memory · Baseline OS
+          </p>
+          <ul className="mt-1.5 space-y-1">
+            {memoryCitations.map((c) => (
+              <li key={c.id} className="text-[11px] text-foreground/90">
+                <a
+                  href={`/app/memory-feed?id=${c.id}`}
+                  data-testid={`briefing-memory-citation-${c.id}`}
+                  className="font-medium hover:underline"
+                >
+                  {c.title}
+                </a>
+                {c.rationale && (
+                  <span className="ml-1 text-muted-foreground italic">{c.rationale}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1.5 text-[10px] text-muted-foreground">
+            Mission Control surfaced this briefing using context from your Obsidian vault. Open the
+            Memory Feed to audit which notes were used.
+          </p>
+        </div>
+      )}
     </div>
   )
 }

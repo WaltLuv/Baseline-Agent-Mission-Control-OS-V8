@@ -133,7 +133,10 @@ export async function POST(request: NextRequest) {
 
   // ---------- EMAIL ----------
   if (body.channel === 'email') {
-    const provider = process.env.RESEND_API_KEY || process.env.SENDGRID_API_KEY || process.env.SMTP_HOST
+    const resendKey = process.env.RESEND_API_KEY
+    const sendgridKey = process.env.SENDGRID_API_KEY
+    const smtpHost = process.env.SMTP_HOST
+    const provider = resendKey || sendgridKey || smtpHost
     if (!provider) {
       return NextResponse.json({
         ok: false,
@@ -143,18 +146,99 @@ export async function POST(request: NextRequest) {
         summary: buildSummaryText(body.briefing, shareUrl),
       })
     }
-    // Email provider integration is intentionally not implemented inline.
-    // When ready, route through the existing email service. For now we return
-    // the share link + summary so the operator can paste manually.
-    auditLog(workspaceId, actorId, 'email', body.to || 'unknown')
+    if (!body.to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.to)) {
+      return NextResponse.json({ error: 'Valid recipient email required' }, { status: 400 })
+    }
+
+    const fromAddress =
+      process.env.BRIEFING_FROM_EMAIL || 'briefings@mission-control.local'
+    const subject = `Executive Briefing — ${body.briefing.headline.slice(0, 100)}`
+    const text = buildSummaryText(body.briefing, shareUrl)
+    const html = buildSummaryHtml(body.briefing, shareUrl)
+
+    let providerName: 'resend' | 'sendgrid' | 'smtp' | 'none' = 'none'
+    let providerStatus = 0
+    let providerError: string | null = null
+
+    try {
+      if (resendKey) {
+        providerName = 'resend'
+        const r = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: fromAddress,
+            to: [body.to],
+            subject,
+            text,
+            html,
+          }),
+        })
+        providerStatus = r.status
+        if (!r.ok) {
+          providerError = (await r.text()).slice(0, 300)
+        }
+      } else if (sendgridKey) {
+        providerName = 'sendgrid'
+        const r = await fetch('https://api.sendgrid.com/v3/mail/send', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${sendgridKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            personalizations: [{ to: [{ email: body.to }] }],
+            from: { email: fromAddress, name: 'Mission Control' },
+            subject,
+            content: [
+              { type: 'text/plain', value: text },
+              { type: 'text/html', value: html },
+            ],
+          }),
+        })
+        providerStatus = r.status
+        if (!r.ok) {
+          providerError = (await r.text()).slice(0, 300)
+        }
+      } else {
+        // SMTP_HOST set but no inline SMTP send path — return copy fallback.
+        providerName = 'smtp'
+      }
+    } catch (e) {
+      providerError = String(e).slice(0, 300)
+    }
+
+    const sent = providerError === null && providerName !== 'smtp' && providerStatus >= 200 && providerStatus < 300
+    auditLog(workspaceId, actorId, sent ? `email:${providerName}` : `email:${providerName}-failed`, body.to)
+
+    if (sent) {
+      return NextResponse.json({
+        ok: true,
+        channel: 'email',
+        provider: providerName,
+        sentTo: body.to,
+        shareUrl,
+        expiresAt,
+      })
+    }
+    // Copy-fallback: provider not configured or send failed → operator still
+    // gets the share link + summary so they can paste manually.
     return NextResponse.json({
-      ok: true,
+      ok: false,
       channel: 'email',
-      sentTo: body.to,
+      provider: providerName,
+      requiresSetup: providerName === 'smtp' ? 'email-smtp' : null,
+      error: providerError,
       shareUrl,
       expiresAt,
-      summary: buildSummaryText(body.briefing, shareUrl),
-      note: 'Email provider configured. Set up the email service integration to enable automatic send. Summary returned for fallback copy.',
+      summary: text,
+      note:
+        providerName === 'smtp'
+          ? 'SMTP_HOST is set but inline SMTP send is not wired. Summary returned for manual paste.'
+          : `Email provider ${providerName} rejected the request. Summary returned for fallback copy.`,
     })
   }
 
@@ -215,4 +299,40 @@ function buildSummaryText(b: SharePayload['briefing'], url: string): string {
   ]
     .filter(Boolean)
     .join('\n')
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function buildSummaryHtml(b: SharePayload['briefing'], url: string): string {
+  const wins = (b.dailyWins || [])
+    .slice(0, 3)
+    .map((w) => `<li><strong>${escapeHtml(w.title)}</strong> <span style="color:#059669">+$${w.valueUsd.toLocaleString()}</span></li>`)
+    .join('')
+  const att = (b.attentionItems || [])
+    .slice(0, 3)
+    .map((a) => `<li><span style="color:${a.severity === 'high' ? '#dc2626' : '#d97706'};font-weight:600">[${escapeHtml(a.severity.toUpperCase())}]</span> ${escapeHtml(a.title)}</li>`)
+    .join('')
+  return `<!doctype html>
+<html><body style="margin:0;background:#0a0a0b;color:#e5e7eb;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">
+  <div style="max-width:560px;margin:24px auto;padding:24px;border:1px solid #1f2937;border-radius:12px;background:#0f1115">
+    <p style="margin:0;font-size:11px;letter-spacing:.2em;color:#22d3ee;text-transform:uppercase">Executive Briefing</p>
+    <h1 style="margin:8px 0 4px;font-size:20px;color:#fff">${escapeHtml(b.headline)}</h1>
+    <p style="margin:0;font-size:13px;color:#9ca3af">Value created this month: <strong style="color:#34d399">$${b.valueCreatedMonthUsd.toLocaleString()}</strong> · <strong>${b.hoursSavedMonth} hours saved</strong></p>
+    ${wins ? `<h2 style="margin:18px 0 6px;font-size:13px;color:#34d399">Today's wins</h2><ul style="margin:0;padding-left:20px;font-size:13px;color:#e5e7eb">${wins}</ul>` : ''}
+    ${att ? `<h2 style="margin:18px 0 6px;font-size:13px;color:#f59e0b">Attention required</h2><ul style="margin:0;padding-left:20px;font-size:13px;color:#e5e7eb">${att}</ul>` : ''}
+    ${b.topEmployee ? `<p style="margin:18px 0 0;font-size:13px"><strong style="color:#22d3ee">Star AI employee:</strong> ${escapeHtml(b.topEmployee.name)} — ${escapeHtml(b.topEmployee.impact)}</p>` : ''}
+    <p style="margin:24px 0 0;font-size:13px"><strong>Next action:</strong> ${escapeHtml(b.nextAction.label)}</p>
+    <p style="margin:18px 0 0">
+      <a href="${escapeHtml(url)}" style="display:inline-block;padding:10px 18px;border-radius:999px;background:#22d3ee;color:#0a0a0b;text-decoration:none;font-weight:600;font-size:13px">View live briefing →</a>
+    </p>
+    <p style="margin:24px 0 0;font-size:11px;color:#6b7280">Signed link · expires automatically. Mission Control · Baseline OS.</p>
+  </div>
+</body></html>`
 }

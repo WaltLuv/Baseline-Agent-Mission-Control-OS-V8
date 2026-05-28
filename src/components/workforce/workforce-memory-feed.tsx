@@ -39,6 +39,8 @@ const KIND_LABEL: Record<string, { label: string; tone: string }> = {
   'decision': { label: 'Decision', tone: 'text-amber-300 border-amber-500/30 bg-amber-500/5' },
   'learning': { label: 'Learned', tone: 'text-primary border-primary/30 bg-primary/5' },
   'recommendation': { label: 'Recommended', tone: 'text-fuchsia-300 border-fuchsia-500/30 bg-fuchsia-500/5' },
+  'baseline-os.optimization': { label: 'Baseline OS · Optimization', tone: 'text-cyan-300 border-cyan-500/30 bg-cyan-500/5' },
+  'operator-memory.obsidian': { label: 'Operator Memory · Obsidian', tone: 'text-primary border-primary/40 bg-primary/10' },
 }
 
 function relativeTime(ts: number): string {

@@ -324,6 +324,19 @@
     50%      { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.06); }
   }
 
+  /* Marketplace hire-shimmer — subtle premium flash on card when the
+     operator commits to a hire / install / deploy. Calm, business-grade,
+     not childish. ~700ms total, single pass. */
+  @keyframes hireShimmer {
+    0%   { box-shadow: 0 0 0 0 rgba(45, 212, 191, 0.0), 0 0 0 0 rgba(45, 212, 191, 0.0) inset; }
+    35%  { box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.4), 0 0 32px 0 rgba(45, 212, 191, 0.20) inset; }
+    100% { box-shadow: 0 0 0 0 rgba(45, 212, 191, 0.0), 0 0 0 0 rgba(45, 212, 191, 0.0) inset; }
+  }
+  .hire-shimmer {
+    animation: hireShimmer 700ms ease-out;
+  }
+
+
 
   /* Shimmer loading */
   .shimmer {

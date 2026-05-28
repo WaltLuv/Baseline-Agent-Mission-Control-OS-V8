@@ -47,6 +47,22 @@ export default function MarketplacePage() {
     | { kind: 'bundle'; product: Bundle }
   const [installing, setInstalling] = useState<InstallTarget | null>(null)
 
+  // Card that's currently playing the hire-shimmer animation. Brief
+  // premium flash before the install modal mounts — feels like committing
+  // a hire decision, not opening a tab.
+  const [shimmerSlug, setShimmerSlug] = useState<string | null>(null)
+  function beginInstall(target: InstallTarget) {
+    setShimmerSlug(target.product.slug)
+    // Hold the shimmer for the full keyframe before the modal mounts so
+    // operators see the card commit. 320ms feels intentional, not laggy.
+    window.setTimeout(() => {
+      setInstalling(target)
+    }, 320)
+    window.setTimeout(() => {
+      setShimmerSlug(null)
+    }, 750)
+  }
+
   // ---------- AI EMPLOYEES ----------
   const filteredEmployees = useMemo(() => {
     return EMPLOYEES.filter((e) => {
@@ -190,7 +206,10 @@ export default function MarketplacePage() {
               <article
                 key={e.slug}
                 data-testid={`product-employee-${e.slug}`}
-                className="flex flex-col rounded-2xl border border-border/50 bg-card/30 p-5 transition-all hover:border-primary/40 hover:bg-card/50 hover:-translate-y-0.5"
+                className={cn(
+                  'flex flex-col rounded-2xl border border-border/50 bg-card/30 p-5 transition-all hover:border-primary/40 hover:bg-card/50 hover:-translate-y-0.5',
+                  shimmerSlug === e.slug && 'hire-shimmer border-primary/60',
+                )}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -209,7 +228,7 @@ export default function MarketplacePage() {
                     <span className="text-2xl font-bold text-primary">${e.monthlyUsd}</span>
                     <span className="text-xs text-muted-foreground">/mo</span>
                   </div>
-                  <Button size="sm" data-testid={`hire-${e.slug}`} onClick={() => setInstalling({ kind: 'employee', product: e })}>Hire AI Employee</Button>
+                  <Button size="sm" data-testid={`hire-${e.slug}`} onClick={() => beginInstall({ kind: 'employee', product: e })}>Hire AI Employee</Button>
                 </div>
               </article>
             ))}
@@ -224,7 +243,10 @@ export default function MarketplacePage() {
               <article
                 key={s.slug}
                 data-testid={`product-skill-${s.slug}`}
-                className="flex flex-col rounded-2xl border border-border/50 bg-card/30 p-5 transition-all hover:border-primary/40 hover:bg-card/50 hover:-translate-y-0.5"
+                className={cn(
+                  'flex flex-col rounded-2xl border border-border/50 bg-card/30 p-5 transition-all hover:border-primary/40 hover:bg-card/50 hover:-translate-y-0.5',
+                  shimmerSlug === s.slug && 'hire-shimmer border-primary/60',
+                )}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -246,7 +268,7 @@ export default function MarketplacePage() {
                 </div>
                 <div className="mt-4 flex items-end justify-between">
                   <span className="text-2xl font-bold text-primary">${s.priceUsd}</span>
-                  <Button size="sm" variant="outline" data-testid={`install-${s.slug}`} onClick={() => setInstalling({ kind: 'skill', product: s })}>Install Skill</Button>
+                  <Button size="sm" variant="outline" data-testid={`install-${s.slug}`} onClick={() => beginInstall({ kind: 'skill', product: s })}>Install Skill</Button>
                 </div>
               </article>
             ))}
@@ -261,7 +283,10 @@ export default function MarketplacePage() {
               <article
                 key={b.slug}
                 data-testid={`product-bundle-${b.slug}`}
-                className="flex flex-col rounded-2xl border border-border/50 bg-card/30 p-5 transition-all hover:border-primary/40 hover:bg-card/50"
+                className={cn(
+                  'flex flex-col rounded-2xl border border-border/50 bg-card/30 p-5 transition-all hover:border-primary/40 hover:bg-card/50',
+                  shimmerSlug === b.slug && 'hire-shimmer border-primary/60',
+                )}
               >
                 <div className="flex items-start gap-3">
                   <div className="text-3xl">{b.icon}</div>
@@ -288,7 +313,7 @@ export default function MarketplacePage() {
                       </Button>
                     </Link>
                   ) : null}
-                  <Button className="flex-1" data-testid={`deploy-${b.slug}`} onClick={() => setInstalling({ kind: 'bundle', product: b })}>
+                  <Button className="flex-1" data-testid={`deploy-${b.slug}`} onClick={() => beginInstall({ kind: 'bundle', product: b })}>
                     Deploy Team →
                   </Button>
                 </div>

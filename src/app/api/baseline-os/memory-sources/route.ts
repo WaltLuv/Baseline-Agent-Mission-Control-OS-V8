@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
 import { getDatabase } from '@/lib/db'
+import { ingestObsidianVault, resolveObsidianVaultPath } from '@/lib/baseline-os/obsidian-ingest'
 
 /**
  * Baseline OS — Memory Source Registry
@@ -150,7 +151,35 @@ export async function POST(request: NextRequest) {
     now,
     now,
   )
-  return NextResponse.json({ ok: true, status })
+
+  // Real Obsidian ingestion for the demo conversion pass. When the operator
+  // hits Connect / Resync on the Obsidian card, we actually scan a vault
+  // directory and write entries into workforce_memory tagged with
+  // kind='operator-memory.obsidian' so they show up in the Memory Feed and
+  // get cited by the Executive Briefing.
+  let ingestSummary: ReturnType<typeof ingestObsidianVault> | null = null
+  let ingestNote: string | null = null
+  if (body.sourceType === 'obsidian' && (body.action === 'connect' || body.action === 'resync')) {
+    const resolved = resolveObsidianVaultPath()
+    if (!resolved) {
+      ingestNote = 'No vault path configured. Set OBSIDIAN_VAULT_PATH or place markdown files under /app/.demo-obsidian.'
+    } else {
+      try {
+        ingestSummary = ingestObsidianVault(db, workspaceId, resolved.path)
+        // Update document_count on the row we just wrote so the UI reflects it.
+        db.prepare(
+          `UPDATE memory_sources SET document_count = ?, updated_at = ? WHERE workspace_id = ? AND source_type = 'obsidian'`,
+        ).run(ingestSummary.chunksWritten, now, workspaceId)
+        ingestNote = resolved.isDemoVault
+          ? 'Connected to bundled demo vault (/app/.demo-obsidian). Set OBSIDIAN_VAULT_PATH to point at a real Obsidian vault for production use.'
+          : `Connected to ${resolved.path}.`
+      } catch (e) {
+        ingestNote = `Ingest failed: ${String(e).slice(0, 160)}`
+      }
+    }
+  }
+
+  return NextResponse.json({ ok: true, status, ingest: ingestSummary, ingestNote })
 }
 
 function defaultDisplay(type: SourceType): string {
