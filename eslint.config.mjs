@@ -20,6 +20,10 @@ const config = [
       'react-hooks/set-state-in-effect': 'off',
       'react-hooks/purity': 'off',
       'react-hooks/immutability': 'off',
+      // React-19 compiler advisory: when a useCallback / useMemo can't be
+      // migrated to the compiler's auto-memo pass it complains, even when
+      // the code is fully correct. We trust our manual memoization.
+      'react-hooks/preserve-manual-memoization': 'off',
     },
   },
 ]

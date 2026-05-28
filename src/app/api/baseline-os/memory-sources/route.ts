@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
 import { getDatabase } from '@/lib/db'
 import { ingestObsidianVault, resolveObsidianVaultPath } from '@/lib/baseline-os/obsidian-ingest'
+import { ingestPinecone, pineconeConfigured } from '@/lib/baseline-os/pinecone-ingest'
+import { ingestNotion, notionConfigured } from '@/lib/baseline-os/notion-ingest'
 
 /**
  * Baseline OS — Memory Source Registry
@@ -179,7 +181,62 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, status, ingest: ingestSummary, ingestNote })
+  // Real Pinecone (Knowledge Intelligence) sync. Embeds the workspace's
+  // existing memory rows into the workspace_<id> namespace. Skipped
+  // gracefully when env keys are missing.
+  let pineconeSync: Awaited<ReturnType<typeof ingestPinecone>> | null = null
+  if (body.sourceType === 'pinecone' && (body.action === 'connect' || body.action === 'resync')) {
+    if (!pineconeConfigured()) {
+      ingestNote = 'Pinecone not configured. Set PINECONE_API_KEY, PINECONE_INDEX_HOST, and OPENAI_API_KEY (or EMERGENT_LLM_KEY).'
+    } else {
+      try {
+        pineconeSync = await ingestPinecone(db, workspaceId)
+        if (pineconeSync.ok) {
+          db.prepare(
+            `UPDATE memory_sources SET embedding_count = COALESCE(embedding_count, 0) + ?, updated_at = ? WHERE workspace_id = ? AND source_type = 'pinecone'`,
+          ).run(pineconeSync.upserts, now, workspaceId)
+          ingestNote = `Embedded ${pineconeSync.upserts} memory items into namespace ${pineconeSync.namespace}.`
+        } else {
+          ingestNote = `Pinecone sync failed: ${pineconeSync.reason}.`
+        }
+      } catch (e) {
+        ingestNote = `Pinecone sync error: ${String(e).slice(0, 160)}`
+      }
+    }
+  }
+
+  // Real Notion (Business Knowledge Base) sync. Pulls pages shared with
+  // the integration token and writes them to workforce_memory tagged with
+  // kind='operator-memory.notion'.
+  let notionSync: Awaited<ReturnType<typeof ingestNotion>> | null = null
+  if (body.sourceType === 'notion' && (body.action === 'connect' || body.action === 'resync')) {
+    if (!notionConfigured()) {
+      ingestNote = 'Notion not configured. Set NOTION_TOKEN (and optionally NOTION_DATABASE_ID).'
+    } else {
+      try {
+        notionSync = await ingestNotion(db, workspaceId)
+        if (notionSync.ok) {
+          db.prepare(
+            `UPDATE memory_sources SET document_count = ?, updated_at = ? WHERE workspace_id = ? AND source_type = 'notion'`,
+          ).run(notionSync.chunksWritten, now, workspaceId)
+          ingestNote = `Indexed ${notionSync.pagesIndexed} Notion pages (${notionSync.chunksWritten} chunks).`
+        } else {
+          ingestNote = `Notion sync failed: ${notionSync.reason}.`
+        }
+      } catch (e) {
+        ingestNote = `Notion sync error: ${String(e).slice(0, 160)}`
+      }
+    }
+  }
+
+  return NextResponse.json({
+    ok: true,
+    status,
+    ingest: ingestSummary,
+    pinecone: pineconeSync,
+    notion: notionSync,
+    ingestNote,
+  })
 }
 
 function defaultDisplay(type: SourceType): string {

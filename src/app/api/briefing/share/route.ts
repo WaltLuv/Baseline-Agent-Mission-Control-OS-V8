@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { randomBytes, createHmac } from 'node:crypto'
 import { requireRole } from '@/lib/auth'
 import { getDatabase } from '@/lib/db'
+import nodemailer from 'nodemailer'
 
 /**
  * Executive Briefing — Secure Share
@@ -204,14 +205,43 @@ export async function POST(request: NextRequest) {
           providerError = (await r.text()).slice(0, 300)
         }
       } else {
-        // SMTP_HOST set but no inline SMTP send path — return copy fallback.
-        providerName = 'smtp'
+        // SMTP inline send — enterprise / self-hosted fallback. Uses
+        // nodemailer with env-based config. Secrets stay server-side.
+        const smtpHost = process.env.SMTP_HOST
+        if (smtpHost) {
+          providerName = 'smtp'
+          try {
+            const port = Number(process.env.SMTP_PORT ?? 587)
+            const secure = (process.env.SMTP_SECURE ?? 'false').toLowerCase() === 'true' || port === 465
+            const transport = nodemailer.createTransport({
+              host: smtpHost,
+              port,
+              secure,
+              auth: process.env.SMTP_USER
+                ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+                : undefined,
+              connectionTimeout: 8_000,
+              greetingTimeout: 8_000,
+              socketTimeout: 12_000,
+            })
+            await transport.sendMail({
+              from: process.env.SMTP_FROM || fromAddress,
+              to: body.to,
+              subject,
+              text,
+              html,
+            })
+            providerStatus = 250
+          } catch (e) {
+            providerError = String(e).slice(0, 300)
+          }
+        }
       }
     } catch (e) {
       providerError = String(e).slice(0, 300)
     }
 
-    const sent = providerError === null && providerName !== 'smtp' && providerStatus >= 200 && providerStatus < 300
+    const sent = providerError === null && providerStatus >= 200 && providerStatus < 300
     auditLog(workspaceId, actorId, sent ? `email:${providerName}` : `email:${providerName}-failed`, body.to)
 
     if (sent) {
@@ -230,14 +260,14 @@ export async function POST(request: NextRequest) {
       ok: false,
       channel: 'email',
       provider: providerName,
-      requiresSetup: providerName === 'smtp' ? 'email-smtp' : null,
+      requiresSetup: providerName === 'none' ? 'email' : null,
       error: providerError,
       shareUrl,
       expiresAt,
       summary: text,
       note:
-        providerName === 'smtp'
-          ? 'SMTP_HOST is set but inline SMTP send is not wired. Summary returned for manual paste.'
+        providerName === 'none'
+          ? 'No email provider configured. Set RESEND_API_KEY, SENDGRID_API_KEY, or SMTP_HOST. Summary returned for manual paste.'
           : `Email provider ${providerName} rejected the request. Summary returned for fallback copy.`,
     })
   }
