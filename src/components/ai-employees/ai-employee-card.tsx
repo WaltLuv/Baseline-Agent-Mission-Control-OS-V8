@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { getAIEmployeeIdentity } from '@/lib/ai-employee-identity'
 import { cn } from '@/lib/utils'
 
@@ -12,9 +13,17 @@ interface AIEmployeeCardProps {
   trustScore?: number
   /** One-line "what they're working on right now" — surfaces life. */
   currentlyWorkingOn?: string | null
+  /** Optional life signals — only rendered when supplied (no fake data). */
+  confidence?: 'high' | 'medium' | 'low'
+  workloadPressure?: 'light' | 'balanced' | 'heavy'
+  escalationTitle?: string | null
+  blockerTitle?: string | null
+  recentWin?: string | null
   onClick?: () => void
   className?: string
   testIdSuffix?: string
+  /** Hide the trace deep-link footer (e.g. when card is itself a button). */
+  hideTraceLink?: boolean
 }
 
 const TRUST_COLORS: Record<'high' | 'medium' | 'building', string> = {
@@ -35,9 +44,15 @@ export function AIEmployeeCard({
   recentTaskCount,
   trustScore,
   currentlyWorkingOn,
+  confidence,
+  workloadPressure,
+  escalationTitle,
+  blockerTitle,
+  recentWin,
   onClick,
   className,
   testIdSuffix,
+  hideTraceLink,
 }: AIEmployeeCardProps) {
   const identity = getAIEmployeeIdentity(name)
   const isInteractive = !!onClick
@@ -151,6 +166,72 @@ export function AIEmployeeCard({
                   <p className="text-muted-foreground">trust score</p>
                 </div>
               )}
+            </div>
+          )}
+
+          {(confidence || workloadPressure) && (
+            <div
+              className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground"
+              data-testid={`ai-employee-life-${slug}`}
+            >
+              {confidence && (
+                <span>
+                  <span
+                    className={cn(
+                      'font-semibold',
+                      confidence === 'high' && 'text-emerald-400',
+                      confidence === 'medium' && 'text-amber-400',
+                      confidence === 'low' && 'text-red-400',
+                    )}
+                  >
+                    {confidence}
+                  </span>{' '}
+                  confidence
+                </span>
+              )}
+              {workloadPressure && (
+                <span>
+                  workload{' '}
+                  <span
+                    className={cn(
+                      'font-semibold',
+                      workloadPressure === 'heavy' && 'text-amber-300',
+                      workloadPressure === 'light' && 'text-sky-300',
+                      workloadPressure === 'balanced' && 'text-foreground',
+                    )}
+                  >
+                    {workloadPressure}
+                  </span>
+                </span>
+              )}
+            </div>
+          )}
+
+          {escalationTitle && (
+            <p
+              className="mt-2 rounded border border-amber-500/30 bg-amber-500/5 px-2 py-1 text-[11px] text-amber-200"
+              data-testid={`ai-employee-escalation-${slug}`}
+            >
+              Waiting for approval: {escalationTitle}
+            </p>
+          )}
+          {blockerTitle && !escalationTitle && (
+            <p className="mt-2 text-[11px] text-amber-300">Blocker: {blockerTitle}</p>
+          )}
+          {recentWin && !escalationTitle && !blockerTitle && (
+            <p className="mt-2 text-[11px] text-emerald-300">Recent win: {recentWin}</p>
+          )}
+
+          {!hideTraceLink && (
+            <div className="mt-3 flex justify-end">
+              <Link
+                href={`/app/agents/${encodeURIComponent(slug)}/trace`}
+                data-testid={`ai-employee-trace-link-${slug}`}
+                onClick={(e) => e.stopPropagation()}
+                className="text-[11px] text-primary hover:underline"
+              >
+                View employee trace →
+              </Link>
             </div>
           )}
         </div>

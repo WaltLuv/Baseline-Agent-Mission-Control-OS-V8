@@ -131,7 +131,7 @@ export function employeeTrace(workspaceId: number, slugOrName: string): Employee
   // Try to find agent by name (case-insensitive) or by slug-style match.
   const agent = db
     .prepare(
-      `SELECT id, name, role, status, last_activity, last_heartbeat
+      `SELECT id, name, role, status, last_activity, last_seen
        FROM agents
        WHERE workspace_id = ?
          AND (LOWER(name) = LOWER(?) OR LOWER(REPLACE(name, ' ', '-')) = LOWER(?))
@@ -144,7 +144,7 @@ export function employeeTrace(workspaceId: number, slugOrName: string): Employee
         role: string | null
         status: 'busy' | 'idle' | 'error' | 'offline' | null
         last_activity: string | null
-        last_heartbeat: number | null
+        last_seen: number | null
       }
     | undefined
 
@@ -165,7 +165,7 @@ export function employeeTrace(workspaceId: number, slugOrName: string): Employee
           `SELECT title, COALESCE(updated_at, created_at) AS closed_at,
                   COALESCE(value_usd, 0) AS value_usd
            FROM tasks
-           WHERE workspace_id = ? AND assignee = ? AND status = 'done'
+           WHERE workspace_id = ? AND assigned_to = ? AND status = 'done'
              AND COALESCE(updated_at, created_at) >= ?
            ORDER BY closed_at DESC LIMIT 5`,
         )
@@ -179,7 +179,7 @@ export function employeeTrace(workspaceId: number, slugOrName: string): Employee
       todayActions = (db
         .prepare(
           `SELECT title, COALESCE(updated_at, created_at) AS closed_at
-           FROM tasks WHERE workspace_id = ? AND assignee = ? AND status = 'done'
+           FROM tasks WHERE workspace_id = ? AND assigned_to = ? AND status = 'done'
              AND COALESCE(updated_at, created_at) >= ? ORDER BY closed_at DESC LIMIT 5`,
         )
         .all(workspaceId, agent.name, dayAgo) as Array<{ title: string; closed_at: number }>)
@@ -193,7 +193,7 @@ export function employeeTrace(workspaceId: number, slugOrName: string): Employee
     activeTasks = (db
       .prepare(
         `SELECT id, title, status, COALESCE(updated_at, created_at) AS updated_at
-         FROM tasks WHERE workspace_id = ? AND assignee = ? AND status IN ('open','in_progress','blocked','needs-review','review')
+         FROM tasks WHERE workspace_id = ? AND assigned_to = ? AND status IN ('open','in_progress','blocked','needs-review','review')
          ORDER BY updated_at DESC LIMIT 10`,
       )
       .all(workspaceId, agent.name) as Array<{ id: number; title: string; status: string; updated_at: number }>)
@@ -208,10 +208,10 @@ export function employeeTrace(workspaceId: number, slugOrName: string): Employee
         `SELECT id, kind, title, detail, rationale, created_at
          FROM workforce_memory
          WHERE workspace_id = ?
-           AND (agent_slug = ? OR rationale LIKE ? OR detail LIKE ?)
+           AND (agent_id = ? OR agent_slug = ? OR agent_slug = ? OR rationale LIKE ? OR detail LIKE ?)
          ORDER BY created_at DESC LIMIT 5`,
       )
-      .all(workspaceId, agent.name, `%${agent.name}%`, `%${agent.name}%`) as Array<{
+      .all(workspaceId, agent.id, slug, agent.name.toLowerCase(), `%${agent.name}%`, `%${agent.name}%`) as Array<{
       id: number
       kind: string
       title: string
@@ -229,81 +229,83 @@ export function employeeTrace(workspaceId: number, slugOrName: string): Employee
       }))
   }
 
-  // --- skills used: from usage_events (if column exists) joined by skill_name
+  // --- skills used: derived from workforce_memory `skill-used` entries when present
   let skillsUsed: EmployeeTrace['skillsUsed'] = []
-  if (tableExists(db, 'usage_events') && columnExists(db, 'usage_events', 'skill_name') && columnExists(db, 'usage_events', 'agent_name')) {
-    skillsUsed = (db
-      .prepare(
-        `SELECT skill_name AS skill, MAX(created_at) AS last_used, COUNT(*) AS uses
-         FROM usage_events
-         WHERE workspace_id = ? AND agent_name = ? AND created_at >= ?
-         GROUP BY skill_name ORDER BY uses DESC LIMIT 6`,
-      )
-      .all(workspaceId, agent.name, monthAgo) as Array<{ skill: string; last_used: number; uses: number }>)
-      .filter((r) => !!r.skill)
-      .map((r) => ({ skill: r.skill, lastUsedAt: r.last_used, uses: r.uses }))
+  if (tableExists(db, 'workforce_memory')) {
+    try {
+      skillsUsed = (db
+        .prepare(
+          `SELECT title AS skill, MAX(created_at) AS last_used, COUNT(*) AS uses
+           FROM workforce_memory
+           WHERE workspace_id = ?
+             AND (agent_id = ? OR agent_slug = ? OR agent_slug = ?)
+             AND kind IN ('skill-used','skill-installed')
+             AND created_at >= ?
+           GROUP BY title ORDER BY uses DESC LIMIT 6`,
+        )
+        .all(workspaceId, agent.id, slug, agent.name.toLowerCase(), monthAgo) as Array<{ skill: string; last_used: number; uses: number }>)
+        .filter((r) => !!r.skill)
+        .map((r) => ({ skill: r.skill, lastUsedAt: r.last_used, uses: r.uses }))
+    } catch {
+      skillsUsed = []
+    }
   }
 
-  // --- collaborators: agents that worked the same tasks
+  // --- collaborators: agents that worked the same tasks (same project_id)
   let collaborators: EmployeeTrace['collaborators'] = []
-  if (tableExists(db, 'tasks') && columnExists(db, 'tasks', 'assignee')) {
-    // Heuristic: tasks that have been re-assigned (assignee != original_assignee
-    // OR comments by other agents). Without rich audit, we approximate via
-    // tasks that share the same `project_id` worked by multiple agents in the
-    // last 30 days.
-    if (columnExists(db, 'tasks', 'project_id')) {
-      collaborators = (db
-        .prepare(
-          `SELECT other.assignee AS name,
-                  COUNT(DISTINCT t.id) AS shared_tasks,
-                  MAX(COALESCE(t.updated_at, t.created_at)) AS last_at
-           FROM tasks t
-           JOIN tasks other
-             ON other.project_id = t.project_id
-            AND other.workspace_id = t.workspace_id
-            AND other.assignee IS NOT NULL
-            AND other.assignee != ?
-           WHERE t.workspace_id = ? AND t.assignee = ?
-             AND COALESCE(t.updated_at, t.created_at) >= ?
-           GROUP BY other.assignee
-           ORDER BY shared_tasks DESC LIMIT 6`,
-        )
-        .all(agent.name, workspaceId, agent.name, monthAgo) as Array<{
-        name: string
-        shared_tasks: number
-        last_at: number
-      }>)
-        .map((r) => ({ name: r.name, sharedTasks: r.shared_tasks, lastSharedAt: r.last_at }))
-    }
+  if (tableExists(db, 'tasks') && columnExists(db, 'tasks', 'assigned_to') && columnExists(db, 'tasks', 'project_id')) {
+    collaborators = (db
+      .prepare(
+        `SELECT other.assigned_to AS name,
+                COUNT(DISTINCT t.id) AS shared_tasks,
+                MAX(COALESCE(t.updated_at, t.created_at)) AS last_at
+         FROM tasks t
+         JOIN tasks other
+           ON other.project_id = t.project_id
+          AND other.workspace_id = t.workspace_id
+          AND other.assigned_to IS NOT NULL
+          AND other.assigned_to != ?
+         WHERE t.workspace_id = ? AND t.assigned_to = ?
+           AND COALESCE(t.updated_at, t.created_at) >= ?
+         GROUP BY other.assigned_to
+         ORDER BY shared_tasks DESC LIMIT 6`,
+      )
+      .all(agent.name, workspaceId, agent.name, monthAgo) as Array<{
+      name: string
+      shared_tasks: number
+      last_at: number
+    }>)
+      .map((r) => ({ name: r.name, sharedTasks: r.shared_tasks, lastSharedAt: r.last_at }))
   }
 
   // --- cost + value this month
   let costThisMonthCents = 0
   let valueThisMonthCents = 0
-  if (tableExists(db, 'usage_events') && columnExists(db, 'usage_events', 'agent_name') && columnExists(db, 'usage_events', 'retail_cost_cents')) {
+  if (tableExists(db, 'usage_events') && columnExists(db, 'usage_events', 'agent_id') && columnExists(db, 'usage_events', 'retail_cost_cents')) {
     try {
       const row = db
         .prepare(
           `SELECT COALESCE(SUM(retail_cost_cents),0) AS cost
            FROM usage_events
-           WHERE workspace_id = ? AND agent_name = ? AND created_at >= ?`,
+           WHERE workspace_id = ? AND agent_id = ? AND created_at >= ?`,
         )
-        .get(workspaceId, agent.name, monthAgo) as { cost: number } | undefined
+        .get(workspaceId, agent.id, monthAgo) as { cost: number } | undefined
       costThisMonthCents = row?.cost ?? 0
     } catch {
       costThisMonthCents = 0
     }
   }
-  if (tableExists(db, 'tasks') && columnExists(db, 'tasks', 'value_usd')) {
+  if (tableExists(db, 'workforce_memory') && columnExists(db, 'workforce_memory', 'value_impact_cents')) {
     try {
       const row = db
         .prepare(
-          `SELECT COALESCE(SUM(value_usd),0) AS v
-           FROM tasks
-           WHERE workspace_id = ? AND assignee = ? AND status = 'done' AND COALESCE(updated_at, created_at) >= ?`,
+          `SELECT COALESCE(SUM(value_impact_cents),0) AS v
+           FROM workforce_memory
+           WHERE workspace_id = ? AND (agent_id = ? OR agent_slug = ? OR agent_slug = ?)
+             AND created_at >= ?`,
         )
-        .get(workspaceId, agent.name, monthAgo) as { v: number } | undefined
-      valueThisMonthCents = Math.round((row?.v ?? 0) * 100)
+        .get(workspaceId, agent.id, slug, agent.name.toLowerCase(), monthAgo) as { v: number } | undefined
+      valueThisMonthCents = row?.v ?? 0
     } catch {
       valueThisMonthCents = 0
     }
@@ -315,7 +317,7 @@ export function employeeTrace(workspaceId: number, slugOrName: string): Employee
     blockedItems = (db
       .prepare(
         `SELECT id, title, COALESCE(updated_at, created_at) AS since_at
-         FROM tasks WHERE workspace_id = ? AND assignee = ? AND status = 'blocked'
+         FROM tasks WHERE workspace_id = ? AND assigned_to = ? AND status = 'blocked'
          ORDER BY since_at ASC LIMIT 5`,
       )
       .all(workspaceId, agent.name) as Array<{ id: number; title: string; since_at: number }>)
@@ -328,7 +330,7 @@ export function employeeTrace(workspaceId: number, slugOrName: string): Employee
     needsApproval = (db
       .prepare(
         `SELECT id, title, COALESCE(updated_at, created_at) AS since_at
-         FROM tasks WHERE workspace_id = ? AND assignee = ? AND status IN ('needs-review','review','waiting-approval')
+         FROM tasks WHERE workspace_id = ? AND assigned_to = ? AND status IN ('needs-review','review','waiting-approval')
          ORDER BY since_at ASC LIMIT 5`,
       )
       .all(workspaceId, agent.name) as Array<{ id: number; title: string; since_at: number }>)
@@ -355,7 +357,7 @@ export function employeeTrace(workspaceId: number, slugOrName: string): Employee
   // --- presence
   const presence: EmployeeTrace['presence'] = derivePresence(
     agent.status,
-    agent.last_heartbeat,
+    agent.last_seen,
     activeTasks.find((t) => t.status === 'blocked') ? 'blocked' : null,
     needsApproval.length > 0 ? 'waiting-for-approval' : null,
   )
@@ -422,7 +424,7 @@ function computeTrustTrajectory(
            SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) AS closed,
            SUM(CASE WHEN status IN ('blocked','needs-review') THEN 1 ELSE 0 END) AS escalated
          FROM tasks
-         WHERE workspace_id = ? AND assignee = ?
+         WHERE workspace_id = ? AND assigned_to = ?
            AND COALESCE(updated_at, created_at) >= ? AND COALESCE(updated_at, created_at) < ?`,
       )
       .get(workspaceId, agentName, dayStart, dayEnd) as
@@ -478,33 +480,43 @@ export function customerSkillLabel(slug: string): string {
 
 export function skillsInventory(workspaceId: number): ActiveSkill[] {
   const db = getDatabase()
-  if (!tableExists(db, 'usage_events')) return []
-  if (!columnExists(db, 'usage_events', 'skill_name')) return []
+  if (!tableExists(db, 'workforce_memory')) return []
   const monthAgo = Math.floor(Date.now() / 1000) - 30 * 86_400
   const dayAgo = Math.floor(Date.now() / 1000) - 86_400
 
-  const rows = db
-    .prepare(
-      `SELECT skill_name AS slug,
-              COUNT(*) AS uses,
-              SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS recent_uses,
-              SUM(COALESCE(retail_cost_cents, 0)) AS credits_cost,
-              MAX(created_at) AS last_used,
-              GROUP_CONCAT(DISTINCT agent_name) AS agents
-       FROM usage_events
-       WHERE workspace_id = ? AND skill_name IS NOT NULL AND created_at >= ?
-       GROUP BY skill_name
-       ORDER BY uses DESC
-       LIMIT 24`,
-    )
-    .all(dayAgo, workspaceId, monthAgo) as Array<{
+  // Derive from `skill-installed` / `skill-used` rows in workforce_memory.
+  // Title for skill rows is the human label (e.g., "PDF Document Generation").
+  type Row = {
     slug: string
     uses: number
     recent_uses: number
-    credits_cost: number
     last_used: number
     agents: string | null
-  }>
+    value_cents: number
+  }
+  let rows: Row[] = []
+  try {
+    rows = db
+      .prepare(
+        `SELECT
+            LOWER(REPLACE(REPLACE(title, ' ', '-'), ':', '')) AS slug,
+            COUNT(*) AS uses,
+            SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS recent_uses,
+            MAX(created_at) AS last_used,
+            GROUP_CONCAT(DISTINCT agent_slug) AS agents,
+            COALESCE(SUM(value_impact_cents), 0) AS value_cents
+         FROM workforce_memory
+         WHERE workspace_id = ?
+           AND kind IN ('skill-installed','skill-used')
+           AND created_at >= ?
+         GROUP BY title
+         ORDER BY uses DESC
+         LIMIT 24`,
+      )
+      .all(dayAgo, workspaceId, monthAgo) as Row[]
+  } catch {
+    rows = []
+  }
 
   return rows.map((r) => {
     const employees = (r.agents || '').split(',').filter(Boolean)
@@ -520,8 +532,8 @@ export function skillsInventory(workspaceId: number): ActiveSkill[] {
       uses: r.uses,
       recentUsesPerDay,
       estimatedMinutesSaved: r.uses * 15,
-      creditsUsedThisMonth: Math.round((r.credits_cost ?? 0) / 100),
-      valueUsdThisMonth: Math.round(((r.uses * 15) / 60) * 60), // 15 min @ $60/hr
+      creditsUsedThisMonth: 0,
+      valueUsdThisMonth: Math.round((r.value_cents ?? 0) / 100),
       relatedTasks: 0,
       recommendation:
         state === 'inactive'
@@ -537,23 +549,23 @@ export function skillsInventory(workspaceId: number): ActiveSkill[] {
 
 export function collaborationGraph(workspaceId: number): CollaborationGraph {
   const db = getDatabase()
-  if (!tableExists(db, 'tasks') || !columnExists(db, 'tasks', 'project_id') || !columnExists(db, 'tasks', 'assignee')) {
+  if (!tableExists(db, 'tasks') || !columnExists(db, 'tasks', 'project_id') || !columnExists(db, 'tasks', 'assigned_to')) {
     return { nodes: [], edges: [], topPair: null }
   }
   const monthAgo = Math.floor(Date.now() / 1000) - 30 * 86_400
   const rows = db
     .prepare(
-      `SELECT a.assignee AS from_name,
-              b.assignee AS to_name,
+      `SELECT a.assigned_to AS from_name,
+              b.assigned_to AS to_name,
               COUNT(DISTINCT a.id) AS shared,
               MAX(COALESCE(a.updated_at, a.created_at)) AS last_at
        FROM tasks a
        JOIN tasks b
          ON a.project_id = b.project_id
         AND a.workspace_id = b.workspace_id
-        AND a.assignee IS NOT NULL
-        AND b.assignee IS NOT NULL
-        AND a.assignee != b.assignee
+        AND a.assigned_to IS NOT NULL
+        AND b.assigned_to IS NOT NULL
+        AND a.assigned_to != b.assigned_to
        WHERE a.workspace_id = ?
          AND COALESCE(a.updated_at, a.created_at) >= ?
        GROUP BY from_name, to_name

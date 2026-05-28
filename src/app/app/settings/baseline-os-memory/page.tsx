@@ -36,8 +36,8 @@ const COPY: Record<Source['sourceType'], { layer: string; layerLabel: string; de
   pinecone: {
     layer: 'Layer 2',
     layerLabel: 'Knowledge Intelligence',
-    description: 'Semantic vector recall — similar tasks, customer context, business knowledge retrieval.',
-    useCases: ['Embeddings', 'Semantic search', 'Similar-task retrieval', 'Reasoning context'],
+    description: 'Semantic recall — similar tasks, customer context, business knowledge retrieval.',
+    useCases: ['Indexed knowledge', 'Semantic search', 'Similar-task retrieval', 'Reasoning context'],
   },
   notion: {
     layer: 'Layer 3',
@@ -66,6 +66,7 @@ export default function BaselineOSMemorySettings() {
   const [sources, setSources] = useState<Source[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const [notes, setNotes] = useState<Record<string, { tone: 'info' | 'success' | 'warning'; text: string }>>({})
 
   const load = async () => {
     try {
@@ -82,12 +83,28 @@ export default function BaselineOSMemorySettings() {
   const updateSource = async (sourceType: Source['sourceType'], action: 'connect' | 'disconnect' | 'resync') => {
     setBusy(sourceType)
     try {
-      await fetch('/api/baseline-os/memory-sources', {
+      const r = await fetch('/api/baseline-os/memory-sources', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sourceType, action, metadata: action === 'connect' ? { connectedAt: Date.now() } : undefined }),
       })
+      const data = await r.json().catch(() => ({}))
+      if (data?.ingestNote) {
+        const text: string = data.ingestNote
+        const tone: 'info' | 'success' | 'warning' = /not configured|failed|error/i.test(text)
+          ? 'warning'
+          : /Embedded|Indexed|Connected/i.test(text)
+            ? 'success'
+            : 'info'
+        setNotes((n) => ({ ...n, [sourceType]: { tone, text } }))
+      } else if (action === 'disconnect') {
+        setNotes((n) => {
+          const next = { ...n }
+          delete next[sourceType]
+          return next
+        })
+      }
       await load()
     } finally {
       setBusy(null)
@@ -155,9 +172,24 @@ export default function BaselineOSMemorySettings() {
 
               <dl className="mt-3 grid grid-cols-3 gap-2 text-[11px]">
                 <Stat label="Documents" value={s.documentCount.toLocaleString()} />
-                <Stat label="Embeddings" value={s.embeddingCount.toLocaleString()} />
+                <Stat label="Indexed entries" value={s.embeddingCount.toLocaleString()} />
                 <Stat label="Last sync" value={formatRelative(s.lastSyncAt)} />
               </dl>
+
+              {notes[s.sourceType] && (
+                <p
+                  data-testid={`memory-source-note-${s.sourceType}`}
+                  className={`mt-3 rounded-md border px-2 py-1.5 text-[11px] ${
+                    notes[s.sourceType].tone === 'success'
+                      ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-200'
+                      : notes[s.sourceType].tone === 'warning'
+                        ? 'border-amber-500/30 bg-amber-500/5 text-amber-200'
+                        : 'border-border/40 bg-card/30 text-muted-foreground'
+                  }`}
+                >
+                  {notes[s.sourceType].text}
+                </p>
+              )}
 
               <p className="mt-3 text-[10px] text-muted-foreground">
                 Permission: <span className="text-foreground">{s.permissionScope}</span> ·

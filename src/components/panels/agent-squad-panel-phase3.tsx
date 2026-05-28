@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
@@ -579,6 +580,14 @@ export function AgentSquadPanelPhase3() {
                           {t('wake')}
                         </Button>
                       )}
+                      <Link
+                        href={`/app/agents/${encodeURIComponent(agent.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase())}/trace`}
+                        onClick={(e) => e.stopPropagation()}
+                        data-testid={`ai-employee-trace-link-${agent.id}`}
+                        className="inline-flex h-6 items-center rounded-md px-2 text-xs text-primary hover:bg-primary/10"
+                      >
+                        Trace
+                      </Link>
                       <Button
                         onClick={(e) => {
                           e.stopPropagation()

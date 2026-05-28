@@ -33,19 +33,31 @@ export function EmployeeTraceView({ slug }: { slug: string }) {
       try {
         const r = await fetch(`/api/agents/${encodeURIComponent(slug)}/trace`, { credentials: 'include' })
         if (!r.ok) {
-          if (!cancelled) setError('No trace data available for this AI Employee yet.')
+          if (!cancelled) {
+            setError('No trace data available for this AI Employee yet.')
+            setLoading(false)
+          }
           return
         }
         const j = await r.json()
-        if (!cancelled) setTrace(j.trace ?? null)
+        if (!cancelled) {
+          setTrace(j.trace ?? null)
+          setLoading(false)
+        }
       } catch {
-        if (!cancelled) setError('Could not load trace.')
-      } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) {
+          setError('Could not load trace.')
+          setLoading(false)
+        }
       }
     }
-    if (!demo.active) load()
-    else setLoading(false)
+    if (demo.active) {
+      // Demo mode supplies overlay synchronously — no fetch.
+      setLoading(false)
+    } else {
+      setLoading(true)
+      load()
+    }
     return () => {
       cancelled = true
     }

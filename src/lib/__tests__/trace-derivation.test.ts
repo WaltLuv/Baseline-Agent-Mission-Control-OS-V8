@@ -2,6 +2,10 @@
  * Trace derivation tests — exercise the workspace-isolated, honest-empty
  * behavior of the derivation core that powers the employee trace view,
  * skills-active inventory, and collaboration graph.
+ *
+ * Schema mirrors the production SQLite store:
+ *   agents.last_seen, tasks.assigned_to, workforce_memory.{agent_id, agent_slug, value_impact_cents}
+ *   usage_events.agent_id (no skill_name — skills are derived from workforce_memory).
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import Database from 'better-sqlite3'
@@ -30,20 +34,19 @@ beforeEach(() => {
       id INTEGER PRIMARY KEY,
       workspace_id INTEGER NOT NULL,
       name TEXT, role TEXT, status TEXT,
-      last_activity TEXT, last_heartbeat INTEGER
+      last_activity TEXT, last_seen INTEGER
     );
     CREATE TABLE tasks (
       id INTEGER PRIMARY KEY,
       workspace_id INTEGER NOT NULL,
-      assignee TEXT, project_id INTEGER,
+      assigned_to TEXT, project_id INTEGER,
       title TEXT, status TEXT,
-      created_at INTEGER, updated_at INTEGER,
-      value_usd REAL
+      created_at INTEGER, updated_at INTEGER
     );
     CREATE TABLE usage_events (
       id INTEGER PRIMARY KEY,
       workspace_id INTEGER NOT NULL,
-      agent_name TEXT, skill_name TEXT,
+      agent_id INTEGER,
       retail_cost_cents INTEGER,
       created_at INTEGER NOT NULL
     );
@@ -99,18 +102,25 @@ describe('employeeTrace', () => {
       .run()
     inMemoryDb
       .prepare(
-        `INSERT INTO tasks (workspace_id, assignee, title, status, created_at, updated_at, value_usd) VALUES
-          (1, 'Phil', 'Filed extension for client #88', 'done', ?, ?, 540),
-          (1, 'Phil', 'Reconcile Q1 books for client #211', 'in_progress', ?, ?, 0),
-          (1, 'Phil', 'Stuck on partner sign-off', 'blocked', ?, ?, 0)`,
+        `INSERT INTO tasks (workspace_id, assigned_to, title, status, created_at, updated_at) VALUES
+          (1, 'Phil', 'Filed extension for client #88', 'done', ?, ?),
+          (1, 'Phil', 'Reconcile Q1 books for client #211', 'in_progress', ?, ?),
+          (1, 'Phil', 'Stuck on partner sign-off', 'blocked', ?, ?)`,
       )
       .run(now - 100, now - 50, now - 200, now - 100, now - 300, now - 200)
+    // value attribution lives in workforce_memory in the production schema.
+    inMemoryDb
+      .prepare(
+        `INSERT INTO workforce_memory (workspace_id, agent_slug, kind, title, value_impact_cents, created_at)
+         VALUES (1, 'phil', 'task-closed', 'Filed extension for client #88', 54000, ?)`,
+      )
+      .run(now - 50)
     const t = employeeTrace(1, 'Phil')!
     expect(t.todayActions.length).toBe(1)
-    expect(t.todayActions[0].valueUsd).toBe(540)
     expect(t.activeTasks.find((x) => x.status === 'in_progress')).toBeTruthy()
     expect(t.blockedItems.length).toBe(1)
     expect(t.presence).toBe('blocked')
+    expect(t.valueThisMonthCents).toBe(54000)
   })
 
   it('cites memory entries that mention the agent', () => {
@@ -127,11 +137,11 @@ describe('employeeTrace', () => {
     // The agent name "Phil" doesn't appear in the memory — should still be empty
     const t1 = employeeTrace(1, 'Phil')!
     expect(t1.memoryUsed.length).toBe(0)
-    // But if the memory mentions the agent name, it should surface
+    // But if the memory is scoped to this agent's slug (`phil`), it surfaces.
     inMemoryDb
       .prepare(
         `INSERT INTO workforce_memory (workspace_id, agent_slug, kind, title, detail, rationale, created_at) VALUES
-         (1, 'Phil', 'operator-memory.obsidian', 'Phil SOP', 'Cadence: T+0, T+72h, T+7d.',
+         (1, 'phil', 'operator-memory.obsidian', 'Phil SOP', 'Cadence: T+0, T+72h, T+7d.',
           'Source: Obsidian operator vault · 02-sop.md', ?)`,
       )
       .run(Math.floor(Date.now() / 1000))
@@ -149,7 +159,7 @@ describe('employeeTrace', () => {
       .run()
     inMemoryDb
       .prepare(
-        `INSERT INTO tasks (workspace_id, assignee, title, status, created_at, updated_at, value_usd) VALUES (1, 'Phil', 'Workspace 1 task', 'done', ?, ?, 100)`,
+        `INSERT INTO tasks (workspace_id, assigned_to, title, status, created_at, updated_at) VALUES (1, 'Phil', 'Workspace 1 task', 'done', ?, ?)`,
       )
       .run(Math.floor(Date.now() / 1000) - 100, Math.floor(Date.now() / 1000) - 50)
     const w1 = employeeTrace(1, 'Phil')!
@@ -160,24 +170,27 @@ describe('employeeTrace', () => {
 })
 
 describe('skillsInventory', () => {
-  it('returns [] when usage_events has no skill_name data', () => {
+  it('returns [] when workforce_memory has no skill-* rows', () => {
     expect(skillsInventory(1)).toEqual([])
   })
 
   it('aggregates uses across employees and labels with customer-facing names', () => {
     const now = Math.floor(Date.now() / 1000)
     const insert = inMemoryDb.prepare(
-      `INSERT INTO usage_events (workspace_id, agent_name, skill_name, retail_cost_cents, created_at) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO workforce_memory (workspace_id, agent_slug, kind, title, value_impact_cents, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
     )
-    for (let i = 0; i < 12; i++) insert.run(1, 'Phil', 'document-chase', 150, now - i * 60)
-    for (let i = 0; i < 4; i++) insert.run(1, 'Lena', 'document-chase', 150, now - i * 60)
-    for (let i = 0; i < 3; i++) insert.run(1, 'Phil', 'sms-outbound', 100, now - i * 60)
+    // skillsInventory derives the slug as LOWER(REPLACE(title, ' ', '-')).
+    // Using the exact override-known slugs as the row title keeps assertions
+    // honest about customer-facing labels.
+    for (let i = 0; i < 12; i++) insert.run(1, 'phil', 'skill-used', 'document-chase', 150, now - i * 60)
+    for (let i = 0; i < 4; i++) insert.run(1, 'lena', 'skill-used', 'document-chase', 150, now - i * 60)
+    for (let i = 0; i < 3; i++) insert.run(1, 'phil', 'skill-used', 'sms-outbound', 100, now - i * 60)
 
     const skills = skillsInventory(1)
     expect(skills.length).toBeGreaterThan(0)
     const dc = skills.find((s) => s.slug === 'document-chase')!
     expect(dc.label).toBe('Missing Document Outreach')
-    expect(dc.employees.sort()).toEqual(['Lena', 'Phil'])
+    expect(dc.employees.sort()).toEqual(['lena', 'phil'])
     expect(dc.uses).toBe(16)
     expect(dc.state).toBe('active')
   })
@@ -191,7 +204,7 @@ describe('collaborationGraph', () => {
   it('derives edges from shared project tasks', () => {
     const now = Math.floor(Date.now() / 1000)
     const ins = inMemoryDb.prepare(
-      `INSERT INTO tasks (workspace_id, project_id, assignee, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO tasks (workspace_id, project_id, assigned_to, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     )
     // Project 10: Phil + Lena collaborate across 3 tasks
     for (let i = 0; i < 3; i++) {
@@ -208,12 +221,12 @@ describe('collaborationGraph', () => {
   it('does NOT fabricate edges where no shared work exists', () => {
     inMemoryDb
       .prepare(
-        `INSERT INTO tasks (workspace_id, project_id, assignee, title, status, created_at, updated_at) VALUES (1, 1, 'Phil', 't1', 'done', ?, ?)`,
+        `INSERT INTO tasks (workspace_id, project_id, assigned_to, title, status, created_at, updated_at) VALUES (1, 1, 'Phil', 't1', 'done', ?, ?)`,
       )
       .run(Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000))
     inMemoryDb
       .prepare(
-        `INSERT INTO tasks (workspace_id, project_id, assignee, title, status, created_at, updated_at) VALUES (1, 2, 'Lena', 't2', 'done', ?, ?)`,
+        `INSERT INTO tasks (workspace_id, project_id, assigned_to, title, status, created_at, updated_at) VALUES (1, 2, 'Lena', 't2', 'done', ?, ?)`,
       )
       .run(Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000))
     const g = collaborationGraph(1)

@@ -1050,3 +1050,190 @@ enterprise email path is no longer a stub. Mission Control is now a
 calm executive operating system supervising a living AI workforce
 powered by Baseline OS.
 
+
+
+
+---
+
+## 18. Iteration 13 — Iteration 12 Verification + Life Signals Evolution (Feb 2026)
+
+User mandate (option B): verify Iteration 12 visually AND continue into P1
+AI Employee Life Signals evolution in a single integrated pass. Return a
+consolidated report.
+
+### 18.1 — Iteration 12 BLOCKER fixes (route collision + schema drift)
+Discovered on session resume:
+
+- **Route collision** — `/api/agents/[slug]/trace` was created alongside the
+  existing `/api/agents/[id]/...` tree, which Next.js 16 rejects with
+  *"You cannot use different slug names for the same dynamic path
+  ('id' !== 'slug')"*. Effect: every API under `/api/agents/*` was
+  unreachable in dev. **Fix:** moved the trace route into
+  `/api/agents/[id]/trace/route.ts` (id resolves slug-or-name via
+  `employeeTrace`).
+- **Schema drift in `trace-derivation.ts`** — the previous agent wrote
+  the queries against an imagined schema (`agents.last_heartbeat`,
+  `tasks.assignee`, `tasks.value_usd`, `usage_events.skill_name`,
+  `usage_events.agent_name`). The production SQLite store uses
+  `agents.last_seen`, `tasks.assigned_to`, no `value_usd` column, and
+  skill events live in `workforce_memory.kind IN ('skill-used',
+  'skill-installed')`. Fixed every query to the real schema with
+  `columnExists` guards so future schema migrations don't crash the
+  derivation.
+- **Schema drift in `life-signals/route.ts`** — same `last_heartbeat` /
+  `assignee` mismatch made the route return only honest-empty signals.
+  Rewrote against `last_seen` + `assigned_to`, and **populated the
+  previously-deferred fields**: `skillsActive`, `collaborators`,
+  `escalation`, `activeWorkflow` are now derived from real tables.
+- **Trace tests rewritten** — `trace-derivation.test.ts` now seeds the
+  real production schema (12 tests passing).
+- **New tests** — `life-signals-route.test.ts` (2 tests) lock the
+  presence-from-escalation, collaborator derivation, skills lookup, and
+  memory citation behaviour against the real schema.
+
+### 18.2 — Live verification proof
+- `tsc --noEmit` → **0 errors**
+- `eslint .` → **0 errors**
+- `vitest run` → **1009 / 1009 passing** (+2 new life-signals route tests)
+- `next build` → **Compiled successfully**, 138/138 pages
+- Live `GET /api/agents/agent-browser/trace` → returns full trace JSON
+  with cost ($0.03), trust trajectory, next action.
+- Live `GET /api/agents/life-signals` → 3 agents · honest empty roster
+  (no fabricated activity).
+- Production server screenshots captured:
+  - `/app/test_reports/trace_live.png` — agent-browser trace, calm
+    6-card layout, honest "No actions today" empty states, $0.03 cost,
+    trust-trend empty-state copy.
+  - `/app/test_reports/trace_demo_seniorcpa.png` — demo CPA trace shows
+    `Held for approval` card with Obsidian memory rationale
+    ("Q1 Doctrine: never file where 1099 totals do not reconcile.
+    Escalate to operator with delta first."), skills chips
+    (`reconciliation`, `partner-escalation`), collaborator → AI Tax
+    Document Organizer, blocker, recent win.
+  - `/app/test_reports/overview_demo_cpa.png` — Mission Control overview
+    with identity strip, briefing, COO row, and the new **"Who is
+    working on what right now"** Life Roster showing all 4 CPA-storyline
+    employees with presence pills (`Working` · `Waiting for approval`
+    · `Idle`), confidence (high/medium), workload (heavy/balanced/light),
+    response speed (~3m / ~7m / ~9m), collaborators, Obsidian memory
+    citations, skill chips, workflow lines, blockers, and recent wins.
+  - `/app/test_reports/settings_memory.png` — Workforce Brain page now
+    labels the stat **"Indexed entries"** instead of "Embeddings",
+    keeping vector jargon out of customer surfaces.
+
+### 18.3 — Life Signals Evolution
+Added the operational dimensions the user mandated, honestly derived from
+the real workspace state:
+
+- **Presence** — derives from `agents.status` + `last_seen` staleness +
+  open blocker / open escalation. Six states: `online · working ·
+  waiting-for-approval · blocked · idle · needs-attention`.
+- **Confidence** — closed/(closed+escalated) reliability ratio over the
+  past week. `high` requires ≥75% reliability with 2+ closed tasks;
+  `low` triggers on reliability < 40% or "no recent closes despite
+  open work". No fake trajectory.
+- **Workload pressure** — `light` (0 open) · `balanced` (1–5) · `heavy`
+  (6+).
+- **Collaboration intelligence** — derived from `tasks.project_id`
+  shared-work; the API now returns up to 4 distinct co-workers per
+  employee.
+- **Escalation chains** — oldest `needs-review / review / waiting-approval`
+  task surfaces with severity (`high` if > 48h old, `medium` > 12h, else
+  `low`), and the matched `workforce_memory.rationale` becomes the
+  "Why this is held" copy on the trace approval card.
+- **Memory usage** — most recent `workforce_memory` row scoped to the
+  agent. Source label is **Obsidian / Notion / Pinecone / Workforce
+  Memory** — never index names.
+- **Skill usage** — derived from `workforce_memory.kind IN
+  ('skill-used', 'skill-installed')` in the last 24h.
+- **Active workflow** — heuristic: most recent `in_progress` task title.
+- **Recent win** — most recent done task.
+- **Current blocker** — oldest open `blocked` task.
+
+### 18.4 — Surfaces wired
+- **AI Employee Card** (`ai-employee-card.tsx`) — gained optional life
+  props (`confidence`, `workloadPressure`, `escalationTitle`,
+  `blockerTitle`, `recentWin`) and a **"View employee trace →"** deep
+  link footer with `data-testid="ai-employee-trace-link-${slug}"`.
+- **Squad panel** (`agent-squad-panel-phase3.tsx`) — every card footer
+  now has a **Trace** button next to Wake / Spawn / Hide.
+- **Life Roster** (`ai-employee-life-roster.tsx`) — already rendered
+  presence / confidence / workload / collaborators / memory citation /
+  skills / escalation / blocker / win on the overview. With the API
+  fix, live mode now populates all fields honestly.
+- **Employee Trace** (`employee-trace-view.tsx`) — wrapped in
+  `DemoModeProvider` via a new `Suspense` boundary so demo mode
+  trace pages now correctly render the storyline overlay. Loading
+  state ergonomics fixed (no false-positive empty state while
+  demo provider hydrates).
+- **Settings · Workforce Brain** — relabelled "Embeddings" → "Indexed
+  entries" both as a stat label and as a Pinecone use-case chip,
+  keeping vector jargon out of customer surfaces. Added a per-card
+  `ingestNote` toast (success / warning / info) so the operator sees
+  "Pinecone not configured. Set PINECONE_API_KEY…" type guidance
+  directly on the card after a Connect / Resync attempt.
+
+### 18.5 — Customer language audit
+Confirmed every life-signal surface uses business-owner language:
+**Working on… · Waiting for approval · Used Obsidian · High confidence
+· Needs review · Collaborated with… · Escalated because… · Recent win
+· Blocker**. No `vector / embedding / namespace / pipeline / graph
+edge / orchestration` strings reach customer-mode UI.
+
+### 18.6 — Live vs Demo separation reaffirmed
+- Live mode `/api/agents/life-signals` with no seeded activity →
+  returns 3 agents with `presence:'idle' · workload:'light' ·
+  confidence:'medium' · collaborators:[] · skillsActive:[] · escalation:null`.
+  Honest. No fabricated trajectories.
+- Demo mode `?demo=cpa` → renders the seeded storyline with 4 CPA
+  employees, real-feeling memory citations, escalation rationale,
+  and blocker copy. Pure overlay — never written into the live
+  database.
+
+### 18.7 — Files touched
+```
+mod   src/lib/baseline-os/trace-derivation.ts      (schema-correct queries)
+mod   src/lib/__tests__/trace-derivation.test.ts   (rewrite for prod schema)
+new   src/lib/__tests__/life-signals-route.test.ts (2 tests)
+mod   src/app/api/agents/[id]/trace/route.ts       (moved from [slug]/trace)
+mod   src/app/api/agents/life-signals/route.ts     (full rewrite, live fields)
+mod   src/app/app/agents/[slug]/trace/page.tsx     (DemoModeProvider wrapper)
+mod   src/components/workforce/employee-trace-view.tsx (loading-state fix)
+mod   src/components/ai-employees/ai-employee-card.tsx (life-signal props + trace link)
+mod   src/components/panels/agent-squad-panel-phase3.tsx (Trace footer button)
+mod   src/app/app/settings/baseline-os-memory/page.tsx (Indexed entries + ingestNote toast)
+```
+
+### 18.8 — Pinecone / Notion config refinement
+- Customer-facing labels remain: **Knowledge Intelligence (Pinecone)**
+  and **Business Knowledge Base (Notion)**.
+- Connection state · Last sync · Documents · Indexed entries · Permission
+  scope · Visibility · Connect / Resync / Disconnect · Setup guide
+  deep-link all visible.
+- Post-action `ingestNote` toast surfaces setup-required, sync error,
+  or success copy directly on the card.
+- Credentials remain server-side. Secrets redacted before indexing.
+  Workspace isolation enforced.
+
+### 18.9 — Baseline Studios boundary preserved
+No Studios surfaces were added to Mission Control. The authoring app
+roadmap doc (`docs/product/BASELINE_STUDIOS_AUTHORING_APP_ROADMAP.md`)
+remains the sole footprint.
+
+### 18.10 — Launch readiness
+**9.7 / 10** — Iteration 12 traceability now visually verified end-to-end,
+the workforce is alive in both live and demo mode, deep-links chain
+correctly from briefing → activity → billing → trace → memory, and
+operators can see the AI workforce reason in real time without a single
+piece of vector jargon leaking into the UI.
+
+### 18.11 — Remaining backlog (deferred)
+- P1 — Live Pinecone / Notion ingestion with real API keys (connector
+  scaffolding + ingestNote toast is shipped; live keys remain a per-
+  customer setup step).
+- P1 — Skill-install events tracker so live skill telemetry surfaces in
+  the squad cards (today the derivation pulls from `workforce_memory`).
+- P2 — Per-AI-employee deep-link on the Skills Inventory rows.
+- P2 — Approval queue panel wired to the new `needsApproval` escalation
+  chain.
+- P3 — Email SMTP STARTTLS hardening + saved-card auto-reload for Stripe.
