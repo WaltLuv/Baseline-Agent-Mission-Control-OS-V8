@@ -22,6 +22,35 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Local Node.js binaries (Node 22 / Node 20 portable installs)
+# These are large (>100MB) and must NEVER be pushed to GitHub.
+.node22/
+.node20/
+.node/
+node-v*/
+*.tar.gz
+*.tar.xz
+
+# Local SQLite databases / build artifacts that would be huge in git
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Browser binaries (Playwright caches large Chromium installs)
+.cache/
+.local-chromium/
+.playwright/
+
+# Logs
+logs/
+*.log
+
+# Editor / OS noise
+.idea/
+.vscode/
+Thumbs.db
+
 # Vercel
 .vercel
 
