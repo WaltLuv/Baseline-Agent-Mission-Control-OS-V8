@@ -25,15 +25,20 @@ export function GuidedDemoTour() {
   const navigateToPanel = useNavigateToPanel()
   const { templateId } = useDemoMode()
 
-  // Open on demand via custom event or URL hash
+  // Open on demand via custom event or URL hash; close via event too.
   useEffect(() => {
     if (typeof window === 'undefined') return
     function onReplay() { setIndex(0); setOpen(true) }
+    function onClose() { setAutoplay(false); setOpen(false); setIndex(0) }
     window.addEventListener('mc:guided-demo:open', onReplay)
+    window.addEventListener('mc:guided-demo:close', onClose)
     if (window.location.hash === '#guided-demo') {
       setOpen(true)
     }
-    return () => window.removeEventListener('mc:guided-demo:open', onReplay)
+    return () => {
+      window.removeEventListener('mc:guided-demo:open', onReplay)
+      window.removeEventListener('mc:guided-demo:close', onClose)
+    }
   }, [])
 
   // Navigate to each step's panel as the index changes

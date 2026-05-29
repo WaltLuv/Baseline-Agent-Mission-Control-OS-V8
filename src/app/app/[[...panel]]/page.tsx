@@ -6,6 +6,7 @@ import { NavRail } from '@/components/layout/nav-rail'
 import { HeaderBar } from '@/components/layout/header-bar'
 import { LiveFeed } from '@/components/layout/live-feed'
 import { DemoModeProvider } from '@/components/demo/demo-mode-provider'
+import { DemoModeBanner } from '@/components/demo/demo-mode-banner'
 import { ExecutiveBriefing } from '@/components/demo/executive-briefing'
 import { WorkforceHealthV2 } from '@/components/baseline-os/workforce-health-v2'
 import { BaselineSystemIdentityStrip } from '@/components/baseline-os/baseline-system-identity-strip'
@@ -446,6 +447,7 @@ export default function Home() {
         {!showOnboarding && (
           <>
             <HeaderBar />
+            <DemoModeBanner />
             <LocalModeBanner />
             <UpdateBanner />
             <OpenClawUpdateBanner />

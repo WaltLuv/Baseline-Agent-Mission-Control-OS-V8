@@ -22,9 +22,9 @@ Mission Control is a self-hosted dashboard for managing AI agent fleets. It prov
 Next.js 16, React 19, TypeScript 5, SQLite (better-sqlite3), Tailwind CSS
 
 ## Links
-- Source: https://github.com/builderz-labs/mission-control
-- Landing page: https://mc.builderz.dev
-- License: MIT
+- Mission Control: https://mission.baselineautomations.com
+- VisionOps (rehab vision): https://rehab-vision.emergent.host
+- PropControl (property ops): https://propcontrolempire.com
 
 ## llms-full.txt
 For the complete API reference and integration guide, see docs/cli-agent-control.md in the repository.

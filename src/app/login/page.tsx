@@ -307,7 +307,10 @@ export default function LoginPage() {
             />
           </div>
           <h1 className="text-xl font-semibold text-foreground">{t('missionControl')}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{t('signInToContinue')}</p>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-void-cyan/80 mt-2">Powered by Baseline OS</p>
+          <p className="text-sm text-muted-foreground mt-3 text-center max-w-xs leading-relaxed">
+            Supervise AI employees, approvals, memory, workflows, and measurable ROI from one command center.
+          </p>
         </div>
 
         {pendingApproval && (

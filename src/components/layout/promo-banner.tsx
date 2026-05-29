@@ -1,47 +1,39 @@
 'use client'
 
+/**
+ * Baseline Ecosystem promo strip.
+ *
+ * Points operators to the two sibling products that share Baseline OS
+ * infrastructure. No third-party / dev-shop branding.
+ */
 export function PromoBanner() {
   return (
-    <div className="mx-4 mt-3 mb-0 flex flex-col gap-2 px-4 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm md:flex-row md:items-center">
+    <div className="mx-4 mt-3 mb-0 flex flex-col gap-2 px-4 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm md:flex-row md:items-center">
       <div className="flex items-center gap-2 min-w-0">
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-        <p className="text-xs text-amber-200/90">
-          Built with care by <span className="font-semibold text-amber-100">nyk</span> · available for client and custom AI orchestration work.
+        <span className="w-1.5 h-1.5 rounded-full bg-void-cyan shrink-0" />
+        <p className="text-xs text-white/70">
+          Part of the <span className="font-semibold text-white">Baseline OS</span> ecosystem.
         </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 md:ml-auto">
         <a
-          href="https://x.com/nyk_builderz"
+          href="https://propcontrolempire.com"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-2xs font-medium text-amber-100 hover:text-white px-2 py-1 rounded border border-amber-300/30 hover:border-amber-200/50 transition-colors"
+          data-testid="ecosystem-link-propcontrol"
+          className="text-2xs font-medium text-white/80 hover:text-white px-2 py-1 rounded border border-white/15 hover:border-white/30 transition-colors"
         >
-          Hire nyk
+          PropControl
         </a>
         <a
-          href="https://github.com/0xNyk"
+          href="https://rehab-vision.emergent.host"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-2xs font-medium text-amber-200 hover:text-amber-100 px-2 py-1 rounded border border-amber-500/20 hover:border-amber-400/40 transition-colors"
+          data-testid="ecosystem-link-visionops"
+          className="text-2xs font-medium text-white/80 hover:text-white px-2 py-1 rounded border border-white/15 hover:border-white/30 transition-colors"
         >
-          Follow nyk
-        </a>
-        <a
-          href="https://dictx.splitlabs.io"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-2xs font-medium text-amber-200 hover:text-amber-100 px-2 py-1 rounded border border-amber-500/20 hover:border-amber-400/40 transition-colors"
-        >
-          DictX (Upcoming)
-        </a>
-        <a
-          href="https://x.com/nyk_builderz/status/2029007663011643498?s=20"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-2xs font-medium text-amber-200 hover:text-amber-100 px-2 py-1 rounded border border-amber-500/20 hover:border-amber-400/40 transition-colors"
-        >
-          Flight Deck Pro (Upcoming)
+          VisionOps
         </a>
       </div>
     </div>

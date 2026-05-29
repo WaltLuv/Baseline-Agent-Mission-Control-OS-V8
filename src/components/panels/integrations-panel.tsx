@@ -637,26 +637,6 @@ function IntegrationCard({
       {integration.recommendation && (
         <div className="mt-3 rounded-md border border-border/60 bg-secondary/30 px-2.5 py-2">
           <p className="text-2xs text-muted-foreground">{integration.recommendation}</p>
-          {integration.id === 'x_twitter' && (
-            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-2xs">
-              <a
-                href="https://github.com/0xNyk/xint"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
-              >
-                github.com/0xNyk/xint
-              </a>
-              <a
-                href="https://github.com/0xNyk/xint-rs"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
-              >
-                github.com/0xNyk/xint-rs
-              </a>
-            </div>
-          )}
         </div>
       )}
     </div>

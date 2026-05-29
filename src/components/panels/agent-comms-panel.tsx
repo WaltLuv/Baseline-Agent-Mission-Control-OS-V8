@@ -41,7 +41,7 @@ const AGENT_IDENTITY: Record<string, { color: string; emoji: string; label: stri
   ai:             { color: '#8b5cf6', emoji: '🤖', label: 'AI' },
   'frontend-dev': { color: '#38bdf8', emoji: '🧩', label: 'Frontend Dev' },
   'backend-dev':  { color: '#34d399', emoji: '⚙️', label: 'Backend Dev' },
-  'solana-dev':   { color: '#fbbf24', emoji: '🦀', label: 'Solana Dev' },
+  'rust-dev':     { color: '#fbbf24', emoji: '🦀', label: 'Rust Dev' },
   gateway:        { color: '#94a3b8', emoji: '🌐', label: 'Gateway' },
   system:         { color: '#64748b', emoji: '⚙️', label: 'System' },
   websocket:      { color: '#a78bfa', emoji: '🔌', label: 'WebSocket' },

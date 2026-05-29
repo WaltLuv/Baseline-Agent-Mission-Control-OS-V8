@@ -2,8 +2,12 @@ import { NextResponse } from 'next/server'
 import { existsSync } from 'node:fs'
 import { APP_VERSION } from '@/lib/version'
 
-const GITHUB_RELEASES_URL =
-  'https://api.github.com/repos/builderz-labs/mission-control/releases/latest'
+// Release-check endpoint. Configure with MC_RELEASES_REPO=<owner>/<repo> in the
+// environment to enable. Off by default — no third-party repo is queried.
+const RELEASE_REPO = (process.env.MC_RELEASES_REPO || '').trim()
+const GITHUB_RELEASES_URL = RELEASE_REPO
+  ? `https://api.github.com/repos/${RELEASE_REPO}/releases/latest`
+  : ''
 
 /** Simple semver compare: returns 1 if a > b, -1 if a < b, 0 if equal. */
 function compareSemver(a: string, b: string): number {
@@ -19,6 +23,13 @@ function compareSemver(a: string, b: string): number {
 }
 
 export async function GET() {
+  // No release repo configured — always report up-to-date.
+  if (!GITHUB_RELEASES_URL) {
+    return NextResponse.json(
+      { updateAvailable: false, currentVersion: APP_VERSION },
+      { headers: { 'Cache-Control': 'public, max-age=3600' } }
+    )
+  }
   try {
     const res = await fetch(GITHUB_RELEASES_URL, {
       headers: { Accept: 'application/vnd.github+json' },

@@ -132,9 +132,9 @@ const steps = [
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#09090b] text-[#fafafa] antialiased overflow-hidden">
+    <div className="min-h-screen bg-[#09090b] text-[#fafafa] antialiased overflow-x-hidden">
       {/* Global glow */}
-      <div className="pointer-events-none fixed inset-0 -z-0">
+      <div className="pointer-events-none fixed inset-0 -z-0 overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-violet-600/15 blur-[140px] rounded-full" />
         <div className="absolute top-[200px] right-[15%] w-[400px] h-[400px] bg-blue-600/10 blur-[100px] rounded-full" />
       </div>
@@ -443,9 +443,26 @@ export default function LandingPage() {
             &copy; {new Date().getFullYear()} Baseline Automations. All rights reserved.
           </div>
           <div className="flex items-center gap-6 text-sm text-white/30">
-            <a href="#" className="hover:text-white/60 transition-colors">Privacy</a>
-            <a href="#" className="hover:text-white/60 transition-colors">Terms</a>
-            <Link href="/login" className="hover:text-white/60 transition-colors">Sign In</Link>
+            <Link href="/marketplace" className="hover:text-white/80 transition-colors">Marketplace</Link>
+            <a
+              href="https://rehab-vision.emergent.host"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="footer-link-visionops"
+              className="hover:text-white/80 transition-colors"
+            >
+              VisionOps
+            </a>
+            <a
+              href="https://propcontrolempire.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="footer-link-propcontrol"
+              className="hover:text-white/80 transition-colors"
+            >
+              PropControl
+            </a>
+            <Link href="/login" data-testid="footer-link-mission-control" className="hover:text-white/80 transition-colors">Mission Control</Link>
           </div>
         </div>
       </footer>

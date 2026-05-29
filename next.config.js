@@ -7,6 +7,8 @@ const nextConfig = {
   outputFileTracingExcludes: {
     '/*': ['./.data/**/*'],
   },
+  // Disable Next.js's dev indicator badge — Baseline OS is the only brand visible.
+  devIndicators: false,
   turbopack: {
     root: __dirname,
   },

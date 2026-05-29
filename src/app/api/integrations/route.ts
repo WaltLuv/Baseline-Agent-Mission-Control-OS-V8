@@ -59,7 +59,7 @@ const INTEGRATIONS: IntegrationDef[] = [
     name: 'X / Twitter',
     category: 'social',
     envVars: ['X_COOKIES_PATH'],
-    recommendation: 'Recommended: use xint CLI as default (`xint auth`) instead of manual cookies path.',
+    recommendation: 'Set X_COOKIES_PATH to a file containing your X/Twitter session cookies, or wire an OAuth flow.',
   },
   { id: 'linkedin', name: 'LinkedIn', category: 'social', envVars: ['LINKEDIN_ACCESS_TOKEN'] },
 
@@ -422,15 +422,15 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // X integration should default to xint auth when present.
+    // X integration — surface whether a local OAuth helper has cached tokens.
     if (def.id === 'x_twitter' && !anySet) {
       const primaryVar = def.envVars[0]
       if (xint.oauthConfigured) {
-        vars[primaryVar] = { redacted: 'xint oauth', set: true }
+        vars[primaryVar] = { redacted: 'oauth (local cache)', set: true }
         allSet = true
         anySet = true
       } else if (xint.installed || xint.envConfigured) {
-        vars[primaryVar] = { redacted: 'xint installed (run `xint auth`)', set: true }
+        vars[primaryVar] = { redacted: 'local CLI installed — run auth', set: true }
         allSet = false
         anySet = true
       }

@@ -5,92 +5,92 @@
       "file": "sales-operator-quickstart.pdf",
       "title": "Sales Operator Quickstart",
       "source": "docs/sales/SALES_OPERATOR_QUICKSTART.md",
-      "kb": 248.5
+      "kb": 248.3
     },
     {
       "file": "sales-playbook-index.pdf",
       "title": "Sales Playbook Index",
       "source": "docs/sales/README.md",
-      "kb": 93.4
+      "kb": 93.2
     },
     {
       "file": "playbook-property-management.pdf",
       "title": "Property Management \u2014 Sales Playbook",
       "source": "docs/sales/property-management.md",
-      "kb": 147.2
+      "kb": 147.0
     },
     {
       "file": "playbook-general-contractor.pdf",
       "title": "General Contractor \u2014 Sales Playbook",
       "source": "docs/sales/general-contractor.md",
-      "kb": 130.6
+      "kb": 130.4
     },
     {
       "file": "playbook-home-services.pdf",
       "title": "Home Services \u2014 Sales Playbook",
       "source": "docs/sales/home-services.md",
-      "kb": 127.7
+      "kb": 127.4
     },
     {
       "file": "playbook-real-estate.pdf",
       "title": "Real Estate \u2014 Sales Playbook",
       "source": "docs/sales/real-estate.md",
-      "kb": 124.4
+      "kb": 124.2
     },
     {
       "file": "playbook-mortgage.pdf",
       "title": "Mortgage \u2014 Sales Playbook",
       "source": "docs/sales/mortgage.md",
-      "kb": 128.7
+      "kb": 128.4
     },
     {
       "file": "playbook-cpa.pdf",
       "title": "CPA / Accounting \u2014 Sales Playbook",
       "source": "docs/sales/cpa.md",
-      "kb": 137.0
+      "kb": 136.8
     },
     {
       "file": "playbook-law-firm.pdf",
       "title": "Law Firm \u2014 Sales Playbook",
       "source": "docs/sales/law-firm.md",
-      "kb": 127.9
+      "kb": 127.7
     },
     {
       "file": "playbook-marketing-agency.pdf",
       "title": "Marketing Agency \u2014 Sales Playbook",
       "source": "docs/sales/marketing-agency.md",
-      "kb": 147.2
+      "kb": 147.4
     },
     {
       "file": "playbook-ai-agency.pdf",
       "title": "AI Agency \u2014 Sales Playbook",
       "source": "docs/sales/ai-agency.md",
-      "kb": 129.0
+      "kb": 129.2
     },
     {
       "file": "ops-digitalocean-execution.pdf",
       "title": "DigitalOcean Production Deployment",
       "source": "docs/operations/DIGITALOCEAN_EXECUTION.md",
-      "kb": 224.1
+      "kb": 224.3
     },
     {
       "file": "ops-production-verification-checklist.pdf",
       "title": "Production Verification Checklist",
       "source": "docs/operations/PRODUCTION_VERIFICATION_CHECKLIST.md",
-      "kb": 175.8
+      "kb": 176.1
     },
     {
       "file": "ops-production-readiness-report.pdf",
       "title": "Production Readiness Report",
       "source": "docs/operations/PRODUCTION_READINESS_REPORT.md",
-      "kb": 232.9
+      "kb": 233.1
     },
     {
       "file": "onboarding-14-day-pilot-sop.pdf",
       "title": "14-Day Pilot SOP",
       "source": "docs/onboarding/14_DAY_PILOT_SOP.md",
-      "kb": 194.4
+      "kb": 194.8
     }
   ],
-  "bundle_kb": 1430.2
+  "bundle_kb": 1429.6
 }
