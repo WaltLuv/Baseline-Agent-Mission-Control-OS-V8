@@ -2936,4 +2936,89 @@ and a real domain.
 - Baseline Studios sidecar sync
 - Generic agent framework (explicitly prohibited)
 
+
+---
+
+## 33 — Baseline Flight Deck scaffold (May 29, 2026)
+
+### 33.1 — Scope (locked)
+Baseline Flight Deck = the installed desktop operator terminal for
+Mission Control / Baseline OS. NOT a new product. NOT a Mission
+Control replacement. NOT a prospect-facing portal. NOT where
+Baseline Studios lives.
+
+### 33.2 — Tauri v2 scaffold shipped
+- `desktop/` directory at repo root, ~400 LOC total.
+- Static shell: `index.html` + `src/main.js` + `src/styles.css` +
+  `src/allowlist.js` (pure module for unit tests).
+- Rust crate: `src-tauri/Cargo.toml` + `build.rs` + `src/main.rs`,
+  Tauri 2.1, plugins: `shell` + `store`.
+- Config: `src-tauri/tauri.conf.json` — productName "Baseline
+  Flight Deck", identifier `com.baselineautomations.flightdeck`,
+  bundle targets app/dmg/msi/nsis/deb/appimage, CSP locked.
+- Capabilities: `src-tauri/capabilities/default.json` — minimal IPC
+  permissions (webview, window, app, store, narrow shell:open).
+- Icons: 14 PNGs generated from the Baseline mark via PIL LANCZOS.
+- README: install, build, security, file-map, "what this is NOT".
+
+### 33.3 — Shell features
+- Mode selector: Production / Staging / Localhost with hosts visible.
+- Custom Mission Control URL behind a disclosure, allowlist-enforced.
+- Connection pill probes `/api/status?action=health` on load and on
+  demand (color-coded: muted/ok/warn/err).
+- Primary "Open Mission Control" navigates the same Tauri webview to
+  Mission Control.
+- 4 shortcuts: Recent demo links · Runtime status · Deployment
+  health · Workforce dashboard.
+
+### 33.4 — Security posture
+- No secrets bundled, no API keys, no auth bypass.
+- CSP locked in `tauri.conf.json`.
+- Strict URL allowlist in `src/allowlist.js` + matching CSP entries.
+- 7 vitest unit tests guard the allowlist contract (reject non-https,
+  reject non-allowlisted hosts, reject malformed input, prefer custom
+  URL only when allowlisted, etc.).
+- No filesystem / no http plugin / no exec capabilities granted.
+- No customer data stored on disk.
+
+### 33.5 — Build commands (root `package.json`)
+- `pnpm desktop:dev` — hot-reload dev shell (native window).
+- `pnpm desktop:build` — production build for the current host.
+- `pnpm desktop:build:mac` — `.app` + `.dmg` (Mac builder only).
+- `pnpm desktop:build:win` — `.msi` + `.exe` (Windows builder only).
+- `pnpm desktop:build:linux` — `.AppImage` + `.deb` (Linux builder only).
+- `pnpm desktop:icon` — regenerate icon set from `icon.png`.
+
+Cross-platform builds require running each `desktop:build:*` on the
+matching host OS — documented in `desktop/README.md`. The scaffold
+sandbox has no Rust toolchain; final binaries are operator-built.
+
+### 33.6 — Verification
+- Vite static shell builds clean: **4.64 KB HTML + 3.60 KB CSS +
+  3.36 KB JS gzipped**.
+- Live preview screenshot confirms the shell renders correctly: logo,
+  kicker, H1, mode cards, settings disclosure, primary button, 4
+  shortcuts, footer with architecture doctrine.
+- Full suite: **vitest 1214/1214 pass · tsc 0 errors · eslint 0 errors**.
+
+### 33.7 — Next priorities (locked by operator directive)
+Deployment + Sales Mode. Decision filter: does this help us **deploy,
+sell, onboard, or retain**? If no → backlog.
+
+1. DigitalOcean production deployment (operator action).
+2. Production verification (`scripts/runtime-validate.sh` against
+   the live host post-deploy).
+3. Sales assets (one-pager per vertical, demo loop script, share
+   email/SMS templates).
+4. Pilot onboarding workflows (kickoff checklist, week-1 success
+   criteria, runtime install order, first-mission proof, billing
+   handshake).
+
+FROZEN — no work without explicit approval:
+- Baseline Studios
+- Swarm backend
+- Analytics expansion
+- Additional panels
+- New frameworks
+
 - P3 — Email SMTP STARTTLS hardening + saved-card auto-reload for Stripe.
