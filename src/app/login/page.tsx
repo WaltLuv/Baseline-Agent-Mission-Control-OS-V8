@@ -542,7 +542,13 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <p className="text-center text-xs text-muted-foreground mt-6">{t('orchestrationTagline')}</p>
+        <p className="text-center text-xs text-muted-foreground mt-6">
+          New to Baseline OS?{' '}
+          <a href="/signup" data-testid="login-to-signup" className="text-void-cyan hover:underline">
+            Create a workspace
+          </a>
+        </p>
+        <p className="text-center text-xs text-muted-foreground mt-2">{t('orchestrationTagline')}</p>
       </div>
     </div>
   )

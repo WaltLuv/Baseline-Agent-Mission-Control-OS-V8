@@ -120,7 +120,7 @@ interface UserQueryRow {
 // Session management
 const SESSION_DURATION = 7 * 24 * 60 * 60 // 7 days in seconds
 
-function getDefaultWorkspaceContext(): { workspaceId: number; tenantId: number } {
+export function getDefaultWorkspaceContext(): { workspaceId: number; tenantId: number } {
   try {
     const db = getDatabase()
     const row = db.prepare(`
@@ -239,7 +239,13 @@ const DUMMY_HASH = '000000000000000000000000000000000000000000000000000000000000
 // User management
 export function authenticateUser(username: string, password: string): User | null {
   const db = getDatabase()
-  const row = db.prepare('SELECT * FROM users WHERE username = ?').get(username) as UserQueryRow | undefined
+  // Identifier can be a username OR a registered email — try username first
+  // (most existing accounts), then fall back to email lookup. We keep the
+  // single argument name for backward compatibility with existing call sites.
+  let row = db.prepare('SELECT * FROM users WHERE username = ?').get(username) as UserQueryRow | undefined
+  if (!row && username.includes('@')) {
+    row = db.prepare('SELECT * FROM users WHERE email = ? COLLATE NOCASE LIMIT 1').get(username) as UserQueryRow | undefined
+  }
   if (!row) {
     // Always run verifyPassword to prevent timing-based username enumeration
     verifyPassword(password, DUMMY_HASH)
