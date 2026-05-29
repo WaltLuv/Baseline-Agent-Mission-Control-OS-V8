@@ -1,0 +1,23 @@
+{
+  "name": "@baselineos/flight-deck",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Baseline Flight Deck — AI Workforce Operator Terminal. Tauri v2 desktop shell around Mission Control.",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "build:mac": "tauri build --target universal-apple-darwin",
+    "build:mac:intel": "tauri build --target x86_64-apple-darwin",
+    "build:mac:arm": "tauri build --target aarch64-apple-darwin",
+    "build:win": "tauri build --target x86_64-pc-windows-msvc",
+    "build:linux": "tauri build --target x86_64-unknown-linux-gnu",
+    "build:linux:appimage": "tauri build --bundles appimage",
+    "build:linux:deb": "tauri build --bundles deb"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}

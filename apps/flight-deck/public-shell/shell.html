@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Baseline Flight Deck</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0a0d12;
+        --fg: #e6e9ef;
+        --muted: #8a93a6;
+        --accent: #5b8def;
+        --card: #131820;
+        --border: rgba(255, 255, 255, 0.07);
+      }
+      html, body {
+        margin: 0; padding: 0; height: 100%;
+        background: var(--bg); color: var(--fg);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+        overflow: hidden;
+      }
+      .splash {
+        position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+        background: var(--bg); z-index: 10; transition: opacity 0.4s ease; opacity: 1;
+      }
+      .splash.hidden { opacity: 0; pointer-events: none; }
+      .splash-card {
+        text-align: center; max-width: 360px; padding: 32px;
+      }
+      .brand-mark {
+        width: 64px; height: 64px; margin: 0 auto 18px;
+        border-radius: 18px;
+        background: linear-gradient(135deg, #1a2540 0%, #0d1320 100%);
+        border: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: center;
+        position: relative;
+      }
+      .brand-mark::before {
+        content: ''; position: absolute; inset: 14px;
+        border: 1.5px solid var(--accent); border-radius: 50%; opacity: 0.7;
+      }
+      .brand-mark::after {
+        content: ''; position: absolute; inset: 24px;
+        background: var(--accent); border-radius: 50%; opacity: 0.9;
+        animation: pulse 3.6s ease-in-out infinite;
+      }
+      @keyframes pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+      .eyebrow {
+        font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase;
+        color: var(--muted); font-weight: 600;
+      }
+      h1 { margin: 12px 0 6px; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+      .sub { font-size: 12px; color: var(--muted); line-height: 1.6; }
+      .row { margin-top: 18px; display: flex; gap: 8px; justify-content: center; }
+      .pill {
+        font-size: 11px; padding: 5px 10px; border-radius: 999px;
+        border: 1px solid var(--border); color: var(--muted); cursor: pointer;
+        background: var(--card); transition: all 0.15s ease;
+      }
+      .pill:hover { color: var(--fg); border-color: rgba(255,255,255,0.18); }
+      .pill.active { color: var(--accent); border-color: rgba(91, 141, 239, 0.4); background: rgba(91, 141, 239, 0.08); }
+      .input {
+        margin-top: 14px; width: 100%; padding: 10px 12px;
+        background: var(--card); color: var(--fg);
+        border: 1px solid var(--border); border-radius: 10px;
+        font-size: 12px; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+        box-sizing: border-box;
+      }
+      .input:focus { outline: none; border-color: rgba(91, 141, 239, 0.4); }
+      .cta {
+        margin-top: 12px; width: 100%; padding: 10px 12px;
+        background: var(--accent); color: white;
+        border: none; border-radius: 10px;
+        font-size: 13px; font-weight: 600; cursor: pointer;
+        transition: opacity 0.15s ease;
+      }
+      .cta:hover { opacity: 0.9; }
+      .cta:disabled { opacity: 0.5; cursor: not-allowed; }
+      .err { margin-top: 10px; font-size: 11px; color: #f87171; }
+      iframe {
+        position: fixed; inset: 0; border: 0; width: 100%; height: 100%;
+        background: var(--bg);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="splash" id="splash">
+      <div class="splash-card">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <p class="eyebrow">Baseline · Flight Deck</p>
+        <h1>AI Workforce Operator Terminal</h1>
+        <p class="sub">Mission Control runs your workforce. Flight Deck is where you sit.</p>
+        <div class="row" role="radiogroup" aria-label="Environment">
+          <button class="pill" data-env="production">Production</button>
+          <button class="pill" data-env="staging">Staging</button>
+          <button class="pill" data-env="localhost">Localhost</button>
+          <button class="pill" data-env="custom">Custom</button>
+        </div>
+        <input class="input" id="url-input" type="url" placeholder="https://app.baselineos.com" />
+        <button class="cta" id="connect-btn">Open Mission Control</button>
+        <p class="err" id="err" style="display:none"></p>
+      </div>
+    </div>
+    <iframe id="mc-frame" referrerpolicy="origin" sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-storage-access-by-user-activation"></iframe>
+    <script>
+      (function () {
+        const splash = document.getElementById('splash');
+        const input = document.getElementById('url-input');
+        const cta = document.getElementById('connect-btn');
+        const err = document.getElementById('err');
+        const frame = document.getElementById('mc-frame');
+        const pills = document.querySelectorAll('.pill');
+
+        const PRESETS = {
+          production: 'https://app.baselineos.com',
+          staging: 'https://staging.baselineos.com',
+          localhost: 'http://localhost:3000',
+          custom: '',
+        };
+
+        function loadSettings() {
+          try {
+            const raw = localStorage.getItem('flight-deck:settings');
+            return raw ? JSON.parse(raw) : null;
+          } catch (e) { return null; }
+        }
+        function saveSettings(s) {
+          try { localStorage.setItem('flight-deck:settings', JSON.stringify(s)); } catch (e) { /* ignore */ }
+        }
+
+        function setEnvironment(env) {
+          pills.forEach((p) => p.classList.toggle('active', p.dataset.env === env));
+          if (env !== 'custom') input.value = PRESETS[env];
+        }
+
+        const stored = loadSettings();
+        setEnvironment(stored?.environment || 'production');
+        if (stored?.url) input.value = stored.url;
+        else input.value = PRESETS[stored?.environment || 'production'];
+
+        pills.forEach((p) => p.addEventListener('click', () => setEnvironment(p.dataset.env)));
+
+        function activeEnv() {
+          const active = Array.from(pills).find((p) => p.classList.contains('active'));
+          return active ? active.dataset.env : 'production';
+        }
+
+        cta.addEventListener('click', function open() {
+          const url = (input.value || '').trim();
+          err.style.display = 'none';
+          if (!/^https?:\/\//.test(url)) {
+            err.textContent = 'Mission Control URL must start with http:// or https://';
+            err.style.display = 'block';
+            return;
+          }
+          saveSettings({ environment: activeEnv(), url });
+          frame.src = url;
+          // Hide splash once the frame has had a moment to start loading.
+          setTimeout(() => splash.classList.add('hidden'), 250);
+        });
+
+        input.addEventListener('keypress', (e) => { if (e.key === 'Enter') cta.click(); });
+
+        // If we already have a stored URL, auto-launch quickly.
+        if (stored?.url && /^https?:\/\//.test(stored.url)) {
+          setTimeout(() => cta.click(), 350);
+        }
+      })();
+    </script>
+  </body>
+</html>

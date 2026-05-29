@@ -53,6 +53,10 @@ export const GUIDED_DEMO_STEPS: GuidedDemoStep[] = [
       'law-firm': 'Today: AI Intake Assistant, AI Case Summary Assistant, AI Client Communications, AI Compliance Watch.',
       pm: 'Today: AI Maintenance Triage, AI Vendor Dispatch, AI Owner Updates, AI Leasing Assistant.',
       'ai-agency': 'Today: AI Workforce Manager, AI Client Success, AI Skills Operator, AI Utilization Watch.',
+      mortgage: 'Today: AI Doc Collection Assistant, AI Loan Coordinator, AI Rate Quote Bot, AI Underwriting Watch.',
+      'real-estate': 'Today: AI Lead Capture, AI Transaction Coordinator, AI Listing Specialist, AI Nurture Concierge.',
+      gc: 'Today: AI Bid Estimator, AI Sub Coordinator, AI Schedule Planner, AI Permit Tracker.',
+      'home-services': 'Today: AI Intake Receptionist, AI Dispatcher, AI Quote Recovery, AI Review Collector.',
     },
   },
   {
@@ -82,6 +86,10 @@ export const GUIDED_DEMO_STEPS: GuidedDemoStep[] = [
       'law-firm': '88 hours saved this month. $14,200 value created. One conflict check needs you.',
       pm: '92 hours saved this month. $8,420 value created. One tenant escalation needs you.',
       'ai-agency': '142 hours saved this month. $22,400 value created. One quality dip needs you.',
+      mortgage: '96 hours saved this month. $24,900 value created. One appraisal call needs you.',
+      'real-estate': '71 hours saved this month. $28,600 value created. One counter-offer needs you.',
+      gc: '64 hours saved this month. $17,200 value created. One change-order conflict needs you.',
+      'home-services': '88 hours saved this month. $14,300 value created. One emergency dispatch needs you.',
     },
   },
 ]

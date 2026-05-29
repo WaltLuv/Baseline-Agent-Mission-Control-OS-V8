@@ -1,0 +1,78 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Baseline Flight Deck",
+  "version": "0.1.0",
+  "identifier": "com.baselineos.flight-deck",
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
+    "devUrl": "http://localhost:3000",
+    "frontendDist": "../public-shell"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Baseline Flight Deck",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 1100,
+        "minHeight": 720,
+        "resizable": true,
+        "decorations": true,
+        "transparent": false,
+        "fullscreen": false,
+        "url": "shell.html",
+        "userAgent": "BaselineFlightDeck/0.1 (compatible; MissionControlShell) Tauri",
+        "additionalBrowserArgs": "",
+        "dragDropEnabled": false
+      }
+    ],
+    "security": {
+      "csp": null,
+      "dangerousDisableAssetCspModification": false,
+      "capabilities": ["default"],
+      "pattern": {
+        "use": "brownfield"
+      }
+    },
+    "trayIcon": {
+      "iconPath": "icons/tray-icon.png",
+      "iconAsTemplate": true,
+      "tooltip": "Baseline Flight Deck"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg", "msi", "nsis", "deb", "appimage"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "publisher": "Baseline OS",
+    "copyright": "Copyright (c) Baseline OS",
+    "category": "Productivity",
+    "shortDescription": "AI Workforce Operator Terminal",
+    "longDescription": "Baseline Flight Deck is the desktop operator terminal for Mission Control and Baseline OS. It is a native shell around the Mission Control web experience — built so an operator can run their AI workforce as installed software, with native windowing, a system tray, and native notifications.",
+    "windows": {
+      "wix": {
+        "language": ["en-US"]
+      },
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "installMode": "perMachine"
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "11.0"
+    },
+    "linux": {
+      "deb": {
+        "depends": []
+      }
+    }
+  }
+}

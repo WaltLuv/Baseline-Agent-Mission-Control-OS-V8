@@ -15,7 +15,7 @@ import { resolve } from 'node:path'
 import { getDemoNarrative, DEMO_TEMPLATE_IDS } from '../demo-narratives'
 import { GUIDED_DEMO_STEPS } from '../guided-demo'
 
-const REQUIRED_VERTICALS = ['pm', 'cpa', 'law-firm', 'ai-agency'] as const
+const REQUIRED_VERTICALS = ['pm', 'cpa', 'law-firm', 'ai-agency', 'mortgage', 'real-estate', 'gc', 'home-services'] as const
 
 const GENERIC_METRIC_BAD_PATTERNS = [
   /^\d+ tasks completed$/i,
@@ -92,10 +92,10 @@ describe('Pass 3 — guided demo', () => {
       expect(s.body.length).toBeGreaterThan(20)
     }
   })
-  it('vertical glosses exist for each required vertical on at least two steps', () => {
+  it('vertical glosses exist for the four core verticals (PM/CPA/Law/AI Agency)', () => {
     const stepsWithGloss = GUIDED_DEMO_STEPS.filter((s) => !!s.forTemplate)
     expect(stepsWithGloss.length).toBeGreaterThanOrEqual(2)
-    for (const v of REQUIRED_VERTICALS) {
+    for (const v of ['pm', 'cpa', 'law-firm', 'ai-agency']) {
       const count = stepsWithGloss.filter((s) => s.forTemplate?.[v]).length
       expect(count, `vertical ${v} should have at least one gloss`).toBeGreaterThanOrEqual(2)
     }

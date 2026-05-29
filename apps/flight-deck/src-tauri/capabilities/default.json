@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capability for Baseline Flight Deck. Read-only desktop shell with notification + system tray, no remote code execution, no file-system writes outside the store.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "store:default",
+    "notification:default",
+    "dialog:default",
+    "os:default",
+    "shell:allow-open"
+  ]
+}
