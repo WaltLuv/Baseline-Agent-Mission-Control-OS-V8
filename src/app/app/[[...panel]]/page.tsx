@@ -53,6 +53,7 @@ import { ChatPanel } from '@/components/chat/chat-panel'
 import { HelpPanel } from '@/components/help/help-panel'
 import { FirstRunTour } from '@/components/help/first-run-tour'
 import { SetupChecklist } from '@/components/help/setup-checklist'
+import { GuidedDemoTour } from '@/components/demo/guided-demo-tour'
 import { usePanelScrollMemory } from '@/lib/panel-continuity'
 import { STORAGE_GATEWAY_URL } from '@/lib/device-identity'
 import { getPluginPanel } from '@/lib/plugins'
@@ -490,6 +491,9 @@ export default function Home() {
 
       {/* First-run guided tour (auto-shows once; can be replayed from Help menu) */}
       {!showOnboarding && bootComplete && <FirstRunTour />}
+
+      {/* Guided Demo Tour — 60–90s prospect walkthrough, opened on demand */}
+      {!showOnboarding && bootComplete && <GuidedDemoTour />}
 
       {/* Global exec approval overlay (shown regardless of active panel) */}
       {!showOnboarding && <ExecApprovalOverlay />}

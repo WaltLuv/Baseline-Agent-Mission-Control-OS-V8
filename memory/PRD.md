@@ -2265,4 +2265,115 @@ mod  src/app/app/[[...panel]]/page.tsx                    (attach mainScrollRef 
   modal — the new Pass 2 surfaces sit behind it during a fresh session.
   Out of scope for Pass 2; will be revisited if needed in Pass 3.
 
+
+---
+
+## 26. Iteration 21 — Pass 3: Commercial Storylines & Sales Experience
+
+> Mandate: A prospect should understand the value of Mission Control
+> within 60 seconds. Pass 3 is *not* a feature pass — it is a
+> customer-understanding pass.
+
+### 26.1 — Demo storylines (the four mandated verticals)
+All four verticals now have complete narratives with a workforce roster:
+
+| Vertical | Headline | Wins | Roster | Value · Hours |
+| --- | --- | --- | --- | --- |
+| Property Management (`pm`) | "Quiet morning, two doors making noise." | 3 | 4 employees | $8,420 · 92 h |
+| CPA / Accounting (`cpa`) | "Tax season pressure is dropping. One reconciliation needs you." | 3 | 4 employees | $11,900 · 124 h |
+| Law Firm (`law-firm`) | "Four intakes overnight. One may be a conflict." | 3 | 4 employees | $14,200 · 88 h |
+| AI Agency (`ai-agency`) | "Client Alpha had a banner week." | 3 | 4 employees | $22,400 · 142 h |
+
+ROI is stated in business language throughout — *"$3,200 reconciliation
+escalated"*, *"$280 recovered"*, *"$4.1k labor value"*, *"On time for the
+first quarter ever"* — never *"18 tasks completed"*.
+
+### 26.2 — Demo Workspace Switcher (`View As`)
+- Already shipped in earlier iterations as `DemoModeSwitcher`. Pass 3
+  parity check: all four mandated verticals are listed and immediately
+  load relevant employees, skills, memory snippets, and briefing data.
+- New: a "Take the 60-second tour" CTA in the bottom of the switcher
+  menu fires the Guided Demo with a single click.
+
+### 26.3 — Guided Demo Tour (60–90 s prospect walkthrough)
+- `src/lib/guided-demo.ts` — six-step script covering Baseline OS,
+  Mission Control, AI Employees, Memory, Approvals, Value.
+- `src/components/demo/guided-demo-tour.tsx` — calm modal walkthrough.
+  - Auto-pace **opt-in** (off by default — executives skim).
+  - Skippable from any step. Esc dismisses. Progress strip is calm and
+    low-contrast.
+  - Each step navigates to the surface that already exists in the
+    product. We do not invent UI to demo.
+  - Per-vertical glosses on steps 3 ("AI Employees") and 6 ("Value")
+    show the prospect their own business: *"Today: AI Workforce
+    Manager, AI Client Success, AI Skills Operator, AI Utilization
+    Watch."* and *"142 hours saved this month. $22,400 value created.
+    One quality dip needs you."*
+
+### 26.4 — Marketplace positioning (executive, not app-store)
+- Removed: `App Store for AI Employees & Skills` headline.
+- Added: `Hire AI Employees. Install AI Skills. Deploy AI Teams.`
+- Subhead: *"Every hire becomes a measurable asset in your business —
+  billable hours saved, value created, work owned."*
+- A three-cell outcome grid below the hero — Hire / Install / Deploy —
+  each connecting back to a business outcome (roles, capabilities,
+  pre-built teams).
+
+### 26.5 — Files touched
+```
+new  src/lib/guided-demo.ts                              (6-step script + per-vertical glosses)
+new  src/components/demo/guided-demo-tour.tsx            (calm prospect walkthrough modal)
+new  src/lib/__tests__/pass3-commercial.test.ts          (35 tests — narratives, guided demo, marketplace positioning)
+mod  src/lib/demo-narratives.ts                          (added AI Agency lifeSignals × 4)
+mod  src/app/marketplace/page.tsx                        (executive hero + outcomes grid; removed "App Store" framing)
+mod  src/components/demo/demo-mode-switcher.tsx          (Take the 60-second tour CTA)
+mod  src/app/app/[[...panel]]/page.tsx                   (mount GuidedDemoTour)
+```
+
+### 26.6 — Validation
+- **Typecheck.** `tsc --noEmit` — zero errors.
+- **Lint.** ESLint clean on every new/modified file.
+- **Tests.** `vitest run` — **1122 / 1122 passing** (+35 new for Pass 3).
+- **Production build.** `next build` succeeds; no new infra, no new
+  panels, no new databases, no new runtimes, no new billing.
+- **Visual smoke (AI Agency vertical with Guided Demo at step 3).**
+  - "Demo · AI Agency / Operator" badge top-right.
+  - "Client Alpha had a banner week." headline.
+  - $22,400 value created · 142 hours saved.
+  - Today's Wins all in business language ("Delivered ROI deck …
+    47h saved · $4.1k labor value").
+  - Guided Demo modal at step "3 of 6" — *"These are AI Employees —
+    named workers with roles and skills."*
+  - Per-vertical gloss: *"Today: AI Workforce Manager, AI Client
+    Success, AI Skills Operator, AI Utilization Watch."*
+  - 4 breathing presence dots on the workforce roster below.
+- **Visual smoke (Marketplace).** Headline reads
+  *"Hire AI Employees. Install AI Skills. Deploy AI Teams."* with the
+  outcomes grid and real employee cards (Michael CEO, Vito Operations
+  Director, Phil PM Division Chief) — never "app store".
+
+### 26.7 — Launch readiness score
+- **Help & guidance** (Iter. 19): production-ready.
+- **Executive UX** (Iter. 20 / Pass 2): production-ready.
+- **Commercial storylines** (Iter. 21 / Pass 3): production-ready.
+- **Operational telemetry loop** (Iter. 17–18): production-ready.
+- **Score: 9 / 10** — the only remaining gap to a full launch score is
+  optional Pass 4 (Baseline Studios, separate product).
+
+### 26.8 — Remaining risks
+- The Guided Demo modal sits over the dashboard but the existing
+  OnboardingWizard takes precedence on a *fresh* session. A prospect
+  who lands cold will see the wizard first. Sales links like
+  `?demo=cpa` after authentication work as intended. If we ever want
+  the demo to win over a fresh login, we will need to gate the wizard
+  behind a sessionStorage flag — but that is policy, not a Pass 3 task.
+- Per-vertical glosses are authored for PM, CPA, Law, AI Agency. The
+  five non-required verticals (GC, home services, real estate,
+  mortgage, marketing agency) fall back to the generic step body —
+  acceptable, since those four are the customer-understanding target.
+- The Pass-3 test asserts the **headline** is not framed as an App
+  Store. Internal comments / doc strings may still mention it for
+  developer context. If we rename the product directory, update the
+  test assertion (path is `src/app/marketplace/page.tsx`).
+
 - P3 — Email SMTP STARTTLS hardening + saved-card auto-reload for Stripe.

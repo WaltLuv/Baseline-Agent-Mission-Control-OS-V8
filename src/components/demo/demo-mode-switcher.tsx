@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useDemoMode } from './demo-mode-provider'
 import { BUSINESS_TEMPLATES } from '@/lib/business-templates'
 import { DEMO_TEMPLATE_IDS } from '@/lib/demo-narratives'
+import { openGuidedDemo } from './guided-demo-tour'
 import { cn } from '@/lib/utils'
 
 /**
@@ -104,6 +105,19 @@ export function DemoModeSwitcher() {
             <div className="border-t border-border/40 bg-muted/20 px-3 py-2 text-[10px] text-muted-foreground">
               Demo view overlays a curated story. Real workspace data is unchanged.
             </div>
+            <button
+              data-testid="demo-mode-guided-tour"
+              onClick={() => { setOpen(false); openGuidedDemo() }}
+              className="flex w-full items-center justify-between border-t border-border/40 bg-primary/5 px-3 py-2.5 text-left text-xs text-foreground hover:bg-primary/10 transition-colors"
+            >
+              <span>
+                <span className="block font-semibold text-primary">Take the 60-second tour</span>
+                <span className="block text-[11px] text-muted-foreground mt-0.5">
+                  Six steps. Plain English. See what this is for.
+                </span>
+              </span>
+              <span className="text-primary text-sm">→</span>
+            </button>
           </div>
         </>
       )}

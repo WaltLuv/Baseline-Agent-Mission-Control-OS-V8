@@ -97,15 +97,29 @@ export default function MarketplacePage() {
       <div className="mx-auto max-w-6xl px-6 py-12" data-testid="marketplace-page">
         <header className="mb-6">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-            Marketplace
+            Workforce
           </div>
-          <h1 className="mt-4 text-3xl font-bold">App Store for AI Employees &amp; Skills</h1>
-          <p className="mt-2 max-w-2xl text-muted-foreground">
-            <span data-testid="catalog-counts">
-              {EMPLOYEES.length} AI Employees · {SKILLS.length} Skills · {BUNDLES.length} Bundles
+          <h1 className="mt-4 text-3xl font-bold">Hire AI Employees. Install AI Skills. Deploy AI Teams.</h1>
+          <p className="mt-3 max-w-2xl text-muted-foreground">
+            Every hire becomes a measurable asset in your business — billable hours saved,
+            value created, work owned. <span data-testid="catalog-counts" className="text-foreground/70">
+              {EMPLOYEES.length} roles · {SKILLS.length} skills · {BUNDLES.length} pre-built teams ready to deploy.
             </span>
-            . Hire a worker, install a capability, or deploy a complete team in one click.
           </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3" data-testid="marketplace-outcomes">
+            <div className="rounded-lg border border-border/40 bg-card/30 p-3">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold">Hire</p>
+              <p className="mt-1 text-xs text-foreground/90">Roles that do the work — bookkeeping, intake, dispatch, comms.</p>
+            </div>
+            <div className="rounded-lg border border-border/40 bg-card/30 p-3">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold">Install</p>
+              <p className="mt-1 text-xs text-foreground/90">Capabilities your team uses — drafting, sending, recovering, escalating.</p>
+            </div>
+            <div className="rounded-lg border border-border/40 bg-card/30 p-3">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold">Deploy</p>
+              <p className="mt-1 text-xs text-foreground/90">Pre-built teams — a CPA back office or property-management desk in one click.</p>
+            </div>
+          </div>
         </header>
 
         {/* Product-type tabs */}
