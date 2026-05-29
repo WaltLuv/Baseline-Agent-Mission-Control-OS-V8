@@ -8,6 +8,7 @@ import { extractWsHost } from '@/lib/agent-card-helpers'
 import { DemoModeSwitcher } from '@/components/demo/demo-mode-switcher'
 import { RefreshControl } from '@/components/layout/refresh-control'
 import { HelpButton } from '@/components/help/help-button'
+import { OperationalPulse } from '@/components/operational/operational-pulse'
 import { useWebSocket } from '@/lib/websocket'
 import { useNavigateToPanel, usePrefetchPanel } from '@/lib/navigation'
 import { Button } from '@/components/ui/button'
@@ -348,6 +349,7 @@ export function HeaderBar() {
 
         {/* Right: status + actions */}
         <div className="flex items-center justify-end gap-1.5 md:gap-2 min-w-0 shrink-0 ml-auto">
+          <OperationalPulse />
           <div className="hidden lg:block">
             <DemoModeSwitcher />
           </div>
@@ -646,3 +648,4 @@ function BellIcon() {
     </svg>
   )
 }
+

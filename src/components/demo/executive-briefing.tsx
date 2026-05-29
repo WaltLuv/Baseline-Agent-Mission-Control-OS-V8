@@ -245,7 +245,11 @@ function BriefingCard({
           ) : (
             <ul className="mt-2 space-y-2">
               {dailyWins.map((w, i) => (
-                <li key={i} className="text-xs text-foreground/90">
+                <li
+                  key={i}
+                  className="text-xs text-foreground/90 mc-rise-in"
+                  style={{ animationDelay: `${80 + i * 60}ms` }}
+                >
                   <p className="font-medium">{w.title}</p>
                   <p className="text-muted-foreground">
                     {w.impact} · <span className="text-emerald-400">+${w.valueUsd.toLocaleString()}</span>
@@ -273,7 +277,11 @@ function BriefingCard({
           ) : (
             <ul className="mt-2 space-y-2">
               {attentionItems.map((a, i) => (
-                <li key={i} className="text-xs text-foreground/90">
+                <li
+                  key={i}
+                  className="text-xs text-foreground/90 mc-rise-in"
+                  style={{ animationDelay: `${120 + i * 60}ms` }}
+                >
                   <p className="font-medium flex items-center gap-1">
                     <span
                       className={

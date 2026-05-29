@@ -3,12 +3,37 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useDemoMode } from '@/components/demo/demo-mode-provider'
+import { setLastTouchedEmployee } from '@/lib/panel-continuity'
 import {
   presenceLabel,
   presenceTone,
   confidenceTone,
   type AIEmployeeLifeSignal,
+  type PresenceState,
 } from '@/lib/ai-employee-life-signals'
+
+/** Workforce life signal: a calm dot whose colour reflects presence and whose
+ * subtle breath says "on shift". No strobe, no scale, opacity only — so layout
+ * never reflows. Static under prefers-reduced-motion (handled in globals.css). */
+function PresenceDot({ presence }: { presence: PresenceState }) {
+  const tone =
+    presence === 'working' || presence === 'online'
+      ? 'bg-emerald-400'
+      : presence === 'waiting-for-approval'
+      ? 'bg-amber-300'
+      : presence === 'blocked' || presence === 'needs-attention'
+      ? 'bg-rose-300'
+      : 'bg-sky-300'
+  const breathing = presence === 'working' || presence === 'online'
+  return (
+    <span
+      aria-hidden
+      data-testid="life-roster-breath"
+      data-presence={presence}
+      className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${tone} ${breathing ? 'animate-[mcLifeBreathe_6s_ease-in-out_infinite]' : ''}`}
+    />
+  )
+}
 
 /**
  * AI Employee Life Roster — surfaces the workforce-in-motion on the
@@ -81,9 +106,11 @@ export function AIEmployeeLifeRoster() {
             className="rounded-xl border border-border/40 bg-card/20 p-3 transition-colors hover:border-border/60"
           >
             <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
+              <div className="min-w-0 flex items-center gap-2">
+                <PresenceDot presence={s.presence} />
                 <Link
                   href={`/app/agents/${encodeURIComponent(s.agentSlug)}/trace`}
+                  onClick={() => setLastTouchedEmployee(s.agentSlug)}
                   data-testid={`life-roster-trace-link-${s.agentSlug}`}
                   className="block truncate text-sm font-semibold text-foreground hover:underline"
                 >

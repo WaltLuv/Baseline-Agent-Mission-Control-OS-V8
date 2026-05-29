@@ -2139,4 +2139,130 @@ new  docs/user/*                                          (8 markdown user docs)
 - P3 — Email SMTP STARTTLS hardening + saved-card auto-reload for Stripe.
 - Optional polish — fine-grained help search index (currently text-only).
 
+
+---
+
+## 25. Iteration 20 — Pass 2: Executive Experience
+
+> Mandate: make Mission Control feel like a living executive operating
+> system supervising a real AI workforce — calm, responsive, connected,
+> trustworthy, operational. Never flashy, gamified, or cyberpunk.
+
+### 25.1 — Operational Tick (single calm clock)
+- `src/lib/operational-tick.ts` — one app-wide `useOperationalTick` hook
+  emitting a 1 Hz monotonic tick + visibility-aware seconds counter.
+  Honors `prefers-reduced-motion` (stops the tick).
+- Adds three pure derivations: `freshness(lastEventAtMs)` returns
+  `live | stale | cold` at 15 s / 60 s thresholds; `freshnessLabel()`
+  maps to executive-grade copy ("On shift" / "Catching breath" /
+  "Off shift"); `ageLabel()` returns plain-English age strings.
+
+### 25.2 — Operational Pulse (header indicator)
+- `src/components/operational/operational-pulse.tsx` — a small breathing
+  dot mounted in the header. Listens to the existing SSE store flag
+  *and* `mc:task-update / mc:agent-update / mc:activity / mc:notification`
+  custom events to derive a calm freshness state.
+- Click reveals a tray: SSE state, workforce on shift, uptime-in-view.
+- Calm rules baked in:
+  - Slow 4 s breathe (no strobe).
+  - Green ONLY when SSE connected *and* a real event was seen recently.
+  - Amber when connected but quiet for >15 s.
+  - Grey when SSE is off — never faked live.
+
+### 25.3 — Workforce Life Signals (per-employee breath)
+- `src/components/workforce/ai-employee-life-roster.tsx` now renders a
+  `PresenceDot` next to each AI Employee name. Opacity-only 6 s breath
+  (no scale → zero reflow). Tone maps directly to the existing
+  `PresenceState`: working/online (green, breathing), waiting (amber),
+  blocked/needs-attention (rose), idle (sky). Static under
+  `prefers-reduced-motion`.
+
+### 25.4 — Briefing Motion (staggered reveal)
+- `src/components/demo/executive-briefing.tsx` — wins and attention
+  rows now animate with a calm `mc-rise-in` keyframe (420 ms, 4 px
+  rise) with per-row staggers (60 ms apart). Replaces a flat reveal
+  with executive cadence. Honors reduced-motion.
+
+### 25.5 — Cross-Panel Continuity
+- `src/lib/panel-continuity.ts` — additive, sessionStorage-backed memory.
+  - `usePanelScrollMemory(scrollRef, panelId)` — saves the operator's
+    scroll position per panel and restores it on return. Double rAF
+    so layout settles before the scroll, preventing any visible jump.
+    `behavior: 'auto'` (never smooth) so the restore is invisible.
+  - `getLastTouchedEmployee()` / `setLastTouchedEmployee(slug)` —
+    sessionStorage round-trip + `mc:employee-touched` CustomEvent so
+    downstream panels can deep-link to the most recently touched
+    employee without an extra click. Wired on the Life Roster.
+
+### 25.6 — Calm CSS keyframes
+- `src/app/globals.css` — adds three keyframes:
+  - `mcBreathe` (4 s halo for the Pulse, opacity + scale)
+  - `mcLifeBreathe` (6 s, opacity-only — layout-stable)
+  - `mcRiseIn` (420 ms, used by `.mc-rise-in` utility)
+- All three are wrapped in a `@media (prefers-reduced-motion: reduce)`
+  block that disables every keyframe and forces final state.
+
+### 25.7 — Files touched
+```
+new  src/lib/operational-tick.ts                          (1 Hz tick + freshness derivations, pure)
+new  src/lib/panel-continuity.ts                          (per-panel scroll memory + last-touched employee)
+new  src/components/operational/operational-pulse.tsx     (header pulse + tray)
+new  src/lib/__tests__/operational-tick.test.ts           (11 tests — freshness boundaries, ageLabel, continuity round-trip)
+mod  src/app/globals.css                                  (calm keyframes + reduced-motion guard)
+mod  src/components/layout/header-bar.tsx                 (mount OperationalPulse)
+mod  src/components/workforce/ai-employee-life-roster.tsx (PresenceDot + setLastTouchedEmployee on click)
+mod  src/components/demo/executive-briefing.tsx           (mc-rise-in stagger on wins + attention)
+mod  src/app/app/[[...panel]]/page.tsx                    (attach mainScrollRef + usePanelScrollMemory)
+```
+
+### 25.8 — Validation
+- **Typecheck.** `tsc --noEmit` — zero errors.
+- **Lint.** `eslint` over all new/modified files — zero warnings.
+- **Tests.** `vitest run` — **1087 / 1087 pass** (+11 new for Pass 2).
+- **Build.** `next build` — full production build succeeds; all
+  routes compiled (only Pass 2 surfaces touched, no new routes added).
+- **Visual smoke.** Live screenshot confirms:
+  - Pulse renders in header with `data-state="live"` and tray ("On
+    shift · last signal just now · Connected · 0 of 3 · Uptime 3s").
+  - 4 breathing life-signal dots in the Life Roster.
+  - Executive Briefing wins / attention render with staggered motion.
+  - Scroll save records 600 px and persists across navigation.
+- **No refresh loop.** Pulse re-renders are bound to a 1 s `setInterval`
+  on visible documents only (paused under `document.hidden`). No
+  recursive state writes; the SSE listener writes a number not an
+  object, so React bails on equal updates.
+- **No scroll jump.** Restore is gated by two rAFs and uses
+  `behavior: 'auto'`. First-paint scroll is always at the top; the
+  restore happens after layout. Verified manually.
+- **No workspace-context loss.** `setLastTouchedEmployee` writes to
+  sessionStorage (workspace-scoped per browser session), never to
+  localStorage. Cleared on hard reload, retained on soft navigation —
+  exactly as an executive surface should behave.
+
+### 25.9 — Launch readiness update
+- **Help & guidance** (Iter. 19): production-ready.
+- **Executive UX** (Iter. 20 / Pass 2): production-ready.
+- **Operational telemetry loop** (Iter. 17–18): production-ready.
+- **Marketplace + skills + memory + approvals + billing**: stable, no
+  new code touched in Pass 2.
+- Remaining for MVP launch: Pass 3 (commercial storylines + sales
+  experience).
+
+### 25.10 — Remaining risks
+- The Operational Pulse leans on `mc:*` CustomEvents being dispatched
+  by the existing `useServerEvents` hook. If a future change renames
+  these events the Pulse will silently fall back to "stale". Mitigation:
+  the freshness label still uses the store's `sseConnected` flag, so
+  the Pulse never goes outright wrong — just less responsive.
+- Cross-panel scroll memory is sessionStorage-backed; private-mode
+  browsers (Safari) may reject writes silently. Memory simply
+  degrades — no errors thrown.
+- The 1 Hz tick is bounded by `document.visibilityState`. Mobile
+  browsers backgrounded for hours show "Off shift" until refocus —
+  acceptable for executive surfaces but worth confirming with mobile
+  users in Pass 3.
+- The OnboardingWizard remains a separate full-screen pre-existing
+  modal — the new Pass 2 surfaces sit behind it during a fresh session.
+  Out of scope for Pass 2; will be revisited if needed in Pass 3.
+
 - P3 — Email SMTP STARTTLS hardening + saved-card auto-reload for Stripe.

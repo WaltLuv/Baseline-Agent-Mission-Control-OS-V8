@@ -1,6 +1,6 @@
 'use client'
 
-import { createElement, useEffect, useMemo, useState } from 'react'
+import { createElement, useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { NavRail } from '@/components/layout/nav-rail'
 import { HeaderBar } from '@/components/layout/header-bar'
@@ -53,6 +53,7 @@ import { ChatPanel } from '@/components/chat/chat-panel'
 import { HelpPanel } from '@/components/help/help-panel'
 import { FirstRunTour } from '@/components/help/first-run-tour'
 import { SetupChecklist } from '@/components/help/setup-checklist'
+import { usePanelScrollMemory } from '@/lib/panel-continuity'
 import { STORAGE_GATEWAY_URL } from '@/lib/device-identity'
 import { getPluginPanel } from '@/lib/plugins'
 import { shouldRedirectDashboardToHttps } from '@/lib/browser-security'
@@ -136,6 +137,10 @@ export default function Home() {
   // Connect to SSE for real-time local DB events (tasks, agents, chat, etc.)
   useServerEvents()
   const [isClient, setIsClient] = useState(false)
+  // Per-panel scroll memory — restores Overview's scroll when the operator
+  // returns from Tasks etc. Calm, additive, no auto-scroll on first paint.
+  const mainScrollRef = useRef<HTMLElement | null>(null)
+  usePanelScrollMemory(mainScrollRef, normalizedPanel)
   const [stepStatuses, setStepStatuses] = useState<Record<string, 'pending' | 'done'>>(
     () => Object.fromEntries(STEP_KEYS.map(k => [k, 'pending']))
   )
@@ -446,6 +451,7 @@ export default function Home() {
         )}
         <main
           id="main-content"
+          ref={mainScrollRef}
           className={`flex-1 overflow-auto pb-16 md:pb-0 ${showOnboarding ? 'pointer-events-none select-none blur-[2px] opacity-30' : ''}`}
           role="main"
           aria-hidden={showOnboarding}

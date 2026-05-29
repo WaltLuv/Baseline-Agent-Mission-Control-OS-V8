@@ -324,6 +324,40 @@
     50%      { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.06); }
   }
 
+  /* Operational Tick — a single, calm breath that powers the Pulse halo
+     and the workforce life signals. Slow (4s) and very low-contrast so
+     the executive surface never strobes. */
+  @keyframes mcBreathe {
+    0%, 100% { transform: scale(1);   opacity: 0.65; }
+    50%      { transform: scale(1.6); opacity: 0; }
+  }
+
+  /* Calm "I am here" breath for an inline status dot. 6s, no scaling —
+     just opacity so adjacent text never reflows. */
+  @keyframes mcLifeBreathe {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.55; }
+  }
+
+  /* Calm staggered reveal used by the Executive Briefing rows. ~400ms,
+     slide 4px from below. Honors prefers-reduced-motion via the
+     @media block far below. */
+  @keyframes mcRiseIn {
+    0%   { opacity: 0; transform: translateY(4px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  .mc-rise-in { animation: mcRiseIn 420ms cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mc-rise-in,
+    [class*="animate-[mcBreathe"],
+    [class*="animate-[mcLifeBreathe"] {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  }
+
   /* Marketplace hire-shimmer — subtle premium flash on card when the
      operator commits to a hire / install / deploy. Calm, business-grade,
      not childish. ~700ms total, single pass. */
