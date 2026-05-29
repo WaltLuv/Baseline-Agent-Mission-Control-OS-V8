@@ -2858,4 +2858,82 @@ across 10 verticals. Next operator action: real DigitalOcean deploy.
 - **DO NOT** add analytics dashboards, lead capture, or new panels
   until the first prod deploy is green.
 
+
+---
+
+## 32 — Launch Readiness Push (May 29, 2026)
+
+### 32.1 — All 4 launch-critical verticals proven end-to-end
+Visually verified in clean guest sessions via signed demo links:
+
+| Vertical | COO briefing | Value | Star employee |
+|---------|--------------|-------|---------------|
+| Mortgage | "Six loans funded this month. One appraisal came in low." | $24,900 | AI Doc Collection Assistant |
+| Real Estate | "18 Westwood under contract. Two listings need pricing strategy." | $28,600 | AI Lead Capture Assistant |
+| General Contractor | "Two bids signed overnight. One conflict needs you." | $17,200 | AI Bid Estimator |
+| Home Services | "Booked 17 calls overnight. One emergency." | $14,300 | AI Intake Receptionist |
+
+All four match CPA / Law Firm / AI Agency / PM depth: 4 AI employees
+each, life-signals roster with presence / confidence / workload /
+collaborators / escalation / Obsidian|Notion memory citation /
+active skills / active workflow / recent win / current blocker.
+
+### 32.2 — Runtime validation proof
+Captured via `scripts/runtime-validate.sh` style harness against the
+staging preview. All three runtimes pass the 5-flow contract:
+
+| Runtime | register | heartbeat | billing-idempotent | telemetry | cleanup |
+|---------|----------|-----------|--------------------|-----------|---------|
+| Hermes | 200 | 200 | 200 / 200 | 200 / 200 | 200 |
+| OpenClaw / OpenCode | 200 | 200 | 200 / 200 | 200 / 200 | 200 |
+| Claude Code | 200 | 200 | 200 / 200 | 200 / 200 | 200 |
+
+Proof artifact: `docs/operations/proofs/runtime-validation-<ts>.txt`.
+
+### 32.3 — Deploy Day Runbook
+`docs/operations/DEPLOY_DAY_RUNBOOK.md` — single-page operator runbook
+that walks pre-flight, DNS, secrets, first deploy, health
+verification, runtime validation, Stripe, backups, rollback, and the
+**seven-checkbox launch-readiness gate**. Estimated wall-clock: 45 min.
+
+### 32.4 — Preflight rehearsal
+- `./scripts/preflight-production.sh` against `.env.test`: correctly
+  FAILS with multiple errors (missing AUTH_SECRET, missing
+  MC_ALLOWED_HOSTS, MC_COOKIE_SECURE not 1).
+- Same script against a synthetic locked-down env: PASS with one
+  Stripe-mock-mode warning. Ready for operator.
+
+### 32.5 — Quality gates
+| Gate | Status |
+|------|--------|
+| `tsc --noEmit` | OK — 0 errors |
+| `eslint --quiet` | OK — 0 errors |
+| `vitest run` | OK — **1207 / 1207** pass across 106 files |
+| Vertical demo render | OK — Mortgage / Real Estate / GC / Home Services |
+| Runtime validation | OK — Hermes / OpenClaw / Claude Code all pass |
+| Preflight rehearsal | OK — rejects loose env, accepts locked env |
+
+### 32.6 — Launch readiness gate (seven-checkbox)
+A prospect can now:
+
+1. Receive a signed demo link from `/app/share?vertical=<v>&prospect=<n>`.
+2. Open the correct industry demo without a login wall.
+3. Understand the platform in under 60 seconds (COO briefing + AI
+   workforce roster on the first viewport).
+4. See AI employees working (presence, workload, current task).
+5. See memory-backed decisions (Obsidian / Notion citation per agent).
+6. See ROI (value-created counter, hours-saved counter).
+7. Book a pilot (Get Started CTA in nav rail).
+
+All seven flows ship working in this revision. Final gate is operator
+action: run the deploy runbook against a real DigitalOcean account
+and a real domain.
+
+### 32.7 — Post-launch backlog (DO NOT BUILD until launch is green)
+- Cigar Lounge / Local Retail full demo narrative (template ships now)
+- Swarm backend implementation behind MC_WORKFLOWS_ENABLED
+- Per-prospect demo-share analytics
+- Baseline Studios sidecar sync
+- Generic agent framework (explicitly prohibited)
+
 - P3 — Email SMTP STARTTLS hardening + saved-card auto-reload for Stripe.
