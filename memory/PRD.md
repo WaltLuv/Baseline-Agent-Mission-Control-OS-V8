@@ -2669,6 +2669,82 @@ the right storyline via the redeem URL.
 | Gate | Status |
 |------|--------|
 | `tsc --noEmit` | ✅ 0 errors |
+
+---
+
+## 30 — Session: AI Workforce Dashboard + Swarm Mode demo (May 29, 2026)
+
+### 30.1 — AI Workforce Dashboard (`/app/workforce`)
+- Single vertical-agnostic executive surface backed by
+  `src/lib/ai-workforce-taxonomy.ts`.
+- 4 business-outcome KPI cards (hours saved, workflows completed,
+  value created, approval cycle time).
+- 8 departments: Sales · Marketing · Operations · Customer Support ·
+  Finance · Field Operations · Property Operations · Contractor
+  Operations.
+- 10 AI employees with status / department / skills / current workflow
+  / last activity: Sales Follow-Up Agent, Customer Intake Agent,
+  Scheduling Agent, Estimate Builder Agent, Invoice Follow-Up Agent,
+  Review Request Agent, Inspection Agent, VoiceOps Operator,
+  VisionOps Inspector, Mission Control Supervisor.
+- 6 active workflows (mini-Kanban) across multiple verticals.
+- **10 vertical templates** including new first-class
+  `cigar-retail` (Cigar Lounge / Local Retail).
+- Skills Registry projection of `MARKETPLACE_BUNDLES` with
+  installed / available status and vertical mapping.
+
+### 30.2 — Dynamic Workflow / Swarm Mode demo (`/app/workflows/swarm`)
+- Five-stage tracker: **Command → Plan → Swarm → Verify → Keep**.
+- 3 mission templates exposed:
+  - "Build a sales follow-up system for a local service business."
+  - "Inspect this repo and identify production blockers."
+  - "AI workforce for a cigar lounge / local retail."
+- Each template ships 5–6 specialist agents (Strategy, CRM,
+  Copywriting, Workflow Builder, QA Judge, Launch Checklist, etc.).
+- Verification judges panel with `pass` / `attention` verdicts and
+  evidence detail.
+- "Persisted to workspace" deliverables panel surfaces the run
+  artifacts gate.
+- Pure client-side simulation; deterministic stage transitions.
+
+### 30.3 — Native orchestration architecture (backlog)
+- `docs/architecture/DYNAMIC_WORKFLOWS.md`: minimal new tables
+  (`workflow_runs`, `workflow_tasks`, `workflow_agents`,
+  `workflow_events`, `workflow_verifications`, `workflow_artifacts`,
+  `workflow_approvals`); services under `src/lib/workflows/`;
+  API surface; safety/governance (scrub secrets, approval gating);
+  5-slice rollout plan behind `MC_WORKFLOWS_ENABLED`.
+
+### 30.4 — Quality gates
+| Gate | Status |
+|------|--------|
+| `tsc --noEmit` | ✅ 0 errors |
+| `eslint --quiet` | ✅ 0 errors |
+| `vitest run` | ✅ **1205 / 1205** pass across 106 files |
+| New taxonomy tests | ✅ 11 / 11 |
+| New swarm demo tests | ✅ 7 / 7 |
+| Visual: `/app/workforce` | ✅ 8 depts · 10 employees · 10 verticals |
+| Visual: `/app/workflows/swarm` | ✅ All 5 stages reached, deliverables persisted |
+| Regression: homepage / share preset / runtime panel | ✅ All intact |
+
+### 30.5 — Demo-ready surfaces (current state)
+- `/` — AI Workforce OS positioning (9 verticals strip).
+- `/app/workforce` — Dashboard with 10 verticals (incl. cigar).
+- `/app/workflows/swarm` — Swarm Mode demo.
+- `/app/share?vertical=<id>&prospect=<name>` — Salesperson preset.
+- `/app/runtime-validation` — Launch readiness for runtimes.
+- `/marketplace` — Existing bundle catalog.
+- `/demo/expired` — Clean expired/invalid token page.
+- Guided Demo across CPA / PM / Law Firm / AI Agency verticals.
+
+### 30.6 — Next priorities
+- **P1**: Backend orchestrator (slices 1–5 of `DYNAMIC_WORKFLOWS.md`)
+  behind `MC_WORKFLOWS_ENABLED`.
+- **P1**: First real DigitalOcean deploy (operator action).
+- **P2**: Per-prospect demo share analytics.
+- **P2**: Cigar-retail full demo narrative (currently template only).
+- DO NOT build: Baseline Studios (sidecar sync).
+
 | `eslint .` | ✅ 0 errors |
 | `vitest run` | ✅ **1187 / 1187** pass across 104 files |
 | Demo-share tests | ✅ 29 / 29 |
