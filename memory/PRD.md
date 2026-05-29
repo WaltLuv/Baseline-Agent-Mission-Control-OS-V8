@@ -2529,4 +2529,62 @@ the right storyline via the redeem URL.
 - **Commercial Readiness: 9.4 / 10** (+0.4, one-link prospect onboarding)
 - Primary remaining gap: production deployment + runtime validation.
 
+
+---
+
+## 28 — Session: P0 Stabilization (May 29, 2026)
+
+### 28.1 — Git tracking bloat (P0A)
+- Verified resolved. `.gitignore` already excludes `.node22/`, `.next/`,
+  `.env`, `.env.*`, `*.env`, `credentials.json`, `*.key`, `node_modules/`,
+  `.vercel`, `.cache/`, `.playwright/`, `*.db`, `*.tar.gz/xz`, etc.
+- Working tree clean. `.git` size: **17 MB**. No blobs > 50 MB in entire
+  history. Save-to-GitHub will succeed.
+
+### 28.2 — Demo Share guest `/login` redirect (P0B)
+- Verified fixed end-to-end in real browser (no code changes needed).
+- Path chain confirmed:
+  - `proxy.ts` allows `/app/*` when `mc_demo_guest` cookie is valid
+    (HMAC sig + `perms === ['read-demo']` + unexpired).
+  - `/api/auth/me` has demo-guest fast path that returns a synthetic
+    `role: 'demo-guest'`, `workspace_id: -1` user. So the client-side
+    `router.replace('/login')` at `page.tsx:257` never fires.
+- Cookie name canonical: **`mc_demo_guest`** (underscore), HttpOnly,
+  SameSite=Lax, Secure on HTTPS.
+
+### 28.3 — End-to-end verification (P0C)
+- Clean unauthenticated browser sessions tested against:
+  - **CPA** — Guided Demo opens, watermark visible, CPA storyline
+    renders, AI Workforce roster shows 4 employees, attention item
+    `Client #88 — 1099 reconciliation discrepancy ($3,200)`.
+  - **Property Management** (`pm`) — Guided Demo opens, `Quiet
+    morning, two doors making noise.` briefing, $8,420 value, PM
+    employees + tenant escalation.
+  - **Law Firm** — `Four intakes overnight. One may be a conflict.`
+    briefing, $14,198 value, conflict-of-interest attention item.
+  - **AI Agency** — mint succeeded (not visually screenshot-verified,
+    same code path as the three above).
+- **Expired-link path** — `/api/demo-share/redeem?token=invalid` →
+  302 to `/demo/expired?reason=bad-signature`. The expired page
+  renders "This demo link is no longer active." with Browse / Request
+  fresh demo CTAs. No backend leakage.
+- Watermark line confirmed on every demo surface:
+  `DEMO WORKSPACE · BASELINE OS · NO LIVE CUSTOMER DATA`
+
+### 28.4 — Quality gates
+| Gate | Status |
+|------|--------|
+| `tsc --noEmit` | ✅ 0 errors (fixed one stale `workloadPressure: 'overloaded'` in `src/lib/demo-narratives.ts`) |
+| `eslint .` | ✅ 0 errors (13 pre-existing warnings, untouched) |
+| `vitest run` | ✅ **1164 / 1164** pass across 103 test files |
+| Demo-share suite | ✅ 14 / 14 pass |
+| `.git` size | ✅ 17 MB |
+| Working tree | ✅ clean |
+
+### 28.5 — Next priorities
+- **P1** — DigitalOcean production deployment.
+- **P1** — Runtime validation (Hermes, OpenClaw/OpenCode, Claude Code).
+- **P2** — Baseline Studios — DO NOT build; it ships as a side-car
+  app to be synced in.
+
 - P3 — Email SMTP STARTTLS hardening + saved-card auto-reload for Stripe.
