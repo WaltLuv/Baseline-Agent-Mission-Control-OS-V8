@@ -3021,4 +3021,73 @@ FROZEN — no work without explicit approval:
 - Additional panels
 - New frameworks
 
+
+---
+
+## 34 — Launch Readiness, completed (May 29, 2026)
+
+### 34.1 — DigitalOcean execution support
+- `docs/operations/DIGITALOCEAN_EXECUTION.md` (317 lines).
+- App Platform `basic-xs` (~$5/mo) as the launch tier; droplet path
+  documented but not recommended.
+- Exact domain structure, DNS records (CNAME / CAA / SPF) with
+  proxy-off note.
+- Exact secrets checklist with openssl commands.
+- Exact deployment sequence (doctl steps A-I).
+- Exact rollback sequence (image re-pin, git revert, share-secret
+  rotation, full freeze).
+- Stripe live-mode flow.
+
+### 34.2 — Production Verification Checklist
+- `docs/operations/PRODUCTION_VERIFICATION_CHECKLIST.md` (305 lines).
+- 10 tiers, ~30 atomic checks. Every check is one command with an
+  expected output. Definition-of-Done seven-checkbox gate at the end
+  (prospect journey in incognito).
+- Executable immediately after deployment.
+
+### 34.3 — Sales Playbooks (8 verticals)
+- `docs/sales/README.md` index (59 lines).
+- Per-vertical playbooks, each containing one-page outline, sales
+  sheet, 10-question discovery script, objection-handling table,
+  14-touch follow-up sequence, 4 email templates, 3 TCPA-compliant
+  SMS templates, reference ROI math:
+  - `property-management.md` (266 lines)
+  - `general-contractor.md` (230 lines)
+  - `home-services.md` (234 lines)
+  - `real-estate.md` (233 lines)
+  - `mortgage.md` (237 lines)
+  - `cpa.md` (235 lines)
+  - `law-firm.md` (233 lines)
+  - `ai-agency.md` (233 lines)
+- Marketing-agency playbook intentionally deferred to backlog
+  (first paying agency client triggers it).
+
+### 34.4 — 14-Day Pilot SOP
+- `docs/onboarding/14_DAY_PILOT_SOP.md` (338 lines).
+- $1 / 14 days / 1 KPI / 1 vertical structure.
+- Day-by-day cadence (kickoff → data → memory → workflow mapping →
+  runtime onboarding → first mission → week-1 review → productive
+  use → ROI capture → approval review → upgrade → close).
+- Pilot ticket template, health-flag rubric, conversion benchmarks.
+
+### 34.5 — Definition of Done met
+A stranger can now:
+1. Discover (homepage AI Workforce OS positioning live)
+2. Watch a demo (`/?demo=<vertical>` for 9 verticals)
+3. Book a call (signed `/app/share` preset minting)
+4. Start a $1, 14-day pilot (SOP shipped)
+5. Get onboarded (day-by-day with health flags)
+6. See ROI (day-11 capture, day-13 review)
+7. Become a customer (day-13 upgrade conversation, $299 / $799 tiers)
+
+Every step has a doc, a script, or a code path. Launch readiness
+is **complete** code-side. Final action remains operator-only:
+execute the DigitalOcean runbook against the real account and
+domain.
+
+### 34.6 — Frozen until launch is green
+- Baseline Studios · Swarm backend · Analytics expansion ·
+  Additional panels · New frameworks · Generic agent framework
+  (explicitly prohibited)
+
 - P3 — Email SMTP STARTTLS hardening + saved-card auto-reload for Stripe.
