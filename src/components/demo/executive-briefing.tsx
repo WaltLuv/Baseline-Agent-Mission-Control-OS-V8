@@ -8,6 +8,7 @@ import { WorkforceOptimizationCard } from '@/components/baseline-os/workforce-op
 import { ShareBriefingButton } from './share-briefing-button'
 import { CountUp } from '@/components/motion/count-up'
 import { MetricTooltip } from '@/components/ui/metric-tooltip'
+import { HelpTooltip } from '@/components/help/help-tooltip'
 
 interface LiveBriefing {
   briefingHeadline: string
@@ -188,7 +189,10 @@ function BriefingCard({
           <h2 className="mt-1 text-2xl font-bold text-foreground" data-testid="briefing-headline">
             {headline}
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">{subheadline}</p>
+          <div className="mt-1 flex items-start gap-3 flex-wrap">
+            <p className="text-sm text-muted-foreground">{subheadline}</p>
+            <HelpTooltip topic="executive-briefing" />
+          </div>
         </div>
         <div className="flex items-start gap-3">
           <ShareBriefingButton

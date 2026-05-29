@@ -7,6 +7,7 @@ import { useMissionControl, type ConnectionStatus } from '@/store'
 import { extractWsHost } from '@/lib/agent-card-helpers'
 import { DemoModeSwitcher } from '@/components/demo/demo-mode-switcher'
 import { RefreshControl } from '@/components/layout/refresh-control'
+import { HelpButton } from '@/components/help/help-button'
 import { useWebSocket } from '@/lib/websocket'
 import { useNavigateToPanel, usePrefetchPanel } from '@/lib/navigation'
 import { Button } from '@/components/ui/button'
@@ -389,6 +390,7 @@ export function HeaderBar() {
 
           <LanguageSwitcher />
           <ThemeSelector />
+          <HelpButton />
         </div>
       </div>
 

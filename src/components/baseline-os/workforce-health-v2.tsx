@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRefreshConfig } from '@/lib/refresh-prefs'
 import { MetricTooltip } from '@/components/ui/metric-tooltip'
+import { HelpTooltip } from '@/components/help/help-tooltip'
 
 const DIM_RATIONALE: Record<string, string> = {
   'execution-health': 'Are tasks actually closing? Drops when work piles up in draft / blocked.',
@@ -102,7 +103,10 @@ export function WorkforceHealthV2() {
           <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-primary">
             Baseline OS · Workforce Health
           </p>
-          <h2 className="mt-1 text-base font-bold text-foreground">{data.headline}</h2>
+          <div className="mt-1 flex items-center gap-3">
+            <h2 className="text-base font-bold text-foreground">{data.headline}</h2>
+            <HelpTooltip topic="workforce-health" />
+          </div>
         </div>
         <div data-testid="workforce-health-overall" className={`shrink-0 rounded-xl border px-3 py-2 text-center ${scoreTone(data.overall)}`}>
           <MetricTooltip body="Composite of all 8 sub-dimensions, weighted by what matters for an operator running an AI workforce. A score below 60 means it's time to act today.">

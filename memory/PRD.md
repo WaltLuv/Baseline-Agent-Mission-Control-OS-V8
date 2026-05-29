@@ -2025,4 +2025,118 @@ through stable, idempotent, fire-and-forget telemetry.
 - **Pass 3** — Commercial layer: demo storylines, vertical narratives,
   ROI storytelling, marketplace polish
 - **Pass 4** — Baseline Studios (separate product, separate roadmap)
+
+---
+
+## 24. Iteration 19 — In-App Guidance System (this pass)
+
+> Mandate: a non-technical business owner must be able to open Mission Control
+> and understand how to use it without anyone explaining each screen.
+
+### 24.1 — Help routes (all rendered through the dashboard shell)
+| Route | Purpose |
+| --- | --- |
+| `/app/help` | Help home — audience selector, search, recommended guides, full index |
+| `/app/help/getting-started` | 10-step plain-English walkthrough from workspace → first real workflow |
+| `/app/help/user-guide` | Sections A–I covering every screen (basics, employees, skills, memory, approvals, billing, runtimes, marketplace, security) |
+| `/app/help/runtime-setup` | Step-by-step setup for Hermes, OpenClaw, and Claude Code |
+| `/app/help/memory-setup` | Obsidian, Notion, and Knowledge Intelligence connectors |
+| `/app/help/demo-vs-live` | Demo vs Live mode, side-by-side |
+| `/app/help/troubleshooting` | 13 common issues with cause + fix + deep links |
+| `/app/help/glossary` | 21 plain-English term definitions, searchable |
+| `/app/help/faq` | 9 quick answers |
+
+### 24.2 — Setup Checklist (honest derivation)
+- `src/app/api/help/checklist/route.ts` — derives 11 checklist items from real
+  workspace state (workspaces, agents, skills, memory connectors, runtimes,
+  billing, tasks, approvals, briefings, skill ROI events). No fake ticks.
+- `src/components/help/setup-checklist.tsx` — embedded on the Overview until
+  100% complete; calm progress ring + per-item "why it matters" + direct
+  action button + per-step deep link. Dismissable via local-storage.
+
+### 24.3 — First-Run Tour
+- `src/components/help/first-run-tour.tsx` — 10-step modal tour driven by
+  `TOUR_STEPS` in `src/lib/help/content.ts`. Skippable (Esc / button),
+  replayable from the Help menu, persisted once per browser via localStorage.
+
+### 24.4 — Contextual help everywhere
+- `src/components/help/help-tooltip.tsx` — "?" popovers that answer
+  *What is this? Why does it matter? What should I do next?*
+- Integrated on Executive Briefing, Workforce Health, Skills Active Inventory.
+- All 13 surfaces (Executive Briefing, Workforce Health, AI Employee Card,
+  Employee Trace, Skill ROI, Skills Inventory, Collaboration Graph,
+  Approval Queue, Memory Feed, Memory Settings, Billing, Runtime
+  Connections, Marketplace) have content authored in `CONTEXTUAL_HELP` and
+  can be linked in via one line.
+
+### 24.5 — Header Help button
+- `src/components/help/help-button.tsx` mounted in the header. Opens a
+  calm menu: Help Home, Getting Started, User Guide, Runtime Setup,
+  Memory Setup, Troubleshooting, Glossary, Replay tour.
+
+### 24.6 — Role-based guide modes
+- Built into the Help shell sidebar (`HelpPanel`): **Business Owner**,
+  **Operator / Admin**, **Developer / Runtime**, **Enterprise / Security**.
+- Runtime Setup hides developer detail unless the Developer audience is
+  active (with a calm prompt explaining why).
+- Owner-facing copy is jargon-audited; a Vitest assertion fails the build
+  if "pinecone", "embedding", "vector index", "orchestrator", or
+  "langchain" ever leak into customer-facing content.
+
+### 24.7 — Help index / search
+- Home page exposes a simple text search over `HELP_INDEX` (titles +
+  keyword corpus). No remote calls, no analytics.
+
+### 24.8 — Documentation files mirrored to disk
+```
+docs/user/GETTING_STARTED.md
+docs/user/USER_GUIDE.md
+docs/user/RUNTIME_SETUP_GUIDE.md
+docs/user/MEMORY_SETUP_GUIDE.md
+docs/user/TROUBLESHOOTING.md
+docs/user/DEMO_VS_LIVE_MODE.md
+docs/user/GLOSSARY.md
+docs/user/FAQ.md
+```
+
+### 24.9 — Files touched
+```
+new  src/lib/help/content.ts                              (single source of truth — 21 glossary terms, 9 FAQs, 13 troubleshooting entries, audience-aware steps)
+new  src/lib/help/checklist.ts                            (pure derivation + completion %)
+new  src/app/api/help/checklist/route.ts                  (DB-derived API)
+new  src/components/help/help-panel.tsx                   (sidebar nav + audience selector + 9 sub-views)
+new  src/components/help/help-tooltip.tsx                 (contextual "?" popovers)
+new  src/components/help/help-button.tsx                  (header menu)
+new  src/components/help/setup-checklist.tsx              (Overview widget + progress ring)
+new  src/components/help/first-run-tour.tsx               (10-step guided tour)
+new  src/lib/__tests__/help-content.test.ts               (19 tests; includes anti-jargon guard)
+mod  src/app/app/[[...panel]]/page.tsx                    (route `help/*`, mount FirstRunTour, render SetupChecklist)
+mod  src/components/layout/header-bar.tsx                 (mount HelpButton)
+mod  src/components/layout/nav-rail.tsx                   (Help nav item + icon)
+mod  src/components/demo/executive-briefing.tsx           (HelpTooltip on subheadline)
+mod  src/components/baseline-os/workforce-health-v2.tsx   (HelpTooltip on header)
+mod  src/components/baseline-os/skills-active-inventory.tsx (HelpTooltip on header)
+new  docs/user/*                                          (8 markdown user docs)
+```
+
+### 24.10 — Test status
+- **1076 / 1076** Vitest tests passing (was 1057 → +19 new help tests).
+- TypeScript compiles with zero errors.
+- ESLint clean on every new/modified file.
+- API `/api/help/checklist` returns honest, DB-derived state
+  (verified with admin session against admin's seeded workspace).
+- Screenshots verified:
+  - `/app/help/getting-started` renders sidebar + 10 steps + CTAs.
+  - `/app/help` home renders audience selector + search + recommended.
+  - `/app/help/troubleshooting` renders accordion entries.
+
+### 24.11 — Backlog (continuing from Iteration 18)
+- **Pass 2** — Executive UX: operational tick, briefing motion, life
+  signals polish, cross-panel continuity.
+- **Pass 3** — Commercial layer: demo storylines, vertical narratives,
+  ROI storytelling, marketplace polish.
+- **Pass 4** — Baseline Studios (separate product, separate roadmap).
+- P3 — Email SMTP STARTTLS hardening + saved-card auto-reload for Stripe.
+- Optional polish — fine-grained help search index (currently text-only).
+
 - P3 — Email SMTP STARTTLS hardening + saved-card auto-reload for Stripe.

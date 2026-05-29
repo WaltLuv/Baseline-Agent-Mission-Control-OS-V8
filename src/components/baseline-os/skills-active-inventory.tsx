@@ -5,6 +5,7 @@ import Link from 'next/link'
 import type { ActiveSkill } from '@/lib/baseline-os/trace-derivation'
 import { useDemoMode } from '@/components/demo/demo-mode-provider'
 import { customerSkillLabel } from '@/lib/customer-skill-labels'
+import { HelpTooltip } from '@/components/help/help-tooltip'
 
 /**
  * Skills-Active Inventory — shows which skills are actually in use across
@@ -110,7 +111,10 @@ export function SkillsActiveInventory() {
         <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-primary">
           Active Skills · Baseline OS
         </p>
-        <h2 className="mt-1 text-base font-bold text-foreground">What the workforce is using</h2>
+        <div className="mt-1 flex items-center gap-3">
+          <h2 className="text-base font-bold text-foreground">What the workforce is using</h2>
+          <HelpTooltip topic="skills-active-inventory" />
+        </div>
         <p className="mt-0.5 text-xs text-muted-foreground">
           Skills currently powering your AI workforce — who&apos;s using them, the workflows they
           power, and the value they create. Derived from real activity.

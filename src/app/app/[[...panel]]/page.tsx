@@ -50,6 +50,9 @@ import { DailyOptimizationPanel } from '@/components/panels/daily-optimization-p
 import { AgentScannerPanel } from '@/components/panels/scanner-panel'
 import { ChatPagePanel } from '@/components/panels/chat-page-panel'
 import { ChatPanel } from '@/components/chat/chat-panel'
+import { HelpPanel } from '@/components/help/help-panel'
+import { FirstRunTour } from '@/components/help/first-run-tour'
+import { SetupChecklist } from '@/components/help/setup-checklist'
 import { STORAGE_GATEWAY_URL } from '@/lib/device-identity'
 import { getPluginPanel } from '@/lib/plugins'
 import { shouldRedirectDashboardToHttps } from '@/lib/browser-security'
@@ -479,6 +482,9 @@ export default function Home() {
       {/* Chat panel overlay */}
       {!showOnboarding && <ChatPanel />}
 
+      {/* First-run guided tour (auto-shows once; can be replayed from Help menu) */}
+      {!showOnboarding && bootComplete && <FirstRunTour />}
+
       {/* Global exec approval overlay (shown regardless of active panel) */}
       {!showOnboarding && <ExecApprovalOverlay />}
 
@@ -497,7 +503,7 @@ export default function Home() {
 }
 
 const ESSENTIAL_PANELS = new Set([
-  'overview', 'agents', 'tasks', 'chat', 'activity', 'logs', 'settings',
+  'overview', 'agents', 'tasks', 'chat', 'activity', 'logs', 'settings', 'help',
 ])
 
 function ContentRouter({ tab }: { tab: string }) {
@@ -506,6 +512,12 @@ function ContentRouter({ tab }: { tab: string }) {
   const navigateToPanel = useNavigateToPanel()
   const isLocal = dashboardMode === 'local'
   const panelName = tab.replace(/-/g, ' ')
+
+  // Help routes — render the unified help panel regardless of essential mode.
+  if (tab === 'help' || tab.startsWith('help/')) {
+    const subroute = tab === 'help' ? '' : tab.slice('help/'.length)
+    return <HelpPanel subroute={subroute} />
+  }
 
   // Guard: show nudge for non-essential panels in essential mode
   if (interfaceMode === 'essential' && !ESSENTIAL_PANELS.has(tab)) {
@@ -543,6 +555,7 @@ function ContentRouter({ tab }: { tab: string }) {
         <>
           <WorkforceActivatedNotice />
           <div className="p-4 space-y-4">
+            <SetupChecklist />
             <BaselineSystemIdentityStrip />
             <ExecutiveBriefing />
             <AIEmployeeLifeRoster />
