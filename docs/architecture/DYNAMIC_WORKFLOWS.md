@@ -1,9 +1,36 @@
 # Dynamic Workflows / Swarm Mode — Architecture (backlog)
 
 > Native architecture pattern for AI Workforce OS. Built in-house. Not
-> a dependency on Anthropic Claude Code Dynamic Workflows — same
-> conceptual contract, adapted to our stack (SQLite WAL, Mission
-> Control event bus, existing agent registry).
+> a generic agent framework — Mission Control is the supervision layer,
+> Baseline OS is the orchestration layer, and Hermes / OpenClaw /
+> OpenCode / Claude Code are the execution runtimes. We borrow the
+> "plan → fan-out → verify" idea from large-mission frameworks without
+> recreating their ecosystems.
+
+---
+
+## 0. The architecture rule (DO NOT VIOLATE)
+
+```
+Operator
+  → Mission Control          (supervision: approvals, memory, cost, outcomes)
+    → Baseline OS            (orchestration: plan, route, schedule, gate)
+      → Hermes               (strategy + memory recall)
+      → OpenClaw / OpenCode  (execution: data, integrations, workflows)
+      → Claude Code          (implementation: code, copy, content)
+      → External Systems     (CRM, voice, payments, files)
+```
+
+Mission Control **never** executes work. Baseline OS **never** runs
+prompts directly — it routes to a runtime. The three runtimes are the
+only first-class participants the orchestrator schedules.
+
+This is **not**:
+- a CrewAI clone
+- a LangGraph clone
+- an AutoGen clone
+
+Borrow concepts. Do not recreate ecosystems.
 
 ---
 

@@ -4,16 +4,20 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 
 /**
- * Dynamic Workflow Demo (Swarm Mode) — a simulated, deterministic walk
- * through the five orchestration stages: Command, Plan, Swarm, Verify,
- * Keep. Demo-grade data only; the real backend orchestrator is
- * documented separately in docs/architecture/DYNAMIC_WORKFLOWS.md and
- * lives in the backlog.
+ * Dynamic Workflow Demo (Swarm Mode) — simulated walk-through of the
+ * five-stage supervision contract, framed against the real product
+ * architecture:
  *
- * The component is purely client-side and has no API dependency. It
- * exists to make the Dynamic Workflow concept visible inside the demo
- * without committing to the persistence + agent execution surface
- * before that backend is implemented.
+ *   Operator → Mission Control → Baseline OS → {Hermes,
+ *              OpenClaw/OpenCode, Claude Code} → External systems
+ *
+ * Mission Control supervises. Baseline OS coordinates. Hermes,
+ * OpenClaw/OpenCode and Claude Code execute. This panel is not a
+ * generic agent framework — it shows Baseline OS routing one mission
+ * across those three runtimes as first-class participants.
+ *
+ * Demo-grade data only; the production orchestrator is documented in
+ * docs/architecture/DYNAMIC_WORKFLOWS.md.
  */
 
 type Stage = 'idle' | 'command' | 'plan' | 'swarm' | 'verify' | 'keep'
@@ -29,9 +33,26 @@ const STAGE_LABELS: Record<Stage, string> = {
   keep: 'Keep',
 }
 
+/**
+ * The three first-class runtimes Baseline OS coordinates. The
+ * orchestrator (and any judge) is itself a Mission Control concern,
+ * not a runtime.
+ */
+type RuntimeLane = 'hermes' | 'openclaw' | 'claude' | 'mission-control'
+
+const LANE_LABELS: Record<RuntimeLane, string> = {
+  hermes: 'Hermes',
+  openclaw: 'OpenClaw / OpenCode',
+  claude: 'Claude Code',
+  'mission-control': 'Mission Control',
+}
+
 interface SwarmAgent {
   id: string
+  /** Display label for the participant (e.g. "Hermes \u2014 Strategy"). */
   name: string
+  /** Which runtime owns this work in the demo architecture. */
+  lane: RuntimeLane
   role: string
   status: 'queued' | 'running' | 'verified' | 'flagged'
   output: string
@@ -52,33 +73,33 @@ const MISSION_TEMPLATES: MissionTemplate[] = [
     label: 'Sales follow-up for a local service business',
     prompt: 'Build a sales follow-up system for a local service business that captures every inbound lead, runs a 4-touch cadence, hands off to a human rep on warm signal, and reports weekly.',
     agents: [
-      { id: 'strategy', name: 'Strategy Agent', role: 'Architect the system', output: 'Drafted 4-touch cadence (0h, 24h, 72h, 7d). Defined warm-signal threshold = 2 opens + 1 site visit OR direct reply.' },
-      { id: 'crm', name: 'CRM Agent', role: 'Map data + integrations', output: 'Maps inbound source \u2192 contact record, sets stage=lead, deduplicates by phone + email.' },
-      { id: 'copy', name: 'Copywriting Agent', role: 'Draft sequences', output: 'Wrote 4 SMS + 4 email variants, A/B groups, opt-out compliant.' },
-      { id: 'workflow', name: 'Workflow Builder Agent', role: 'Wire automations', output: 'Wired triggers in Mission Control: lead.created \u2192 cadence.start; cadence.complete \u2192 rep.handoff.' },
-      { id: 'qa', name: 'QA Judge Agent', role: 'Verify acceptance', output: 'Verified opt-out, dedupe, warm-signal handoff. Flagged: no fallback if rep is offline > 4h.' },
-      { id: 'launch', name: 'Launch Checklist Agent', role: 'Prep go-live', output: 'Generated 11-item launch checklist with owners and SLA.' },
+      { id: 'hermes-strategy', name: 'Hermes \u2014 Strategy', lane: 'hermes', role: 'Memory + plan', output: 'Recalled 14 prior follow-up wins; drafted 4-touch cadence (0h, 24h, 72h, 7d). Warm-signal = 2 opens + 1 site visit OR direct reply.' },
+      { id: 'openclaw-data', name: 'OpenClaw \u2014 Data wiring', lane: 'openclaw', role: 'CRM + integrations', output: 'Mapped inbound source \u2192 contact record; dedup by phone + email; staged in lead pipeline.' },
+      { id: 'claude-copy', name: 'Claude Code \u2014 Sequence drafts', lane: 'claude', role: 'Copy generation', output: 'Wrote 4 SMS + 4 email variants, A/B groups, opt-out compliant per TCPA.' },
+      { id: 'opencode-workflow', name: 'OpenCode \u2014 Workflow wiring', lane: 'openclaw', role: 'Trigger orchestration', output: 'Wired lead.created \u2192 cadence.start; cadence.complete \u2192 rep.handoff in Baseline OS.' },
+      { id: 'mc-judge', name: 'Mission Control \u2014 Verification judge', lane: 'mission-control', role: 'Acceptance proof', output: 'Verified opt-out, dedupe, warm-signal handoff. Flagged: no fallback when rep offline > 4h.' },
+      { id: 'mc-launch', name: 'Mission Control \u2014 Launch supervisor', lane: 'mission-control', role: 'Go-live + approvals', output: 'Generated 11-item launch checklist; held approval for SMS provider switch.' },
     ],
     verification: [
       { question: 'Does the system capture every inbound lead?', verdict: 'pass', detail: 'Two intake paths covered (web form + inbound voice).' },
       { question: 'Is opt-out compliant?', verdict: 'pass', detail: 'STOP / HELP keywords supported per TCPA.' },
       { question: 'Is there a fallback when no rep is available?', verdict: 'attention', detail: 'Add overflow voicemail to manager after 4h idle.' },
     ],
-    deliverables: ['4-touch cadence', 'Compliant copy variants', 'Mission Control workflow', '11-item launch checklist'],
+    deliverables: ['4-touch cadence', 'Compliant copy variants', 'Baseline OS workflow', 'Mission Control approval queue', '11-item launch checklist'],
   },
   {
     id: 'audit-repo',
     label: 'Inspect this repo and identify production blockers',
     prompt: 'Inspect this repo and identify production blockers. Group findings by severity and propose the smallest safe slice to ship first.',
     agents: [
-      { id: 'code', name: 'Code Auditor', role: 'Static + tests', output: 'tsc 0 errors, eslint 0 errors, vitest 1187/1187. Two high-watermark files > 800 lines.' },
-      { id: 'security', name: 'Security Auditor', role: 'Cookies, hosts, secrets', output: 'Preflight enforces MC_COOKIE_SECURE, MC_ALLOWED_HOSTS, gateway local-only.' },
-      { id: 'db', name: 'Database Auditor', role: 'Schema + migrations', output: 'SQLite WAL, forward-only migrations under src/lib/migrations.' },
-      { id: 'ux', name: 'UI/UX Auditor', role: 'Demo flow & language', output: 'Homepage AI Workforce OS aligned; verticals strip lists 9; demo flow verified end-to-end.' },
-      { id: 'qa', name: 'Verification Judge', role: 'Acceptance proof', output: 'All acceptance criteria green. One backlog item: native Dynamic Workflow backend.' },
+      { id: 'hermes-recall', name: 'Hermes \u2014 Memory recall', lane: 'hermes', role: 'Prior runs + decisions', output: 'Surfaced 3 prior audits; flagged 2 recurring \u201cgateway-not-local\u201d findings now resolved.' },
+      { id: 'claude-code-audit', name: 'Claude Code \u2014 Static audit', lane: 'claude', role: 'tsc + lint + tests', output: 'tsc 0 errors, eslint 0 errors, vitest 1205/1205. Two files > 800 lines (refactor candidates).' },
+      { id: 'openclaw-security', name: 'OpenClaw \u2014 Security audit', lane: 'openclaw', role: 'Cookies, hosts, secrets', output: 'Preflight enforces MC_COOKIE_SECURE, MC_ALLOWED_HOSTS without wildcards, gateway local-only.' },
+      { id: 'openclaw-db', name: 'OpenClaw \u2014 Database audit', lane: 'openclaw', role: 'Schema + migrations', output: 'SQLite WAL; forward-only migrations under src/lib/migrations.' },
+      { id: 'mc-judge', name: 'Mission Control \u2014 Verification judge', lane: 'mission-control', role: 'Acceptance proof', output: 'All acceptance criteria green. One backlog item: native Dynamic Workflow backend.' },
     ],
     verification: [
-      { question: 'Is deployment package complete?', verdict: 'pass', detail: '.do/app.yaml + deploy workflow + runbooks + preflight in place.' },
+      { question: 'Is the deployment package complete?', verdict: 'pass', detail: '.do/app.yaml + deploy workflow + runbooks + preflight in place.' },
       { question: 'Are core flows preserved?', verdict: 'pass', detail: 'Share preset, guest demo, watermark, runtime validation panel all green.' },
       { question: 'Are there destructive changes?', verdict: 'pass', detail: 'All changes additive; existing tests untouched.' },
     ],
@@ -89,12 +110,12 @@ const MISSION_TEMPLATES: MissionTemplate[] = [
     label: 'AI workforce for a cigar lounge / local retail',
     prompt: 'Build an AI employee team for a cigar lounge. Cover member loyalty, event RSVPs, inventory alerts, and post-visit review nudges.',
     agents: [
-      { id: 'strategy', name: 'Strategy Agent', role: 'Outcome map', output: 'Defined 4 outcomes: weekly visits, event fill rate, low-stock alerts, review count.' },
-      { id: 'crm', name: 'CRM Agent', role: 'Member model', output: 'Member tier, last visit, favorite SKUs, opt-in channels.' },
-      { id: 'voice', name: 'VoiceOps Agent', role: 'Inbound + RSVP', output: 'Wired RSVP via SMS short-code, 48h reminder, 1h reminder.' },
-      { id: 'inventory', name: 'Operations Agent', role: 'Low-stock alerts', output: 'Below-par threshold per SKU; alert + reorder suggestion.' },
-      { id: 'review', name: 'Review Request Agent', role: 'Post-visit nudge', output: 'Triggered 2h after visit; review-link short URL; sentiment routing.' },
-      { id: 'qa', name: 'QA Judge Agent', role: 'Verify', output: 'Verified opt-in, frequency caps, member privacy. No PII leakage in URLs.' },
+      { id: 'hermes-strategy', name: 'Hermes \u2014 Outcome map', lane: 'hermes', role: 'Plan + memory', output: 'Defined 4 outcomes: weekly visits, event fill rate, low-stock alerts, review count.' },
+      { id: 'openclaw-data', name: 'OpenClaw \u2014 Member model', lane: 'openclaw', role: 'Data + integrations', output: 'Member tier, last visit, favorite SKUs, opt-in channels.' },
+      { id: 'openclaw-inventory', name: 'OpenClaw \u2014 Inventory + alerts', lane: 'openclaw', role: 'Threshold + reorder', output: 'Below-par threshold per SKU; alert + reorder suggestion.' },
+      { id: 'claude-copy', name: 'Claude Code \u2014 Member messaging', lane: 'claude', role: 'Sequences + RSVPs', output: 'Wrote loyalty cadence, event RSVP confirmations (48h + 1h reminders), review nudges.' },
+      { id: 'claude-voice', name: 'Claude Code \u2014 VoiceOps script', lane: 'claude', role: 'Voice + SMS flow', output: 'Wired RSVP via SMS short-code; opt-in capture during checkout.' },
+      { id: 'mc-judge', name: 'Mission Control \u2014 Verification judge', lane: 'mission-control', role: 'Acceptance proof', output: 'Verified opt-in, frequency caps, member privacy. No PII leakage in short URLs.' },
     ],
     verification: [
       { question: 'Are messages frequency-capped?', verdict: 'pass', detail: 'Max 2/week per member.' },
@@ -180,15 +201,27 @@ export function DynamicWorkflowDemo() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-6" data-testid="dynamic-workflow-demo">
-      <header className="space-y-2">
-        <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Swarm Mode &middot; Dynamic Workflow</div>
-        <h1 className="text-2xl font-semibold">One mission &rarr; many specialist agents</h1>
-        <p className="text-sm text-muted-foreground max-w-2xl">
-          Enter a single plain-English mission. Mission Control breaks it into a plan, fans the work
-          out to a swarm of specialist AI employees, runs verification judges before completion,
-          and persists the result. This panel shows a simulated walk-through &mdash; the native
-          orchestration engine ships as a follow-up.
+      <header className="space-y-3">
+        <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Swarm Mode &middot; Baseline OS Orchestration</div>
+        <h1 className="text-2xl font-semibold">Assign a mission. Watch Baseline OS coordinate Hermes, OpenClaw, and Claude Code.</h1>
+        <p className="text-sm text-muted-foreground max-w-3xl">
+          Mission Control supervises. Baseline OS coordinates. Hermes, OpenClaw / OpenCode, and
+          Claude Code execute. One operator mission becomes a plan, fans across the three
+          runtimes as first-class participants, runs verification judges before completion,
+          and persists the result with full memory and approval trail.
         </p>
+        <div className="rounded-md border border-border bg-card/30 p-3 text-[11px] text-foreground/80" data-testid="workflow-architecture">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">Architecture</div>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono">
+            <span>Operator</span><span className="text-muted-foreground">&rarr;</span>
+            <span className="text-primary">Mission Control</span><span className="text-muted-foreground">&rarr;</span>
+            <span className="text-primary">Baseline OS</span><span className="text-muted-foreground">&rarr;</span>
+            <span>Hermes</span><span className="text-muted-foreground">+</span>
+            <span>OpenClaw / OpenCode</span><span className="text-muted-foreground">+</span>
+            <span>Claude Code</span><span className="text-muted-foreground">&rarr;</span>
+            <span>External systems</span>
+          </div>
+        </div>
       </header>
 
       {/* ── Mission input + templates ──────────────────────────────── */}
@@ -262,8 +295,16 @@ export function DynamicWorkflowDemo() {
                 data-status={a.status}
                 className="rounded-md border border-border bg-card/40 p-3 text-sm"
               >
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{a.name}</span>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`rounded-full border px-1.5 py-0.5 text-[9px] uppercase tracking-wider ${
+                      a.lane === 'hermes' ? 'border-violet-500/40 bg-violet-500/10 text-violet-300' :
+                      a.lane === 'openclaw' ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300' :
+                      a.lane === 'claude' ? 'border-amber-500/40 bg-amber-500/10 text-amber-300' :
+                      'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+                    }`} data-testid={`workflow-agent-lane-${a.id}`}>{LANE_LABELS[a.lane]}</span>
+                    <span className="font-medium">{a.name}</span>
+                  </div>
                   <span className={`text-[10px] uppercase tracking-wider ${
                     a.status === 'verified' ? 'text-emerald-400' :
                     a.status === 'flagged' ? 'text-amber-400' :

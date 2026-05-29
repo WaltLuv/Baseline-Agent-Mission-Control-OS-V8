@@ -24,16 +24,34 @@ describe('dynamic-workflow-demo data', () => {
     expect(ids).toEqual(expect.arrayContaining(['sales-followup', 'audit-repo', 'cigar-retail']))
   })
 
-  it('each template has at least 5 specialist agents', () => {
+  it('each template has at least 5 specialist participants', () => {
     for (const t of MISSION_TEMPLATES) {
       expect(t.agents.length, `${t.id} agents`).toBeGreaterThanOrEqual(5)
     }
   })
 
-  it('each template names a Verification Judge or QA agent', () => {
+  it('every participant maps to a Baseline OS-coordinated runtime or to Mission Control', () => {
+    const valid = new Set(['hermes', 'openclaw', 'claude', 'mission-control'])
     for (const t of MISSION_TEMPLATES) {
-      const hasJudge = t.agents.some((a) => /judge|verification|qa/i.test(a.name + ' ' + a.role))
-      expect(hasJudge, `${t.id} missing a verification judge`).toBe(true)
+      for (const a of t.agents) {
+        expect(valid.has(a.lane), `${t.id}/${a.id} → unknown lane ${a.lane}`).toBe(true)
+      }
+    }
+  })
+
+  it('every template names Hermes, OpenClaw/OpenCode, and Claude Code as first-class participants', () => {
+    for (const t of MISSION_TEMPLATES) {
+      const lanes = new Set(t.agents.map((a) => a.lane))
+      expect(lanes.has('hermes'), `${t.id} missing Hermes`).toBe(true)
+      expect(lanes.has('openclaw'), `${t.id} missing OpenClaw/OpenCode`).toBe(true)
+      expect(lanes.has('claude'), `${t.id} missing Claude Code`).toBe(true)
+    }
+  })
+
+  it('every template names a Mission Control verification judge', () => {
+    for (const t of MISSION_TEMPLATES) {
+      const hasJudge = t.agents.some((a) => a.lane === 'mission-control' && /judge|verification/i.test(a.name + ' ' + a.role))
+      expect(hasJudge, `${t.id} missing a Mission Control verification judge`).toBe(true)
     }
   })
 

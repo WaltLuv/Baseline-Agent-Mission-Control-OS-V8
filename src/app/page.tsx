@@ -143,11 +143,13 @@ export default function LandingPage() {
       <header className="relative z-10 border-b border-white/[0.06] backdrop-blur-xl bg-[#09090b]/70">
         <div className="mx-auto max-w-screen-xl px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 text-sm font-semibold tracking-tight">
-            <div className="w-7 h-7 rounded-md bg-violet-600 flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8 2l1.5 4.5L14 8l-4.5 1.5L8 14l-1.5-4.5L2 8l4.5-1.5L8 2z" />
-              </svg>
-            </div>
+            <img
+              src="/brand/mc-logo-128.png"
+              alt="Baseline Automations"
+              width={28}
+              height={28}
+              className="w-7 h-7 rounded-md object-contain"
+            />
             Baseline Automations
           </Link>
           <nav className="hidden md:flex items-center gap-8">
