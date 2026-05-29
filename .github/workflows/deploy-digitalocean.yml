@@ -1,0 +1,82 @@
+name: Deploy to DigitalOcean
+
+# Trigger after a successful Docker Publish, or on demand.
+on:
+  workflow_run:
+    workflows: ['Docker Publish']
+    branches: [main]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      app_id:
+        description: 'DigitalOcean App ID (omit to use repo secret DIGITALOCEAN_APP_ID)'
+        required: false
+
+concurrency:
+  group: deploy-digitalocean-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy:
+    # Only deploy on successful Docker Publish or manual dispatch
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success'
+      )
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Resolve app id
+        id: app
+        run: |
+          APP_ID="${{ github.event.inputs.app_id }}"
+          if [ -z "$APP_ID" ]; then APP_ID="${{ secrets.DIGITALOCEAN_APP_ID }}"; fi
+          if [ -z "$APP_ID" ]; then
+            echo "DIGITALOCEAN_APP_ID is not configured" >&2
+            exit 1
+          fi
+          echo "id=$APP_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Update app spec (rolling deploy)
+        run: |
+          doctl apps update "${{ steps.app.outputs.id }}" --spec .do/app.yaml --wait
+
+      - name: Health check
+        run: |
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${{ secrets.MC_HOST }}/api/status?action=health" || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "Health OK on attempt $i"
+              exit 0
+            fi
+            echo "Attempt $i: status=$STATUS — waiting 15s"
+            sleep 15
+          done
+          echo "Health check never returned 200 — rolling back"
+          exit 1
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          # Find the previous successful deployment and re-pin to it.
+          PREV=$(doctl apps list-deployments "${{ steps.app.outputs.id }}" --format ID,Phase --no-header | \
+                 awk '$2=="ACTIVE"{print $1; exit}')
+          if [ -n "$PREV" ]; then
+            doctl apps create-deployment "${{ steps.app.outputs.id }}" --force-rebuild=false
+          fi

@@ -99,8 +99,8 @@ const features = [
 const steps = [
   {
     num: '01',
-    title: 'Setup',
-    desc: 'Connect your property management tools, define team roles, and configure your workspace in under 5 minutes.',
+    title: 'Configure',
+    desc: 'Connect tools, workflows, SOPs, memory, and business rules.',
     icon: (
       <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
@@ -110,7 +110,7 @@ const steps = [
   {
     num: '02',
     title: 'Deploy',
-    desc: 'Choose from pre-built agent templates or create custom AI employees. Assign them to workflows with one click.',
+    desc: 'Hire AI employees, install AI skills, and launch AI teams.',
     icon: (
       <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z" />
@@ -120,7 +120,7 @@ const steps = [
   {
     num: '03',
     title: 'Supervise',
-    desc: 'Monitor, approve, and steer your AI workforce from a single command center. Real-time logs, metrics, and alerts.',
+    desc: 'Monitor operations, approve critical actions, review memory-backed decisions, and track ROI from a single command center.',
     icon: (
       <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <rect x="2" y="3" rx="2" width="20" height="14" />
@@ -173,19 +173,23 @@ export default function LandingPage() {
       <section className="relative z-10 mx-auto max-w-screen-xl px-6 pt-20 pb-24 md:pt-32 md:pb-36 text-center">
         <div className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/20 bg-violet-500/5 px-3.5 py-1 text-[13px] font-medium text-violet-300 mb-8">
           <SparkIcon />
-          AI Workforce OS for Property Management
+          AI Workforce OS
         </div>
-        <h1 className="mx-auto max-w-3xl text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.1]">
+        <h1 className="mx-auto max-w-4xl text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.1]">
           <span className="bg-gradient-to-b from-white via-white to-white/50 bg-clip-text text-transparent">
-            The AI Workforce
+            Hire AI Employees.
+          </span>
+          <br />
+          <span className="bg-gradient-to-b from-white via-white to-white/50 bg-clip-text text-transparent">
+            Install AI Skills.
           </span>
           <br />
           <span className="bg-gradient-to-r from-violet-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">
-            Operating System
+            Operate Your Business.
           </span>
         </h1>
-        <p className="mx-auto mt-6 max-w-xl text-base md:text-lg text-white/45 leading-relaxed">
-          Property managers, contractors, and service businesses deploy AI employees and supervise them in one command center.
+        <p className="mx-auto mt-6 max-w-2xl text-base md:text-lg text-white/45 leading-relaxed">
+          Businesses use AI Workforce OS to deploy AI employees, automate workflows, supervise operations, and track measurable value from a single command center.
         </p>
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link
@@ -203,16 +207,35 @@ export default function LandingPage() {
           </a>
         </div>
 
-        {/* Trust line */}
-        <div className="mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs text-white/25 font-medium tracking-wide uppercase">
-          <span>Property Managers</span>
-          <span className="w-1 h-1 rounded-full bg-white/20" />
-          <span>General Contractors</span>
-          <span className="w-1 h-1 rounded-full bg-white/20" />
-          <span>Service Businesses</span>
-          <span className="w-1 h-1 rounded-full bg-white/20" />
-          <span>Facilities Teams</span>
+        {/* Verticals trust strip — keeps the language vertical-agnostic */}
+        <div className="mt-14 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-xs text-white/30 font-medium tracking-wide uppercase">
+          {[
+            'Property Management',
+            'Real Estate',
+            'Mortgage',
+            'CPA',
+            'Law Firm',
+            'General Contractor',
+            'Home Services',
+            'Marketing Agency',
+            'AI Agency',
+          ].map((label, i, arr) => (
+            <span key={label} className="flex items-center gap-x-6">
+              <span>{label}</span>
+              {i < arr.length - 1 && <span className="w-1 h-1 rounded-full bg-white/20" aria-hidden />}
+            </span>
+          ))}
         </div>
+
+        {/* Who-it's-for paragraph (vertical-rich) */}
+        <p className="mx-auto mt-10 max-w-3xl text-sm md:text-[15px] text-white/40 leading-relaxed">
+          Property managers, real estate professionals, mortgage companies, CPA firms, law firms,
+          contractors, home-service businesses, agencies, and operators use AI Workforce OS to
+          create a digital workforce that works alongside human employees, follows company rules,
+          asks for approval when necessary, and reports measurable business results. They can
+          install specialized skills, automate business operations, and supervise everything from
+          one executive command center.
+        </p>
       </section>
 
       {/* ─── FEATURES ─── */}
@@ -292,7 +315,7 @@ export default function LandingPage() {
             <blockquote className="mx-auto max-w-2xl text-xl md:text-2xl font-light leading-relaxed text-white/80">
               &ldquo;We save{' '}
               <span className="text-white font-medium">20+ hours per week</span>{' '}
-              on property maintenance workflows. Baseline Automations turned our reactive operations into a proactive AI-driven machine.&rdquo;
+              on operations. Baseline Automations turned our reactive workflows into a proactive AI-driven workforce — across maintenance, intake, dispatch, and reporting.&rdquo;
             </blockquote>
             <div className="mt-8 grid grid-cols-3 gap-6 max-w-md mx-auto">
               <div>

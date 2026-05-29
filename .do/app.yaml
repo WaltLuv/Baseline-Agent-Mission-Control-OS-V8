@@ -1,0 +1,112 @@
+# ════════════════════════════════════════════════════════════════════════
+# DigitalOcean App Platform Spec — Mission Control v3
+#
+# Single-service deploy using the published GHCR image. App Platform will
+# attach a managed TLS cert and route the public domain at $MC_HOST to
+# the container's port 3000.
+#
+# Usage:
+#   doctl apps create --spec .do/app.yaml
+#   doctl apps update <APP_ID> --spec .do/app.yaml
+#
+# Required platform secrets (set via doctl or the UI — never commit):
+#   AUTH_USER, AUTH_PASS, API_KEY, AUTH_SECRET, SHARE_SIGNING_SECRET,
+#   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
+# ════════════════════════════════════════════════════════════════════════
+name: mission-control
+region: nyc
+features:
+  - buildpack-stack=ubuntu-22
+
+alerts:
+  - rule: DEPLOYMENT_FAILED
+  - rule: DEPLOYMENT_LIVE
+  - rule: DOMAIN_FAILED
+
+services:
+  - name: web
+    image:
+      registry_type: GHCR
+      repository: builderz-labs/mission-control
+      tag: latest
+    instance_count: 1
+    instance_size_slug: basic-xs
+    http_port: 3000
+    internal_ports: []
+    health_check:
+      http_path: /api/status?action=health
+      initial_delay_seconds: 30
+      period_seconds: 30
+      timeout_seconds: 10
+      success_threshold: 1
+      failure_threshold: 5
+    routes:
+      - path: /
+    envs:
+      # ── Public / build-time ──────────────────────────────────────────
+      - key: NODE_ENV
+        scope: RUN_TIME
+        value: production
+      - key: PORT
+        scope: RUN_TIME
+        value: "3000"
+      - key: MC_VERSION
+        scope: RUN_TIME
+        value: "${_self.LATEST_DEPLOY_ID}"
+      - key: MISSION_CONTROL_DATA_DIR
+        scope: RUN_TIME
+        value: /app/.data
+      # ── Network / cookie lockdown ────────────────────────────────────
+      - key: MC_ALLOWED_HOSTS
+        scope: RUN_TIME
+        type: SECRET
+      - key: MC_COOKIE_SECURE
+        scope: RUN_TIME
+        value: "1"
+      - key: MC_COOKIE_SAMESITE
+        scope: RUN_TIME
+        value: strict
+      - key: MC_ENABLE_HSTS
+        scope: RUN_TIME
+        value: "1"
+      # ── Auth ─────────────────────────────────────────────────────────
+      - key: AUTH_USER
+        scope: RUN_TIME
+        type: SECRET
+      - key: AUTH_PASS
+        scope: RUN_TIME
+        type: SECRET
+      - key: AUTH_SECRET
+        scope: RUN_TIME
+        type: SECRET
+      - key: API_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: SHARE_SIGNING_SECRET
+        scope: RUN_TIME
+        type: SECRET
+      # ── Stripe ───────────────────────────────────────────────────────
+      - key: STRIPE_SECRET_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: STRIPE_WEBHOOK_SECRET
+        scope: RUN_TIME
+        type: SECRET
+      - key: NEXT_PUBLIC_STRIPE_LIVE_MODE
+        scope: BUILD_TIME
+        value: "true"
+      # ── Runtime sidecar (gateway is local-only — never exposed) ──────
+      - key: OPENCLAW_GATEWAY_HOST
+        scope: RUN_TIME
+        value: 127.0.0.1
+      - key: OPENCLAW_GATEWAY_PORT
+        scope: RUN_TIME
+        value: "18789"
+      - key: NEXT_PUBLIC_GATEWAY_OPTIONAL
+        scope: BUILD_TIME
+        value: "true"
+
+domains:
+  - domain: ${MC_HOST}
+    type: PRIMARY
+    zone: ${MC_DOMAIN_ZONE}
