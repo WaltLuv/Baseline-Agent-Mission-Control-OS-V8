@@ -233,7 +233,7 @@ const NARRATIVES: Record<string, Omit<DemoNarrative, 'template'>> = {
         presence: 'needs-attention',
         currentlyWorkingOn: 'Searching for tech in 5-mile radius for gas leak',
         confidence: 'low',
-        workloadPressure: 'overloaded',
+        workloadPressure: 'heavy',
         responseSpeedMin: 2,
         collaborators: ['AI Intake Receptionist'],
         escalation: { title: 'Gas leak reported — no tech in 5-mile radius', severity: 'high' },
