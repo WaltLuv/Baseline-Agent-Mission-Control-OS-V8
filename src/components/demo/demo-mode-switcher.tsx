@@ -5,6 +5,7 @@ import { useDemoMode } from './demo-mode-provider'
 import { BUSINESS_TEMPLATES } from '@/lib/business-templates'
 import { DEMO_TEMPLATE_IDS } from '@/lib/demo-narratives'
 import { openGuidedDemo } from './guided-demo-tour'
+import { ShareDemoButton } from './share-demo-button'
 import { cn } from '@/lib/utils'
 
 /**
@@ -118,6 +119,7 @@ export function DemoModeSwitcher() {
               </span>
               <span className="text-primary text-sm">→</span>
             </button>
+            <ShareDemoButton variant="menu" testId="demo-mode-share" />
           </div>
         </>
       )}

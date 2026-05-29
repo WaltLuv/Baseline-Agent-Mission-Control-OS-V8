@@ -14,6 +14,56 @@ function safeCompare(a: string, b: string): boolean {
   return crypto.timingSafeEqual(bufA, bufB)
 }
 
+/**
+ * Lightweight verifier for the demo-guest cookie set by /api/demo-share/redeem.
+ *
+ * Mirrors the HMAC scheme in `src/lib/demo-share.ts` but is inlined here so
+ * the proxy stays free of route-handler imports. Token format is
+ * `<base64url-payload>.<base64url-sig>` where payload is JSON.
+ *
+ * Returns true ONLY when the signature matches and the token is unexpired
+ * AND its permission set is exactly `['read-demo']`.
+ */
+function isValidDemoGuestCookie(value: string | undefined): boolean {
+  if (!value || !value.includes('.')) return false
+  const [payloadEncoded, providedSig] = value.split('.')
+  if (!payloadEncoded || !providedSig) return false
+  const secret =
+    process.env.SHARE_SIGNING_SECRET ||
+    process.env.NEXTAUTH_SECRET ||
+    process.env.MISSION_CONTROL_SECRET ||
+    'dev-only-mission-control-share-secret'
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(payloadEncoded)
+    .digest('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '')
+  // Constant-time compare on equal-length buffers
+  const expectedBuf = Buffer.from(expected)
+  const givenBuf = Buffer.from(providedSig)
+  if (expectedBuf.length !== givenBuf.length) return false
+  if (!crypto.timingSafeEqual(expectedBuf, givenBuf)) return false
+  // Decode payload and check expiry + perms
+  try {
+    const pad = payloadEncoded.length % 4 === 0 ? '' : '='.repeat(4 - (payloadEncoded.length % 4))
+    const raw = Buffer.from(
+      payloadEncoded.replace(/-/g, '+').replace(/_/g, '/') + pad,
+      'base64',
+    ).toString('utf8')
+    const parsed = JSON.parse(raw) as { exp?: number; perms?: string[]; v?: number }
+    if (parsed.v !== 1) return false
+    if (!Array.isArray(parsed.perms) || parsed.perms.length !== 1 || parsed.perms[0] !== 'read-demo') {
+      return false
+    }
+    if (typeof parsed.exp !== 'number' || parsed.exp <= Math.floor(Date.now() / 1000)) return false
+    return true
+  } catch {
+    return false
+  }
+}
+
 function envFlag(name: string): boolean {
   const raw = process.env[name]
   if (raw === undefined) return false
@@ -174,7 +224,7 @@ export function proxy(request: NextRequest) {
   // Allow public routes: login, setup, landing, pricing, auth API, docs, container health probe,
   // marketplace preview, ROI calculator, and Stripe webhook (signature-verified internally).
   const isPublicHealthProbe = pathname === '/api/status' && request.nextUrl.searchParams.get('action') === 'health'
-  if (pathname === '/' || pathname === '/login' || pathname === '/setup' || pathname === '/pricing' || pathname === '/marketplace' || pathname === '/roi-calculator' || pathname === '/api/stripe/webhook' || pathname.startsWith('/_next/') || pathname.startsWith('/_next/image') || pathname.startsWith('/api/auth/') || pathname === '/api/setup' || pathname === '/api/marketplace/catalog' || pathname.startsWith('/briefing/share') || pathname === '/api/docs' || pathname === '/docs' || isPublicHealthProbe) {
+  if (pathname === '/' || pathname === '/login' || pathname === '/setup' || pathname === '/pricing' || pathname === '/marketplace' || pathname === '/roi-calculator' || pathname === '/api/stripe/webhook' || pathname.startsWith('/_next/') || pathname.startsWith('/_next/image') || pathname.startsWith('/api/auth/') || pathname === '/api/setup' || pathname === '/api/marketplace/catalog' || pathname.startsWith('/briefing/share') || pathname.startsWith('/demo/') || pathname === '/api/demo-share/verify' || pathname === '/api/demo-share/redeem' || pathname === '/api/docs' || pathname === '/docs' || isPublicHealthProbe) {
     const { response, nonce } = nextResponseWithNonce(request)
     return addSecurityHeaders(response, request, nonce)
   }
@@ -200,10 +250,23 @@ export function proxy(request: NextRequest) {
     return addSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }), request)
   }
 
-  // Page routes: redirect to login if no session
+  // Page routes: redirect to login if no session.
   if (sessionToken) {
     const { response, nonce } = nextResponseWithNonce(request)
     return addSecurityHeaders(response, request, nonce)
+  }
+
+  // Demo guest path — allow read-only access to /app/* when a valid
+  // mc_demo_guest cookie is present (signed by /api/demo-share/redeem).
+  // The cookie grants read-demo permission only; no live workspace data
+  // is reachable because demo mode overlays a curated storyline and
+  // every authenticated API call still returns 401.
+  if (pathname.startsWith('/app') || pathname === '/app') {
+    const guest = request.cookies.get('mc_demo_guest')?.value
+    if (isValidDemoGuestCookie(guest)) {
+      const { response, nonce } = nextResponseWithNonce(request)
+      return addSecurityHeaders(response, request, nonce)
+    }
   }
 
   // Redirect to login

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useNavigateToPanel } from '@/lib/navigation'
 import { useDemoMode } from '@/components/demo/demo-mode-provider'
 import { GUIDED_DEMO_STEPS } from '@/lib/guided-demo'
+import { ShareDemoButton } from './share-demo-button'
 
 /**
  * Guided Demo Tour — a 60–90 second prospect walkthrough.
@@ -151,6 +152,10 @@ export function GuidedDemoTour() {
               className={`h-0.5 flex-1 rounded-full transition-colors ${i <= index ? 'bg-primary/70' : 'bg-border/60'}`}
             />
           ))}
+        </div>
+        {/* Share this storyline with a prospect */}
+        <div className="mt-4 flex items-center justify-end border-t border-border/40 pt-3">
+          <ShareDemoButton testId="guided-demo-share" />
         </div>
       </div>
     </div>

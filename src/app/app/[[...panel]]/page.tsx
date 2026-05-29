@@ -54,6 +54,8 @@ import { HelpPanel } from '@/components/help/help-panel'
 import { FirstRunTour } from '@/components/help/first-run-tour'
 import { SetupChecklist } from '@/components/help/setup-checklist'
 import { GuidedDemoTour } from '@/components/demo/guided-demo-tour'
+import { DemoShareGate } from '@/components/demo/demo-share-gate'
+import { DemoWatermark } from '@/components/demo/demo-watermark'
 import { usePanelScrollMemory } from '@/lib/panel-continuity'
 import { STORAGE_GATEWAY_URL } from '@/lib/device-identity'
 import { getPluginPanel } from '@/lib/plugins'
@@ -494,6 +496,11 @@ export default function Home() {
 
       {/* Guided Demo Tour — 60–90s prospect walkthrough, opened on demand */}
       {!showOnboarding && bootComplete && <GuidedDemoTour />}
+
+      {/* Signed demo share — validates inbound ?share=<token>, applies vertical,
+          opens the Guided Demo, and shows the calm demo watermark. */}
+      <DemoShareGate />
+      <DemoWatermark />
 
       {/* Global exec approval overlay (shown regardless of active panel) */}
       {!showOnboarding && <ExecApprovalOverlay />}

@@ -5,8 +5,36 @@ import { verifyPassword } from '@/lib/password'
 import { getMcSessionCookieName, getMcSessionCookieOptions, isRequestSecure } from '@/lib/session-cookie'
 import { passwordChangeLimiter } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
+import { verifyDemoToken } from '@/lib/demo-share'
 
 export async function GET(request: Request) {
+  // Demo-guest fast path. When a signed mc_demo_guest cookie is present,
+  // return a synthetic, read-only "demo guest" user so the dashboard
+  // shell will render and the demo overlay can take over. No DB lookup,
+  // no live data exposure: the cookie is purely a fence.
+  const cookieHeader = request.headers.get('cookie') || ''
+  const guestMatch = cookieHeader.match(/(?:^|;\s*)mc_demo_guest=([^;]+)/)
+  if (guestMatch) {
+    const guest = decodeURIComponent(guestMatch[1])
+    const v = verifyDemoToken(guest)
+    if (v.ok) {
+      return NextResponse.json({
+        user: {
+          id: 0,
+          username: 'demo-guest',
+          display_name: 'Demo guest',
+          role: 'demo-guest',
+          provider: 'demo-share',
+          email: null,
+          avatar_url: null,
+          workspace_id: -1,
+          tenant_id: -1,
+          demo_vertical: v.payload.vertical,
+        },
+      })
+    }
+  }
+
   const auth = requireRole(request, 'viewer')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
