@@ -17,10 +17,9 @@
  *   /app?demo=<vertical>&tour=1&share=<base64url-payload>.<base64url-sig>
  */
 import { createHmac, timingSafeEqual } from 'node:crypto'
+import { TOKEN_VERSION, DEFAULT_TTL_DAYS, MAX_TTL_DAYS, sanitizeProspectName, clampHours } from './demo-share-shared'
 
-export const TOKEN_VERSION = 1
-export const DEFAULT_TTL_DAYS = 7
-export const MAX_TTL_DAYS = 30
+export { TOKEN_VERSION, DEFAULT_TTL_DAYS, MAX_TTL_DAYS, sanitizeProspectName, clampHours }
 
 export interface DemoSharePayload {
   /** Token format version — bumps if we ever change the shape. */
@@ -39,7 +38,16 @@ export interface DemoSharePayload {
   tour: boolean
   /** Show the demo watermark across the dashboard. */
   watermark: boolean
+  /** Optional prospect display name (sanitized) — shown in the watermark. */
+  prospect?: string
+  /** Optional weekly-hours context for sales copy. Pure display. */
+  hours?: number
 }
+
+/**
+ * Clamp helpers and sanitizers are re-exported from `./demo-share-shared`
+ * so client bundles can use them without pulling in `node:crypto`.
+ */
 
 export type VerifyResult =
   | { ok: true; payload: DemoSharePayload }
@@ -72,10 +80,12 @@ function sign(payloadEncoded: string, secret: string = getSecret()): string {
  * Sign a demo share payload. Returns the URL-safe `payload.sig` token.
  */
 export function signDemoToken(
-  input: { vertical: string; ttlDays?: number; by?: number; tour?: boolean; watermark?: boolean },
+  input: { vertical: string; ttlDays?: number; by?: number; tour?: boolean; watermark?: boolean; prospect?: string; hours?: number },
   now: number = Math.floor(Date.now() / 1000),
 ): { token: string; payload: DemoSharePayload } {
   const ttl = Math.max(1, Math.min(MAX_TTL_DAYS, input.ttlDays ?? DEFAULT_TTL_DAYS))
+  const prospect = sanitizeProspectName(input.prospect)
+  const hours = clampHours(input.hours)
   const payload: DemoSharePayload = {
     v: TOKEN_VERSION,
     vertical: input.vertical,
@@ -85,6 +95,8 @@ export function signDemoToken(
     perms: ['read-demo'],
     tour: input.tour ?? true,
     watermark: input.watermark ?? true,
+    ...(prospect ? { prospect } : {}),
+    ...(hours !== undefined ? { hours } : {}),
   }
   const payloadEncoded = base64urlEncode(Buffer.from(JSON.stringify(payload), 'utf8'))
   const sig = sign(payloadEncoded)

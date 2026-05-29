@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(redirect, { status: 302 })
   }
 
-  const { vertical, exp, tour } = result.payload
+  const { vertical, exp, tour, prospect, hours } = result.payload
   const expiresInSec = Math.max(60, exp - Math.floor(Date.now() / 1000))
 
   // Mint a guest credential cookie with the SAME signing as the share token.
@@ -55,6 +55,8 @@ export async function GET(request: NextRequest) {
     ttlDays,
     tour,
     watermark: true,
+    prospect,
+    hours,
   })
 
   const target = new URL('/app', publicOrigin)

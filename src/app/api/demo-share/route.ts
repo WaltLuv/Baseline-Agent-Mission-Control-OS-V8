@@ -18,7 +18,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
-import { signDemoToken, buildShareUrl, DEFAULT_TTL_DAYS, MAX_TTL_DAYS } from '@/lib/demo-share'
+import { signDemoToken, buildShareUrl, DEFAULT_TTL_DAYS, MAX_TTL_DAYS, sanitizeProspectName, clampHours } from '@/lib/demo-share'
 import { DEMO_TEMPLATE_IDS } from '@/lib/demo-narratives'
 
 export const runtime = 'nodejs'
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
 
-  let body: { vertical?: string; ttlDays?: number; tour?: boolean; watermark?: boolean }
+  let body: { vertical?: string; ttlDays?: number; tour?: boolean; watermark?: boolean; prospect?: string; hours?: number }
   try {
     body = (await request.json()) as typeof body
   } catch {
@@ -48,6 +48,8 @@ export async function POST(request: NextRequest) {
   const ttlDays = Math.max(1, Math.min(MAX_TTL_DAYS, Number(body.ttlDays ?? DEFAULT_TTL_DAYS)))
   const tour = body.tour !== false
   const watermark = body.watermark !== false
+  const prospect = sanitizeProspectName(body.prospect)
+  const hours = clampHours(body.hours)
 
   const { token, payload } = signDemoToken({
     vertical,
@@ -55,6 +57,8 @@ export async function POST(request: NextRequest) {
     by: auth.user.workspace_id ?? undefined,
     tour,
     watermark,
+    prospect: prospect || undefined,
+    hours,
   })
 
   // Build the public origin from forwarded headers so the URL is reachable
@@ -80,5 +84,7 @@ export async function POST(request: NextRequest) {
     vertical,
     tour,
     watermark,
+    ...(prospect ? { prospect } : {}),
+    ...(hours !== undefined ? { hours } : {}),
   })
 }

@@ -21,6 +21,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: false, reason: result.reason }, { status: 200 })
   }
   // Strip the "by" field from the public response — it's audit-only.
-  const { v, vertical, iat, exp, perms, tour, watermark } = result.payload
-  return NextResponse.json({ ok: true, payload: { v, vertical, iat, exp, perms, tour, watermark } })
+  const { v, vertical, iat, exp, perms, tour, watermark, prospect, hours } = result.payload
+  return NextResponse.json({ ok: true, payload: { v, vertical, iat, exp, perms, tour, watermark, prospect, hours } })
 }

@@ -41,6 +41,8 @@ export function DemoShareGate() {
       if (wasShareSession) {
         window.sessionStorage.removeItem('mc:demo-share-watermark')
         window.sessionStorage.removeItem('mc:demo-share-token')
+        window.sessionStorage.removeItem('mc:demo-share-prospect')
+        window.sessionStorage.removeItem('mc:demo-share-hours')
         window.dispatchEvent(new CustomEvent('mc:demo-share-applied'))
       }
       return
@@ -51,7 +53,7 @@ export function DemoShareGate() {
       try {
         const r = await fetch(`/api/demo-share/verify?token=${encodeURIComponent(token)}`)
         const data = (await r.json()) as
-          | { ok: true; payload: { vertical: string; tour: boolean; watermark: boolean } }
+          | { ok: true; payload: { vertical: string; tour: boolean; watermark: boolean; prospect?: string; hours?: number } }
           | { ok: false; reason: string }
         if (cancelled) return
         if (!data.ok) {
@@ -63,6 +65,16 @@ export function DemoShareGate() {
         if (data.payload.watermark) {
           window.sessionStorage.setItem('mc:demo-share-watermark', '1')
           window.sessionStorage.setItem('mc:demo-share-token', token)
+          if (data.payload.prospect) {
+            window.sessionStorage.setItem('mc:demo-share-prospect', data.payload.prospect)
+          } else {
+            window.sessionStorage.removeItem('mc:demo-share-prospect')
+          }
+          if (typeof data.payload.hours === 'number') {
+            window.sessionStorage.setItem('mc:demo-share-hours', String(data.payload.hours))
+          } else {
+            window.sessionStorage.removeItem('mc:demo-share-hours')
+          }
           window.dispatchEvent(new CustomEvent('mc:demo-share-applied'))
         }
         // Suppress the first-run tour for the prospect — the Guided Demo is

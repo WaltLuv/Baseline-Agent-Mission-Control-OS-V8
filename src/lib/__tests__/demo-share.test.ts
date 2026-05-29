@@ -21,6 +21,8 @@ import {
   DEFAULT_TTL_DAYS,
   MAX_TTL_DAYS,
   TOKEN_VERSION,
+  sanitizeProspectName,
+  clampHours,
 } from '../demo-share'
 
 const SECRET_BACKUP = process.env.SHARE_SIGNING_SECRET
@@ -138,5 +140,86 @@ describe('buildShareUrl', () => {
   it('omits the tour flag when tour=false', () => {
     const url = buildShareUrl('https://app.example', 'X.Y', 'pm', false)
     expect(url).not.toContain('tour=1')
+  })
+})
+
+
+describe('sanitizeProspectName', () => {
+  it('keeps simple business names intact', () => {
+    expect(sanitizeProspectName('Acme')).toBe('Acme')
+    expect(sanitizeProspectName('Acme & Co.')).toBe('Acme & Co.')
+    expect(sanitizeProspectName('Smith, Jones (LLP)')).toBe('Smith, Jones (LLP)')
+  })
+  it('strips control characters, angle brackets, and script tags', () => {
+    expect(sanitizeProspectName('<script>alert(1)</script>')).toBe('scriptalert(1)/script')
+    expect(sanitizeProspectName('Acme\x00\x07\x1b')).toBe('Acme')
+    expect(sanitizeProspectName('A\nB')).toBe('AB')
+  })
+  it('collapses internal whitespace and trims', () => {
+    expect(sanitizeProspectName('   Acme    Corp   ')).toBe('Acme Corp')
+  })
+  it('clamps to 60 characters', () => {
+    const long = 'A'.repeat(120)
+    expect(sanitizeProspectName(long).length).toBe(60)
+  })
+  it('returns empty string for null / undefined / non-string', () => {
+    expect(sanitizeProspectName(null)).toBe('')
+    expect(sanitizeProspectName(undefined)).toBe('')
+  })
+  it('strips disallowed punctuation', () => {
+    expect(sanitizeProspectName('Acme;rm -rf /')).toBe('Acmerm -rf /')
+    expect(sanitizeProspectName('foo$bar`baz')).toBe('foobarbaz')
+  })
+})
+
+describe('clampHours', () => {
+  it('returns undefined for missing, zero, or negative input', () => {
+    expect(clampHours(undefined)).toBeUndefined()
+    expect(clampHours(null)).toBeUndefined()
+    expect(clampHours('')).toBeUndefined()
+    expect(clampHours(0)).toBeUndefined()
+    expect(clampHours(-5)).toBeUndefined()
+    expect(clampHours('abc')).toBeUndefined()
+  })
+  it('clamps the upper bound at 999', () => {
+    expect(clampHours(999)).toBe(999)
+    expect(clampHours(99999)).toBe(999)
+  })
+  it('floors fractional input', () => {
+    expect(clampHours(8.7)).toBe(8)
+  })
+  it('parses string-formatted numbers', () => {
+    expect(clampHours('8')).toBe(8)
+  })
+})
+
+describe('signDemoToken — prospect and hours', () => {
+  it('embeds the sanitized prospect when provided', () => {
+    const { token, payload } = signDemoToken({ vertical: 'cpa', prospect: 'Acme & Co.' })
+    expect(payload.prospect).toBe('Acme & Co.')
+    const r = verifyDemoToken(token)
+    expect(r.ok).toBe(true)
+    if (r.ok) expect(r.payload.prospect).toBe('Acme & Co.')
+  })
+  it('sanitizes XSS attempts in prospect before signing', () => {
+    const { payload } = signDemoToken({ vertical: 'cpa', prospect: '<img onerror=alert(1) src=x>' })
+    expect(payload.prospect || '').not.toContain('<')
+    expect(payload.prospect || '').not.toContain('>')
+  })
+  it('omits prospect from the payload when not provided or empty', () => {
+    const { payload } = signDemoToken({ vertical: 'cpa' })
+    expect(payload.prospect).toBeUndefined()
+    const { payload: p2 } = signDemoToken({ vertical: 'cpa', prospect: '   ' })
+    expect(p2.prospect).toBeUndefined()
+  })
+  it('embeds hours when positive integer is provided', () => {
+    const { token } = signDemoToken({ vertical: 'cpa', hours: 8 })
+    const r = verifyDemoToken(token)
+    expect(r.ok).toBe(true)
+    if (r.ok) expect(r.payload.hours).toBe(8)
+  })
+  it('omits hours for invalid input', () => {
+    const { payload } = signDemoToken({ vertical: 'cpa', hours: -3 })
+    expect(payload.hours).toBeUndefined()
   })
 })
