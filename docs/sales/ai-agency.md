@@ -92,7 +92,7 @@ Workspace for up to 25 client workspaces.
 | "Clients want bespoke." | "Vertical templates are starting points, not endings. Configure the SOP per client. Memory is per-client. Outputs are bespoke." | Show vertical template customization |
 | "$799/mo is more than a contractor." | "Per-client cost on Workspace tier drops to ~$32/mo if you run 25 clients. Cheaper than a contractor's lunch budget." | Pricing math |
 | "We use CrewAI / LangGraph / AutoGen." | "We're not a generic agent framework — we're the supervision + orchestration layer above the execution runtimes. CrewAI is welcome to run inside an OpenClaw-equivalent slot." | Architecture diagram |
-| "Compliance — client data isolation." | "Per-client workspace ID, per-client memory namespace, per-client billing ledger. Audited. SOC 2 path active." | Security doc |
+| "Compliance — client data isolation." | "Per-client workspace ID, per-client memory namespace, per-client billing ledger. Audited per touch. SOC 2 path in progress." | Security doc |
 | "We resell to clients — branding?" | "White-label is on the Workspace tier roadmap. For pilot, run on Baseline brand; switch on white-label when it ships." | Roadmap |
 
 ---

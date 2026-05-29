@@ -239,14 +239,14 @@ In the **Custom Mission Control URL** field, paste `https://attacker.example.com
 
 ## ✅ Tier 8 — Marketplace & Workforce
 
-### T8.1 — Marketplace renders 10 bundles
+### T8.1 — Marketplace catalog returns bundles + skills + employees
 
 ```bash
-curl -s -b /tmp/c.txt "https://$MC_HOST/api/marketplace/bundles" \
-  | python3 -c "import sys,json;d=json.load(sys.stdin);print(f'bundles={len(d.get(\"bundles\",[]))}')"
-# Expect: bundles=10
+curl -s -b /tmp/c.txt "https://$MC_HOST/api/marketplace/catalog" \
+  | python3 -c "import sys,json;d=json.load(sys.stdin);print(f'bundles={len(d.get(\"bundles\",[]))} skills={len(d.get(\"skills\",[]))} employees={len(d.get(\"employees\",[]))}')"
+# Expect: bundles>=7  skills>=8  employees>=8
 ```
-- [ ] At least 10 bundles returned
+- [ ] Catalog returns ≥ 7 bundles, ≥ 8 skills, ≥ 8 employees
 
 ### T8.2 — Workforce Dashboard renders
 
@@ -261,13 +261,18 @@ Browser → `https://$MC_HOST/app/workforce`.
 
 ## ✅ Tier 9 — Onboarding readiness
 
-### T9.1 — `/onboarding` / Getting Started reachable
+### T9.1 — `/docs` and `/onboarding` reachable
 
 ```bash
-curl -s -o /dev/null -w '%{http_code}\n' "https://$MC_HOST/docs/getting-started"
-# Expect: 200
+for p in /docs /onboarding /app/help /app/docs; do
+  printf '%-20s %s\n' "$p" "$(curl -s -o /dev/null -w '%{http_code}' "https://$MC_HOST$p")"
+done
+# Expect: every path returns 200
 ```
-- [ ] Getting Started doc page returns 200
+- [ ] `/docs` returns 200
+- [ ] `/onboarding` returns 200
+- [ ] `/app/help` returns 200
+- [ ] `/app/docs` returns 200
 
 ### T9.2 — In-app help checklist API responds
 

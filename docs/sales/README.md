@@ -18,10 +18,13 @@
 | Mortgage | [mortgage.md](./mortgage.md) | Branch manager / Ops director | Doc collection cycle + closing chaos |
 | CPA / Accounting | [cpa.md](./cpa.md) | Managing partner / Operations | Tax-season missing-doc chase |
 | Law Firm | [law-firm.md](./law-firm.md) | Managing partner / Office admin | Intake conflict checks + matter updates |
+| Marketing Agency | [marketing-agency.md](./marketing-agency.md) | Agency owner / Head of delivery | Reporting + content + follow-up bottleneck |
 | AI Agency | [ai-agency.md](./ai-agency.md) | Founder / Head of delivery | Multi-client AI workforce deployment |
 
-Marketing Agency is supported via demo template; full playbook is
-backlog item one once first paying agency lands.
+All 9 launch verticals ship with a complete sales playbook. The
+Cigar Retail demo template is supported in the product but does not
+have a dedicated sales playbook yet — it is a $0 acquisition lure,
+not a paid ICP.
 
 ## How to use a playbook
 

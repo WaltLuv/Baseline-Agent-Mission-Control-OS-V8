@@ -1,0 +1,31 @@
+PASS  login as admin
+PASS  register agent → id=7
+PASS  heartbeat 200
+SKIP  task transitions — POST /api/tasks not creatable in this build
+PASS  billing idempotent (1st=200, 2nd=200)
+PASS  telemetry session:start / session:end
+PASS  cleanup agent 7
+
+Runtime hermes — validated
+=== Runtime: openclaw ===
+PASS  login as admin
+PASS  register agent → id=8
+PASS  heartbeat 200
+SKIP  task transitions — POST /api/tasks not creatable in this build
+PASS  billing idempotent (1st=200, 2nd=200)
+PASS  telemetry session:start / session:end
+PASS  cleanup agent 8
+
+Runtime openclaw — validated
+
+=== Runtime: claude ===
+PASS  login as admin
+PASS  register agent → id=9
+PASS  heartbeat 200
+SKIP  task transitions — POST /api/tasks not creatable in this build
+PASS  billing idempotent (1st=200, 2nd=200)
+PASS  telemetry session:start / session:end
+PASS  cleanup agent 9
+
+Runtime claude — validated
+

@@ -91,7 +91,7 @@ $799/mo (multi-partner). Independent of CPA practice software.
 | "UltraTax / Lacerte does this." | "Practice software does the return. We do the coordination *around* the return — intake, doc chase, recon review, partner prep." | Demo the workflow gap |
 | "Tax season is once a year — not worth it." | "It's once a year for partners. It's 12 months a year for the staff chasing 1099s and corrected K-1s. Reconciliation Watch runs monthly." | Show year-round value |
 | "We tried automation — clients hated it." | "Adaptive cadence with partner-approved copy. No 'press 1 for' loops. We A/B'd this in pilot." | Sample copy |
-| "Data sensitivity — IRS, state." | "SOC 2 path active. Memory citations + audit trail per touch. We can sign a BAA-equivalent for state regulators." | Security doc |
+| "Data sensitivity — IRS, state." | "Encryption in transit + at rest, full audit log per touch, memory citations cite the source doc, SOC 2 path in progress. We will sign a customer-specific addendum for state regulators." | Security doc |
 
 ---
 

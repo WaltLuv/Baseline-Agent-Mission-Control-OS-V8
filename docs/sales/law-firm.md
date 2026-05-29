@@ -92,7 +92,7 @@ engagement letter, or the rule of procedure.
 | "Clio handles this." | "Clio is the system of record. Mission Control is the workforce that *uses* Clio. Different job." | Demo integration |
 | "Clients want me, not AI." | "Clients want a returned call within an hour. AI returns it in 4 minutes, books the consult with you. Same satisfaction in pilot data." | Sample voice flow |
 | "Solo practice — can't afford this." | "$299/mo. If it surfaces one missed deadline a year, it pays for itself 10×." | Pricing |
-| "Data — privileged communications." | "Encryption in transit + at rest. Audit log. Memory citations cited inside the firm only. SOC 2 path active." | Security doc |
+| "Data — privileged communications." | "Encryption in transit and at rest. Per-touch audit log. Memory citations stay inside the firm — they never leak across workspaces. SOC 2 path in progress." | Security doc |
 
 ---
 
