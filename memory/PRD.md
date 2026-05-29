@@ -2745,6 +2745,94 @@ the right storyline via the redeem URL.
 - **P2**: Cigar-retail full demo narrative (currently template only).
 - DO NOT build: Baseline Studios (sidecar sync).
 
+
+---
+
+## 31 — Session: Logo refresh + Architecture rule enshrined (May 29, 2026)
+
+### 31.1 — Logo refresh
+- New Baseline crown/shield logo applied across the brand asset set:
+  `public/brand/mc-logo-128.png`, `mc-logo-256.png`, `mc-logo-512.png`,
+  `public/mc-logo.png`, `public/mc.png`. Resized from a 500x500 RGBA
+  source via PIL LANCZOS.
+- Homepage header swapped its placeholder violet sparkle for the new
+  logo at 28px. Nav-rail already referenced `mc-logo-128.png` so it
+  picks up the new mark with no code change.
+
+### 31.2 — Architecture rule (DO NOT VIOLATE)
+
+```
+Operator
+  \u2192 Mission Control          (supervision)
+    \u2192 Baseline OS             (orchestration)
+      \u2192 Hermes                (strategy + memory)
+      \u2192 OpenClaw / OpenCode  (execution)
+      \u2192 Claude Code          (implementation)
+      \u2192 External systems
+```
+
+- Mission Control **never** executes work.
+- Baseline OS **never** runs prompts directly \u2014 it routes to a
+  runtime.
+- The three runtimes are the **only** first-class execution
+  participants the orchestrator schedules.
+- This is **NOT** a CrewAI / LangGraph / AutoGen clone. Borrow
+  concepts, do not recreate ecosystems.
+
+This rule is now codified at the top of
+`docs/architecture/DYNAMIC_WORKFLOWS.md`.
+
+### 31.3 — Swarm Mode reframed
+- Demo header now reads: "Assign a mission. Watch Baseline OS
+  coordinate Hermes, OpenClaw, and Claude Code."
+- Architecture chain block surfaced on the page.
+- Every swarm participant carries a runtime `lane`:
+  `hermes` \u00b7 `openclaw` \u00b7 `claude` \u00b7 `mission-control`.
+- Specialist cards renamed away from generic "Strategy Agent",
+  "CRM Agent", "Copy Agent" to first-class runtime participants:
+  - Hermes \u2014 Strategy / Outcome map / Memory recall
+  - OpenClaw \u2014 Data wiring / Security / Member model / Inventory
+  - OpenCode \u2014 Workflow wiring
+  - Claude Code \u2014 Sequence drafts / Member messaging / VoiceOps script
+  - Mission Control \u2014 Verification judge / Launch supervisor
+- Each card now shows a color-coded lane pill.
+- Two new vitest assertions guard the architecture:
+  - every participant maps to a valid runtime lane;
+  - every mission template names Hermes, OpenClaw/OpenCode, **and**
+    Claude Code as first-class participants;
+  - every mission template names a Mission Control verification judge.
+
+### 31.4 — Re-prioritised roadmap (user directive)
+
+| Priority | Item |
+|---------|------|
+| **P0** | DigitalOcean production deployment (operator action) |
+| **P0** | Runtime validation against real Hermes / OpenClaw / Claude Code |
+| **P1** | Mortgage vertical full storyline |
+| **P1** | Real Estate vertical full storyline |
+| **P1** | General Contractor vertical full storyline |
+| **P1** | Home Services vertical full storyline |
+| **P2** | Cigar Lounge / Local Retail full storyline (template ships now) |
+| **P2** | Swarm backend implementation (Mission Control \u2192 Baseline OS \u2192 runtimes) |
+| **DO NOT BUILD** | Generic agent framework, CrewAI / LangGraph / AutoGen clones |
+| **DO NOT BUILD** | Baseline Studios (sidecar sync) |
+
+### 31.5 — Quality gates
+| Gate | Status |
+|------|--------|
+| `tsc --noEmit` | \u2705 0 errors |
+| `eslint --quiet` | \u2705 0 errors |
+| `vitest run` | \u2705 **1207 / 1207** pass across 106 files |
+| Visual: homepage logo | \u2705 New crown/shield rendering |
+| Visual: Swarm Mode | \u2705 Architecture line + runtime lane pills visible |
+
+### 31.6 — Session closeout
+User signalled session complete after this pass. Mission Control is
+now positioned correctly as the supervision layer, Swarm Mode shows
+the three runtimes as first-class participants, the logo is updated,
+and the demo experience matches the AI Workforce OS positioning
+across 10 verticals. Next operator action: real DigitalOcean deploy.
+
 | `eslint .` | ✅ 0 errors |
 | `vitest run` | ✅ **1187 / 1187** pass across 104 files |
 | Demo-share tests | ✅ 29 / 29 |
