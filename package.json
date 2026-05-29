@@ -4,6 +4,12 @@
   "description": "Baseline Automations Mission Control — AI Workforce Operating System for property managers, contractors, and service businesses",
   "scripts": {
     "verify:node": "node scripts/check-node-version.mjs",
+    "desktop:dev": "yarn --cwd desktop tauri:dev",
+    "desktop:build": "yarn --cwd desktop tauri:build",
+    "desktop:build:mac": "yarn --cwd desktop tauri:build --target universal-apple-darwin",
+    "desktop:build:win": "yarn --cwd desktop tauri:build --target x86_64-pc-windows-msvc",
+    "desktop:build:linux": "yarn --cwd desktop tauri:build --target x86_64-unknown-linux-gnu",
+    "desktop:icon": "yarn --cwd desktop tauri:icon",
     "api:parity": "node scripts/check-api-contract-parity.mjs --root . --openapi openapi.json --ignore-file scripts/api-contract-parity.ignore",
     "api:parity:json": "node scripts/check-api-contract-parity.mjs --root . --openapi openapi.json --ignore-file scripts/api-contract-parity.ignore --json",
     "mc": "node scripts/mc-cli.cjs",

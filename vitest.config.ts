@@ -34,7 +34,7 @@ export default defineConfig(async () => {
         ['**/security-scan-fix-route.test.ts', 'forks'],
       ] as Array<[string, 'forks' | 'threads']>,
       setupFiles: ['src/test/setup.ts'],
-      include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+      include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'desktop/__tests__/**/*.test.js'],
       coverage: {
         provider: 'v8' as const,
         include: ['src/lib/**/*.ts'],

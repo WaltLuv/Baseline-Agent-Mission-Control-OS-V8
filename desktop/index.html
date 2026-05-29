@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.preview.emergentagent.com https://mission.baselineautomations.com https://staging.baselineautomations.com http://127.0.0.1:* http://localhost:*;" />
+    <title>Baseline Flight Deck</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <main id="app" data-testid="flight-deck-shell">
+      <header>
+        <img src="/icon.png" alt="" width="40" height="40" />
+        <div>
+          <div class="kicker">Baseline · Installed Operator Terminal</div>
+          <h1>Flight Deck</h1>
+        </div>
+        <span id="connection-pill" class="pill pill-muted" data-testid="flight-deck-connection">Idle</span>
+      </header>
+
+      <section class="card">
+        <div class="label">Mission Control target</div>
+        <div class="mode-row" role="radiogroup" aria-label="Mission Control target">
+          <button type="button" class="mode" data-mode="production" data-testid="flight-deck-mode-production">
+            <span class="mode-title">Production</span>
+            <span class="mode-host" data-testid="flight-deck-mode-host-production">mission.baselineautomations.com</span>
+          </button>
+          <button type="button" class="mode" data-mode="staging" data-testid="flight-deck-mode-staging">
+            <span class="mode-title">Staging</span>
+            <span class="mode-host" data-testid="flight-deck-mode-host-staging">token-monetization.preview.emergentagent.com</span>
+          </button>
+          <button type="button" class="mode" data-mode="localhost" data-testid="flight-deck-mode-localhost">
+            <span class="mode-title">Localhost</span>
+            <span class="mode-host" data-testid="flight-deck-mode-host-localhost">127.0.0.1:3000</span>
+          </button>
+        </div>
+        <details class="settings">
+          <summary>Custom Mission Control URL</summary>
+          <div class="settings-body">
+            <label for="custom-url" class="label">Override URL (allowlist enforced)</label>
+            <input
+              id="custom-url"
+              type="url"
+              placeholder="https://mission.example.com"
+              data-testid="flight-deck-custom-url"
+              autocomplete="off"
+            />
+            <button type="button" id="save-custom" data-testid="flight-deck-save-custom">Save &amp; use</button>
+            <p class="hint">Only HTTPS hosts in the configured allowlist are accepted. Local builds may add hosts in <code>tauri.conf.json</code>.</p>
+          </div>
+        </details>
+      </section>
+
+      <section class="actions">
+        <button type="button" class="primary" id="open-mc" data-testid="flight-deck-open-mc">
+          Open Mission Control
+        </button>
+        <button type="button" id="check-connection" data-testid="flight-deck-check-connection">Check connection</button>
+      </section>
+
+      <section class="card grid">
+        <a class="shortcut" data-testid="flight-deck-shortcut-share" data-path="/app/share">
+          <span class="shortcut-title">Recent demo links</span>
+          <span class="shortcut-sub">Mint and copy signed prospect links.</span>
+        </a>
+        <a class="shortcut" data-testid="flight-deck-shortcut-runtime" data-path="/app/runtime-validation">
+          <span class="shortcut-title">Runtime status</span>
+          <span class="shortcut-sub">Hermes · OpenClaw / OpenCode · Claude Code.</span>
+        </a>
+        <a class="shortcut" data-testid="flight-deck-shortcut-health" data-path="/api/status?action=health">
+          <span class="shortcut-title">Deployment health</span>
+          <span class="shortcut-sub">Live status of the Mission Control deployment.</span>
+        </a>
+        <a class="shortcut" data-testid="flight-deck-shortcut-workforce" data-path="/app/workforce">
+          <span class="shortcut-title">Workforce dashboard</span>
+          <span class="shortcut-sub">AI employees, skills, departments, outcomes.</span>
+        </a>
+      </section>
+
+      <footer>
+        <span data-testid="flight-deck-version" id="app-version">v0.1.0</span>
+        <span aria-hidden>·</span>
+        <span>Mission Control supervises · Baseline OS coordinates · Hermes / OpenClaw / Claude Code execute</span>
+      </footer>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

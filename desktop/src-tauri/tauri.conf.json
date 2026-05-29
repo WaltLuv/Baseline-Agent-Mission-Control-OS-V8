@@ -1,0 +1,46 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Baseline Flight Deck",
+  "version": "0.1.0",
+  "identifier": "com.baselineautomations.flightdeck",
+  "build": {
+    "beforeDevCommand": "yarn dev",
+    "beforeBuildCommand": "yarn build",
+    "devUrl": "http://localhost:1430",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Baseline Flight Deck",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 960,
+        "minHeight": 640,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "transparent": false,
+        "backgroundColor": "#09090b",
+        "url": "index.html"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.baselineautomations.com https://*.preview.emergentagent.com http://127.0.0.1:* http://localhost:*; connect-src 'self' ipc: http://ipc.localhost https://mission.baselineautomations.com https://staging.baselineautomations.com https://*.preview.emergentagent.com http://127.0.0.1:* http://localhost:*; frame-src 'self' https://mission.baselineautomations.com https://staging.baselineautomations.com https://*.preview.emergentagent.com http://127.0.0.1:* http://localhost:*"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg", "msi", "nsis", "deb", "appimage"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.png"
+    ],
+    "publisher": "Baseline Automations",
+    "category": "Productivity",
+    "shortDescription": "Installed desktop operator terminal for Mission Control.",
+    "longDescription": "Baseline Flight Deck is the installed desktop terminal an operator opens every day to manage live customers, active pilots, demo links, runtime health, billing, deployments, onboarding, and support. Mission Control remains the source of truth."
+  }
+}

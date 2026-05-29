@@ -1,0 +1,25 @@
+[package]
+name = "baseline-flight-deck"
+version = "0.1.0"
+description = "Baseline Flight Deck — installed desktop operator terminal for Mission Control."
+authors = ["Baseline Automations"]
+license = "Proprietary"
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "baseline_flight_deck_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+tauri = { version = "2.1", features = [] }
+tauri-plugin-shell = "2.0"
+tauri-plugin-store = "2.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]
