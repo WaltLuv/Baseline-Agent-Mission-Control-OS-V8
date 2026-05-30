@@ -62,9 +62,13 @@ export async function POST(request: NextRequest) {
     ).get(name, workspaceId) as any | undefined
 
     if (existing) {
+      // Idempotent re-handshake: refresh status + last_seen + runtime_type.
+      const runtimeType = framework && ['hermes', 'openclaw', 'opencode', 'claude', 'codex'].includes(framework)
+        ? framework
+        : existing.runtime_type ?? null
       db.prepare(
-        'UPDATE agents SET status = ?, last_seen = ?, updated_at = ? WHERE id = ? AND workspace_id = ?'
-      ).run('idle', now, now, existing.id, workspaceId)
+        'UPDATE agents SET status = ?, last_seen = ?, updated_at = ?, runtime_type = ? WHERE id = ? AND workspace_id = ?'
+      ).run('idle', now, now, runtimeType, existing.id, workspaceId)
 
       return NextResponse.json({
         agent: {
@@ -72,6 +76,7 @@ export async function POST(request: NextRequest) {
           name: existing.name,
           role: existing.role,
           status: 'idle',
+          runtime_type: runtimeType,
           created_at: existing.created_at,
         },
         registered: false,
@@ -79,15 +84,22 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Create new agent
+    // Create new agent. We persist `framework` both into config.framework
+    // (legacy callers) and the dedicated `runtime_type` column so the
+    // registry queries that surface Hermes / OpenClaw / Claude Code / Codex
+    // can filter by runtime cheaply.
     const config: Record<string, any> = {}
     if (capabilities.length > 0) config.capabilities = capabilities
     if (framework) config.framework = framework
 
+    const runtimeType = framework && ['hermes', 'openclaw', 'opencode', 'claude', 'codex'].includes(framework)
+      ? framework
+      : null
+
     const result = db.prepare(`
-      INSERT INTO agents (name, role, status, config, created_at, updated_at, last_seen, workspace_id)
-      VALUES (?, ?, 'idle', ?, ?, ?, ?, ?)
-    `).run(name, role, JSON.stringify(config), now, now, now, workspaceId)
+      INSERT INTO agents (name, role, status, config, created_at, updated_at, last_seen, workspace_id, runtime_type)
+      VALUES (?, ?, 'idle', ?, ?, ?, ?, ?, ?)
+    `).run(name, role, JSON.stringify(config), now, now, now, workspaceId, runtimeType)
 
     const agentId = Number(result.lastInsertRowid)
 
@@ -119,6 +131,7 @@ export async function POST(request: NextRequest) {
         name,
         role,
         status: 'idle',
+        runtime_type: runtimeType,
         created_at: now,
       },
       registered: true,

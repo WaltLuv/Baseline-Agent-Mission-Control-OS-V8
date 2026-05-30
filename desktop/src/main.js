@@ -115,6 +115,15 @@ function bind() {
 
   probeConnection(activeUrl(settings))
   fetchRuntimeStatus(activeUrl(settings))
+
+  // Auto-refresh runtime status every 30s so disconnections show up without
+  // the operator clicking the button. Tab-hidden pages skip the poll.
+  if (typeof window !== 'undefined' && !window.__fdAutoPoll) {
+    window.__fdAutoPoll = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+      fetchRuntimeStatus(activeUrl(loadSettings()))
+    }, 30_000)
+  }
 }
 
 async function fetchRuntimeStatus(baseUrl) {
@@ -131,12 +140,33 @@ async function fetchRuntimeStatus(baseUrl) {
       return
     }
     const body = await r.json()
+    // Filesystem-detected runtimes (this MC host)
     const byId = Object.fromEntries((body.runtimes || []).map((rt) => [rt.id, rt]))
+    // DB-registered runtimes (remote handshake)
+    const registeredByType = {}
+    for (const reg of (body.registered || [])) {
+      const key = reg.runtime_type === 'claude' ? 'claude' : reg.runtime_type
+      if (!registeredByType[key]) registeredByType[key] = []
+      registeredByType[key].push(reg)
+    }
     list.querySelectorAll('li').forEach((li) => {
-      const rt = byId[li.dataset.runtime]
-      if (!rt) { updateRuntimeRow(li, 'muted', 'unknown'); return }
-      if (rt.installed) updateRuntimeRow(li, 'ok', rt.version || 'connected')
-      else updateRuntimeRow(li, 'muted', 'not connected')
+      const rtId = li.dataset.runtime
+      const rt = byId[rtId]
+      const remote = registeredByType[rtId] || []
+      // Prefer "connected" remote over "not connected" local detector.
+      const connectedRemote = remote.find((r) => r.connection_status === 'connected')
+      const staleRemote = remote.find((r) => r.connection_status === 'stale')
+      if (connectedRemote) {
+        updateRuntimeRow(li, 'ok', `${connectedRemote.name} · live`)
+      } else if (rt && rt.installed) {
+        updateRuntimeRow(li, 'ok', rt.version || 'local · connected')
+      } else if (staleRemote) {
+        updateRuntimeRow(li, 'warn', `${staleRemote.name} · stale`)
+      } else if (remote.length > 0) {
+        updateRuntimeRow(li, 'err', `${remote[0].name} · disconnected`)
+      } else {
+        updateRuntimeRow(li, 'muted', 'not connected')
+      }
     })
   } catch {
     list.querySelectorAll('li').forEach((li) => updateRuntimeRow(li, 'err', 'unreachable'))
