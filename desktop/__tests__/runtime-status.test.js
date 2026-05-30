@@ -17,24 +17,30 @@ describe('Flight Deck — runtime status surface', () => {
 
   it('exposes the four runtime IDs we surface in the panel', () => {
     const expected = ['hermes', 'openclaw', 'claude', 'codex']
-    // Doesn't crash with unknown modes; URL building is deterministic
     for (const id of expected) {
       expect(typeof id).toBe('string')
     }
   })
 
-  it('resolves activeUrl for each mode', () => {
-    expect(activeUrl({ mode: 'production', customUrl: '' })).toBe(MODES.production)
+  it('resolves activeUrl for each non-empty preset', () => {
+    expect(activeUrl({ mode: 'digitalocean', customUrl: '' })).toBe(MODES.digitalocean)
     expect(activeUrl({ mode: 'staging', customUrl: '' })).toBe(MODES.staging)
     expect(activeUrl({ mode: 'localhost', customUrl: '' })).toBe(MODES.localhost)
   })
 
-  it('honours a custom URL only when allowlisted', () => {
-    expect(activeUrl({ mode: 'production', customUrl: 'https://mission.baselineautomations.com' }))
-      .toBe('https://mission.baselineautomations.com')
-    // The custom URL takes precedence regardless of mode setting
-    expect(activeUrl({ mode: 'production', customUrl: 'https://staging.baselineautomations.com' }))
-      .toBe('https://staging.baselineautomations.com')
+  it('emergent preset is empty until operator fills in the deployed host', () => {
+    // Default fallback: returns the empty emergent URL, navigation guard
+    // in main.js will reject it and prompt the operator to set Custom URL.
+    expect(activeUrl({ mode: 'emergent', customUrl: '' })).toBe('')
+    expect(isAllowedUrl('')).toBe(false)
+  })
+
+  it('honours a saved custom URL', () => {
+    expect(activeUrl({ mode: 'digitalocean', customUrl: 'https://walters-mc.emergent.host' }))
+      .toBe('https://walters-mc.emergent.host')
+    // The custom URL takes precedence regardless of mode
+    expect(activeUrl({ mode: 'localhost', customUrl: 'https://baseline-agents.com' }))
+      .toBe('https://baseline-agents.com')
   })
 
   it('blocks navigation to non-allowlisted custom URLs', () => {
@@ -43,10 +49,12 @@ describe('Flight Deck — runtime status surface', () => {
     expect(isAllowedUrl('javascript:alert(1)')).toBe(false)
   })
 
-  it('allows production, staging, and localhost variants', () => {
-    expect(isAllowedUrl('https://mission.baselineautomations.com')).toBe(true)
-    expect(isAllowedUrl('https://staging.baselineautomations.com')).toBe(true)
+  it('allows DigitalOcean, Emergent, staging, and localhost variants', () => {
+    expect(isAllowedUrl('https://baseline-agents.com')).toBe(true)
+    expect(isAllowedUrl('https://walters-mc.emergent.host')).toBe(true)
+    expect(isAllowedUrl('https://abc.preview.emergentagent.com')).toBe(true)
     expect(isAllowedUrl('http://localhost:3000')).toBe(true)
     expect(isAllowedUrl('http://127.0.0.1:3000')).toBe(true)
+    expect(isAllowedUrl('http://localhost:3001')).toBe(true)
   })
 })

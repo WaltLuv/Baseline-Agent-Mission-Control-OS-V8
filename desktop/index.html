@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.preview.emergentagent.com https://mission.baselineautomations.com https://staging.baselineautomations.com http://127.0.0.1:* http://localhost:*;" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.emergent.host https://*.emergentagent.com https://*.preview.emergentagent.com https://baseline-agents.com https://*.baseline-agents.com https://mission.baselineautomations.com https://staging.baselineautomations.com http://127.0.0.1:* http://localhost:*;" />
     <title>Baseline Flight Deck</title>
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
@@ -21,53 +21,62 @@
       <section class="card">
         <div class="label">Mission Control target</div>
         <div class="mode-row" role="radiogroup" aria-label="Mission Control target">
-          <button type="button" class="mode" data-mode="production" data-testid="flight-deck-mode-production">
-            <span class="mode-title">Production</span>
-            <span class="mode-host" data-testid="flight-deck-mode-host-production">mission.baselineautomations.com</span>
+          <button type="button" class="mode" data-mode="emergent" data-testid="flight-deck-mode-emergent">
+            <span class="mode-title">Emergent Production</span>
+            <span class="mode-host" data-testid="flight-deck-mode-host-emergent">paste your Emergent URL below</span>
+          </button>
+          <button type="button" class="mode" data-mode="digitalocean" data-testid="flight-deck-mode-digitalocean">
+            <span class="mode-title">DigitalOcean Production</span>
+            <span class="mode-host" data-testid="flight-deck-mode-host-digitalocean">baseline-agents.com</span>
           </button>
           <button type="button" class="mode" data-mode="staging" data-testid="flight-deck-mode-staging">
-            <span class="mode-title">Staging</span>
+            <span class="mode-title">Staging / Preview</span>
             <span class="mode-host" data-testid="flight-deck-mode-host-staging">token-monetization.preview.emergentagent.com</span>
           </button>
           <button type="button" class="mode" data-mode="localhost" data-testid="flight-deck-mode-localhost">
             <span class="mode-title">Localhost</span>
-            <span class="mode-host" data-testid="flight-deck-mode-host-localhost">127.0.0.1:3000</span>
+            <span class="mode-host" data-testid="flight-deck-mode-host-localhost">localhost:3000</span>
           </button>
         </div>
-        <details class="settings">
+        <details class="settings" id="custom-url-details">
           <summary>Custom Mission Control URL</summary>
           <div class="settings-body">
             <label for="custom-url" class="label">Override URL (allowlist enforced)</label>
             <input
               id="custom-url"
               type="url"
-              placeholder="https://mission.example.com"
+              placeholder="https://your-app.emergent.host  or  http://localhost:3000"
               data-testid="flight-deck-custom-url"
               autocomplete="off"
             />
             <button type="button" id="save-custom" data-testid="flight-deck-save-custom">Save &amp; use</button>
-            <p class="hint">Only HTTPS hosts in the configured allowlist are accepted. Local builds may add hosts in <code>tauri.conf.json</code>.</p>
+            <p class="hint">Accepted hosts: <code>*.emergent.host</code>, <code>*.emergentagent.com</code>, <code>baseline-agents.com</code>, <code>localhost</code>, <code>127.0.0.1</code>. Loopback may use http; everything else must be https.</p>
           </div>
         </details>
       </section>
 
       <section class="card runtime-card" data-testid="flight-deck-runtime-card">
-        <div class="label">Runtime status</div>
+        <div class="runtime-header">
+          <div class="label">Runtime status</div>
+          <button type="button" id="refresh-runtimes" data-testid="flight-deck-refresh-runtimes" class="rt-refresh">Refresh</button>
+        </div>
         <ul class="runtime-list" data-testid="flight-deck-runtime-list">
           <li data-runtime="hermes"><span class="rt-dot" data-state="muted"></span><strong>Hermes</strong><span class="rt-status">—</span></li>
-          <li data-runtime="openclaw"><span class="rt-dot" data-state="muted"></span><strong>OpenClaw</strong><span class="rt-status">—</span></li>
+          <li data-runtime="openclaw"><span class="rt-dot" data-state="muted"></span><strong>OpenClaw / OpenCode</strong><span class="rt-status">—</span></li>
           <li data-runtime="claude"><span class="rt-dot" data-state="muted"></span><strong>Claude Code</strong><span class="rt-status">—</span></li>
           <li data-runtime="codex"><span class="rt-dot" data-state="muted"></span><strong>Codex</strong><span class="rt-status">—</span></li>
         </ul>
-        <button type="button" id="refresh-runtimes" data-testid="flight-deck-refresh-runtimes" class="rt-refresh">Refresh runtime status</button>
-        <p class="hint">Runtime status is fetched from Mission Control on demand. Connect runtimes through Settings → Runtime Connections.</p>
+        <p class="hint">
+          Status comes from <code>/api/agent-runtimes</code> on the selected Mission Control host. Click <em>Refresh</em> to update — Flight Deck does not poll in the background.
+        </p>
       </section>
 
       <section class="actions">
         <button type="button" class="primary" id="open-mc" data-testid="flight-deck-open-mc">
           Open Mission Control
         </button>
-        <button type="button" id="check-connection" data-testid="flight-deck-check-connection">Check connection</button>
+        <button type="button" id="check-connection" data-testid="flight-deck-check-connection">Test connection</button>
+        <button type="button" id="reset-session" data-testid="flight-deck-reset-session" class="danger">Reset session</button>
       </section>
 
       <section class="card grid">

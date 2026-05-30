@@ -4,7 +4,54 @@ Append-only log of significant deliveries. PRD.md holds the durable product spec
 
 ---
 
-## 2026-05-30 (PM #4) · Google Auth GSI root-cause fix + hero reverts + host hardening runbook
+## 2026-05-30 (PM #5) · Flight Deck production-test readiness
+
+**Goal:** A user can pick Mission Control's deployment target (Emergent / DigitalOcean / Staging / Localhost / Custom), persist it across restarts, see real runtime status, and reset their session — without any background polling. Plus a public download page, a CI build matrix, full docs.
+
+**Desktop shell (`/app/desktop/`):**
+- `src/allowlist.js` — Replaced two-preset list with four named presets (`emergent`, `digitalocean`, `staging`, `localhost`) plus `MODE_LABELS`. `ALLOWED_HOSTS` now permits `*.emergent.host`, `*.emergentagent.com`, `*.preview.emergentagent.com`, `baseline-agents.com` (and subdomains), legacy `baselineautomations.com`, plus loopback. Wildcard prefix `*.` supported in `hostMatches()`. `activeUrl()` returns `''` for empty presets (instead of silently falling back) so the UI can prompt for a Custom URL.
+- `index.html` — Picker for the four presets with hosts surfaced beneath each label, Custom URL field with allowlist hint, runtime status panel (Hermes · OpenClaw/OpenCode · Claude Code · Codex) with a **manual Refresh button**, **Reset Session** button (clears local target settings + posts `/api/auth/logout`), version footer.
+- `src/main.js` — Auto-polling **removed**. Status refresh happens only on: initial load, target change, manual Refresh, manual Test Connection. `fetchRuntimeStatus()` reads both filesystem-detected `runtimes[]` (local install) and DB-registered `registered[]` (remote handshake), and reports `connected`/`stale`/`disconnected`/`not connected`/`login required` per row.
+- `src-tauri/tauri.conf.json` — CSP extended to include `*.emergent.host` and `*.emergentagent.com` in `connect-src` / `frame-src` / `img-src`.
+
+**Public download page (`/app/src/app/flight-deck/page.tsx` + `/download` redirect):**
+- Honest amber "Installer build pending — use local build instructions" banner while `releaseStatus === 'pending-build'`.
+- Three platform cards (macOS / Windows / Linux) each with status badge, expected artifact name, and a copy-to-clipboard build command. **No Download buttons appear** because no binaries exist yet — JSX guard requires `p.status === 'available' && releaseUrl`, both false.
+- Full build-from-source recipe (Rust prereqs per OS, clone+install+run in two terminals, installer build).
+- GitHub Actions tagging instructions.
+- "What Flight Deck does" outcome list — including "Never bundles credentials", "Does not auto-refresh", "Allowlisted hosts only".
+- Added `/flight-deck` and `/download` to the public-path allowlist in `src/proxy.ts` (previously they 307-redirected to `/login`).
+
+**Cross-platform CI (`/app/.github/workflows/flight-deck-release.yml`):**
+- Matrix builds: macOS-arm64, macOS-x64, Windows-x64, Linux-x64.
+- Triggered by `flight-deck-v*` tag or `workflow_dispatch`.
+- Rust + Node setup, Cargo cache, Tauri build per `--target`.
+- Apple + Windows signing secrets are optional — workflow produces unsigned dev builds if secrets are absent.
+- Release stage downloads all artifacts and publishes them to a GitHub Release with honest "unsigned development build" release notes.
+
+**Docs:**
+- `desktop/README.md` rewritten — full prereq + run-locally + build + sign + troubleshooting table.
+- Root `README.md` quickstart section adds the "Run the Flight Deck desktop terminal alongside it" two-terminal recipe and a pointer to the local check script.
+
+**Local check script (`/app/scripts/local-flight-deck-check.mjs`):**
+- Probes `/`, `/api/status?action=health`, `/api/agent-runtimes`, `/login` against `http://localhost:3000` (port + URL overridable).
+- Exits 0 on green; exits 1 with concrete remediation when MC is unreachable; treats `/api/agent-runtimes` 401 as the expected "session required, click Refresh after sign-in" hint.
+
+**Tests:**
+- `desktop/__tests__/allowlist.test.js` — rewritten to cover all 4 presets, wildcard host matching, custom URL precedence, loopback rule, malformed input rejection.
+- `desktop/__tests__/runtime-status.test.js` — covers active URL resolution, empty `emergent` preset, custom URL override, navigation blocking, full host allowlist.
+- `src/app/flight-deck/__tests__/page.test.ts` — pins the honest contract: `releaseStatus='pending-build'`, `releaseUrl=null`, banner test id present, all 3 platform cards, JSX guard requires both `status === 'available'` AND `releaseUrl` before rendering a Download anchor.
+
+**Quality gates after this pass:**
+- `tsc --noEmit` — clean
+- `vitest run` — **1254 / 1254 pass** (was 1241; +13 new desktop + flight-deck tests)
+- `next build` — clean
+- Live probe: `/flight-deck` → 200, `/download` → 307 → `/flight-deck` → 200
+- Screenshot proof captured: hero, platform cards, build instructions, CI section, "What Flight Deck does", CTA — every section renders, no broken Download buttons, banner is honest about CI status.
+
+---
+
+
 
 **P0a — Hero copy reverts (per user):**
 - Hero pill: `Business Systems, Installed` → `AI Workforce OS`

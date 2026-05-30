@@ -5,22 +5,28 @@
 //   1. Persist the operator's chosen Mission Control mode + URL
 //   2. Probe the health endpoint to color the connection pill
 //   3. Navigate the same webview to Mission Control on demand
+//   4. Show runtime status on demand (no background polling)
 //
 // Never stores credentials, never bypasses web auth, never executes
 // arbitrary remote URLs. The allowlist below is enforced both here
 // and in tauri.conf.json (CSP).
+//
+// IMPORTANT: this shell does NOT auto-refresh. Auto-poll was removed
+// after operators reported the page felt "jumpy" during demos. Status
+// is refreshed only when the operator clicks "Refresh" or "Test".
 // ───────────────────────────────────────────────────────────────────
 
 import { MODES, ALLOWED_HOSTS, isAllowedUrl, activeUrl } from './allowlist.js'
 
 const STORAGE_KEY = 'flight-deck.settings.v1'
+const DEFAULT_MODE = 'emergent'
 
 function loadSettings() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) return JSON.parse(raw)
   } catch { /* ignore */ }
-  return { mode: 'production', customUrl: '' }
+  return { mode: DEFAULT_MODE, customUrl: '' }
 }
 
 function saveSettings(s) {
@@ -29,12 +35,17 @@ function saveSettings(s) {
 
 function setPill(state, label) {
   const pill = document.getElementById('connection-pill')
+  if (!pill) return
   pill.classList.remove('pill-muted', 'pill-ok', 'pill-warn', 'pill-err')
   pill.classList.add(`pill-${state}`)
   pill.textContent = label
 }
 
 async function probeConnection(url) {
+  if (!url || !isAllowedUrl(url)) {
+    setPill('muted', 'Pick a target')
+    return
+  }
   setPill('warn', 'Checking…')
   const probe = url.replace(/\/+$/, '') + '/api/status?action=health'
   try {
@@ -61,20 +72,22 @@ function paintModes(settings) {
 function bind() {
   const settings = loadSettings()
   paintModes(settings)
-  document.getElementById('custom-url').value = settings.customUrl || ''
+  const customInput = document.getElementById('custom-url')
+  if (customInput) customInput.value = settings.customUrl || ''
 
   document.querySelectorAll('.mode').forEach((btn) => {
     btn.addEventListener('click', () => {
       const next = { ...loadSettings(), mode: btn.dataset.mode, customUrl: '' }
       saveSettings(next)
       paintModes(next)
-      document.getElementById('custom-url').value = ''
+      if (customInput) customInput.value = ''
       probeConnection(activeUrl(next))
+      fetchRuntimeStatus(activeUrl(next))
     })
   })
 
-  document.getElementById('save-custom').addEventListener('click', () => {
-    const raw = document.getElementById('custom-url').value.trim()
+  document.getElementById('save-custom')?.addEventListener('click', () => {
+    const raw = (customInput?.value || '').trim()
     if (raw && !isAllowedUrl(raw)) {
       setPill('err', 'URL not allowlisted')
       return
@@ -83,21 +96,55 @@ function bind() {
     saveSettings(next)
     paintModes(next)
     probeConnection(activeUrl(next))
+    fetchRuntimeStatus(activeUrl(next))
   })
 
-  document.getElementById('open-mc').addEventListener('click', () => {
+  document.getElementById('open-mc')?.addEventListener('click', () => {
     const url = activeUrl(loadSettings())
     if (!isAllowedUrl(url)) {
       setPill('err', 'Blocked')
       return
     }
-    // Navigate the same Tauri webview to Mission Control. The host
-    // allowlist is enforced server-side too (MC_ALLOWED_HOSTS).
     window.location.assign(url)
   })
 
-  document.getElementById('check-connection').addEventListener('click', () => {
+  document.getElementById('check-connection')?.addEventListener('click', () => {
     probeConnection(activeUrl(loadSettings()))
+    fetchRuntimeStatus(activeUrl(loadSettings()))
+  })
+
+  document.getElementById('refresh-runtimes')?.addEventListener('click', () => {
+    fetchRuntimeStatus(activeUrl(loadSettings()))
+  })
+
+  // Reset session — clears Flight Deck's saved target/customURL and
+  // wipes cookies for the current MC host so the next click re-prompts
+  // for login. Does NOT clear credentials on remote MC — that is the
+  // server's responsibility via /api/auth/logout.
+  document.getElementById('reset-session')?.addEventListener('click', async () => {
+    const cur = loadSettings()
+    const url = activeUrl(cur)
+    // Try to call MC logout if the host is reachable; ignore errors.
+    if (url && isAllowedUrl(url)) {
+      try {
+        await fetch(url.replace(/\/+$/, '') + '/api/auth/logout', {
+          method: 'POST',
+          credentials: 'include',
+        })
+      } catch { /* ignore */ }
+    }
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+    } catch { /* ignore */ }
+    // Reset UI state without reloading
+    const reset = { mode: DEFAULT_MODE, customUrl: '' }
+    saveSettings(reset)
+    paintModes(reset)
+    if (customInput) customInput.value = ''
+    setPill('muted', 'Reset · pick a target')
+    document.querySelectorAll('[data-testid="flight-deck-runtime-list"] li').forEach((li) => {
+      updateRuntimeRow(li, 'muted', '—')
+    })
   })
 
   document.querySelectorAll('.shortcut').forEach((el) => {
@@ -110,33 +157,31 @@ function bind() {
     })
   })
 
-  const refreshBtn = document.getElementById('refresh-runtimes')
-  if (refreshBtn) refreshBtn.addEventListener('click', () => fetchRuntimeStatus(activeUrl(loadSettings())))
-
+  // Initial probe — runs once at startup, then never again until the
+  // operator clicks. No auto-polling.
   probeConnection(activeUrl(settings))
   fetchRuntimeStatus(activeUrl(settings))
-
-  // Auto-refresh runtime status every 30s so disconnections show up without
-  // the operator clicking the button. Tab-hidden pages skip the poll.
-  if (typeof window !== 'undefined' && !window.__fdAutoPoll) {
-    window.__fdAutoPoll = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
-      fetchRuntimeStatus(activeUrl(loadSettings()))
-    }, 30_000)
-  }
 }
 
 async function fetchRuntimeStatus(baseUrl) {
   const list = document.querySelector('[data-testid="flight-deck-runtime-list"]')
   if (!list) return
+  if (!baseUrl || !isAllowedUrl(baseUrl)) {
+    list.querySelectorAll('li').forEach((li) => updateRuntimeRow(li, 'muted', 'select a target'))
+    return
+  }
   const probe = baseUrl.replace(/\/+$/, '') + '/api/agent-runtimes'
   try {
     const ctrl = new AbortController()
     const t = setTimeout(() => ctrl.abort(), 5000)
     const r = await fetch(probe, { signal: ctrl.signal, credentials: 'include' })
     clearTimeout(t)
-    if (!r.ok) {
+    if (r.status === 401 || r.status === 403) {
       list.querySelectorAll('li').forEach((li) => updateRuntimeRow(li, 'warn', 'login required'))
+      return
+    }
+    if (!r.ok) {
+      list.querySelectorAll('li').forEach((li) => updateRuntimeRow(li, 'err', `HTTP ${r.status}`))
       return
     }
     const body = await r.json()
@@ -153,7 +198,6 @@ async function fetchRuntimeStatus(baseUrl) {
       const rtId = li.dataset.runtime
       const rt = byId[rtId]
       const remote = registeredByType[rtId] || []
-      // Prefer "connected" remote over "not connected" local detector.
       const connectedRemote = remote.find((r) => r.connection_status === 'connected')
       const staleRemote = remote.find((r) => r.connection_status === 'stale')
       if (connectedRemote) {
@@ -189,4 +233,4 @@ if (typeof document !== 'undefined') {
 }
 
 // Re-export pure helpers for convenience (real test target is ./allowlist.js).
-export { isAllowedUrl, activeUrl, MODES, ALLOWED_HOSTS }
+export { isAllowedUrl, activeUrl, MODES, ALLOWED_HOSTS, fetchRuntimeStatus, updateRuntimeRow }

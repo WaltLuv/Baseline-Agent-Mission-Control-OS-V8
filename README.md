@@ -85,6 +85,18 @@ nvm use 22 && pnpm install
 pnpm dev                    # http://localhost:3000/setup
 ```
 
+### Run the Flight Deck desktop terminal alongside it
+
+```bash
+# In a second terminal:
+node scripts/local-flight-deck-check.mjs   # confirms MC is reachable
+cd desktop
+yarn install
+yarn tauri:dev                              # native window opens
+```
+
+Pick **Localhost** in the Flight Deck target picker, click **Open Mission Control**, sign in. Full Flight Deck docs: [`desktop/README.md`](./desktop/README.md). Public install page (with build-from-source instructions): `/flight-deck`.
+
 ### Docker Zero-Config
 
 ```bash
