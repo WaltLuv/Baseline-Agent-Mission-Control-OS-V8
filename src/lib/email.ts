@@ -35,7 +35,12 @@ export function getEmailProvider(): EmailProviderStatus {
 }
 
 function getFromAddress(): string {
-  return process.env.MC_EMAIL_FROM || 'Baseline OS <noreply@mission.baselineautomations.com>'
+  // Resend ships a built-in verified sender (`onboarding@resend.dev`) that
+  // works for every account without DNS setup. Use it by default so reset +
+  // invite emails deliver the moment the API key is set. Operators can
+  // override via `MC_EMAIL_FROM` once they verify their own domain on
+  // https://resend.com/domains.
+  return process.env.MC_EMAIL_FROM || 'Baseline OS <onboarding@resend.dev>'
 }
 
 async function sendViaResend(msg: EmailMessage): Promise<void> {
