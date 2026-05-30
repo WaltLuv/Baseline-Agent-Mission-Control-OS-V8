@@ -1,5 +1,9 @@
-import requests, json, sqlite3, time, random, os
-random.seed(42)
+import requests, json, sqlite3, time, os
+from secrets import SystemRandom
+
+# Cryptographically secure RNG. These values feed a cost-ledger seed which,
+# while a dev/demo fixture, should not be predictable from elsewhere.
+_rng = SystemRandom()
 
 BASE = "http://127.0.0.1:3000"
 db_path = os.path.join(os.getcwd(), '.data', 'mission-control.db')
@@ -113,9 +117,9 @@ amodels = {1:"anthropic/claude-sonnet-4", 2:"anthropic/claude-sonnet-4", 3:"goog
 aname = {1:"Slim Charles", 2:"Hermes", 3:"VisionOps-Worker", 4:"VoiceOps-Worker", 5:"Market-Swarm-Worker", 6:"Research-Worker", 7:"Dispatcher-Worker", 8:"QA-Trust-Worker", 9:"Executive-Assistant", 10:"Chief Phil Gaston", 11:"Saul", 12:"Don Draper"}
 
 for aid in range(1,13):
-    inp = random.randint(2000, 50000)
-    out = random.randint(500, 8000)
-    sess = f"sess-{aname.get(aid,'x')}-{int(time.time())}-{random.randint(100,999)}"
+    inp = _rng.randint(2000, 50000)
+    out = _rng.randint(500, 8000)
+    sess = f"sess-{aname.get(aid,'x')}-{int(time.time())}-{_rng.randint(100,999)}"
     r = requests.post(f"{BASE}/api/tokens", json={"model": amodels.get(aid,"anthropic/claude-sonnet-4"), "sessionId": sess, "inputTokens": inp, "outputTokens": out, "operation": "chat_completion"}, headers=H)
     c = r.json().get("record", {}).get("cost", "?")
     print(f"  {aname.get(aid,str(aid)):20s} {inp+out:>7,} tokens ${c}")

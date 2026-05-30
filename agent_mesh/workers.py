@@ -15,10 +15,15 @@ Each agent demonstrates:
 
 import asyncio
 import time
-import random
+from secrets import SystemRandom
 from typing import Any
 
 from .agent_base import AgentBase
+
+# Cryptographically secure RNG for demo/fixture values. The reference
+# implementations here are stubs that return mocked scope/cost data; using
+# SystemRandom avoids predictable seeds across reviews and lint signals.
+_rng = SystemRandom()
 
 
 def create_rehab_agent(
@@ -100,7 +105,7 @@ async def _full_scope_handler(address: str, depth: str = "standard", **kwargs) -
         "address": address,
         "depth": depth,
         "scope_items": 15,
-        "estimated_days": random.randint(7, 21),
+        "estimated_days": _rng.randint(7, 21),
         "priority_items": 4,
     }
 
@@ -221,7 +226,7 @@ def create_estimator_agent(
 
         for cat in categories:
             price = pricing.get(cat, {"base": 1000})
-            cost = price.get("base", random.randint(1000, 5000))
+            cost = price.get("base", _rng.randint(1000, 5000))
             line_items.append({
                 "category": cat,
                 "cost": cost,
@@ -277,7 +282,7 @@ async def _multi_property_handler(properties: list[dict], **kwargs) -> dict:
     for prop in properties:
         estimate = {
             "address": prop.get("address", "unknown"),
-            "total": random.randint(15000, 45000),
+            "total": _rng.randint(15000, 45000),
             "breakdown": {"flooring": 5000, "paint": 3000, "kitchen": 12000, "bathroom": 8000},
         }
         estimates.append(estimate)

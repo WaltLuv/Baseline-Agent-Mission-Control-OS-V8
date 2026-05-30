@@ -190,7 +190,7 @@ async def demo_quick():
     scope_tool = orchestrator._mounted_agents["rehab"]._tool_manager._tools.get("scope_property")
     if scope_tool:
         r = await scope_tool(address="Test Address")
-        assert r["scope_generated"] == True
+        assert r["scope_generated"]
         print("  ✓ scope_property works")
 
     vendor_tool = orchestrator._mounted_agents["dispatch"]._tool_manager._tools.get("find_vendor")
