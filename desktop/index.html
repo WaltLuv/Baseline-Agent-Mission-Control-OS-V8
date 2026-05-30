@@ -51,6 +51,18 @@
         </details>
       </section>
 
+      <section class="card runtime-card" data-testid="flight-deck-runtime-card">
+        <div class="label">Runtime status</div>
+        <ul class="runtime-list" data-testid="flight-deck-runtime-list">
+          <li data-runtime="hermes"><span class="rt-dot" data-state="muted"></span><strong>Hermes</strong><span class="rt-status">—</span></li>
+          <li data-runtime="openclaw"><span class="rt-dot" data-state="muted"></span><strong>OpenClaw</strong><span class="rt-status">—</span></li>
+          <li data-runtime="claude"><span class="rt-dot" data-state="muted"></span><strong>Claude Code</strong><span class="rt-status">—</span></li>
+          <li data-runtime="codex"><span class="rt-dot" data-state="muted"></span><strong>Codex</strong><span class="rt-status">—</span></li>
+        </ul>
+        <button type="button" id="refresh-runtimes" data-testid="flight-deck-refresh-runtimes" class="rt-refresh">Refresh runtime status</button>
+        <p class="hint">Runtime status is fetched from Mission Control on demand. Connect runtimes through Settings → Runtime Connections.</p>
+      </section>
+
       <section class="actions">
         <button type="button" class="primary" id="open-mc" data-testid="flight-deck-open-mc">
           Open Mission Control

@@ -1764,6 +1764,87 @@ const migrations: Migration[] = [
         updated_at INTEGER NOT NULL DEFAULT (unixepoch())
       )`);
     }
+  },
+  {
+    id: '051_customer_self_serve',
+    up(db: Database.Database) {
+      // Password reset tokens (hashed, single-use, time-boxed).
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          token_hash TEXT NOT NULL UNIQUE,
+          user_id INTEGER NOT NULL,
+          expires_at INTEGER NOT NULL,
+          used_at INTEGER,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          ip_address TEXT,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_pwd_reset_user ON password_reset_tokens(user_id);
+        CREATE INDEX IF NOT EXISTS idx_pwd_reset_expires ON password_reset_tokens(expires_at);
+      `)
+
+      // Workspace memberships (many-to-many: a user may belong to multiple workspaces
+      // with different roles in each). This is the table the user has been asking
+      // for. We dual-read with users.workspace_id during the rollout: lookups first
+      // ask memberships, then fall back to the legacy column.
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS workspace_memberships (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          workspace_id INTEGER NOT NULL,
+          role TEXT NOT NULL DEFAULT 'operator',
+          invited_by INTEGER,
+          status TEXT NOT NULL DEFAULT 'active',
+          joined_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          UNIQUE (user_id, workspace_id),
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+          FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_membership_user ON workspace_memberships(user_id);
+        CREATE INDEX IF NOT EXISTS idx_membership_workspace ON workspace_memberships(workspace_id);
+      `)
+
+      // Invitation tokens (hashed, single-use, scoped to a workspace + role + email).
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS invites (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          token_hash TEXT NOT NULL UNIQUE,
+          email TEXT NOT NULL,
+          workspace_id INTEGER NOT NULL,
+          role TEXT NOT NULL DEFAULT 'operator',
+          invited_by INTEGER NOT NULL,
+          expires_at INTEGER NOT NULL,
+          used_by_user_id INTEGER,
+          used_at INTEGER,
+          revoked_at INTEGER,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+          FOREIGN KEY (invited_by) REFERENCES users(id) ON DELETE SET NULL,
+          FOREIGN KEY (used_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_invites_workspace ON invites(workspace_id);
+        CREATE INDEX IF NOT EXISTS idx_invites_email ON invites(email);
+      `)
+
+      // Backfill memberships from existing users.workspace_id + users.role.
+      // Idempotent — the UNIQUE constraint plus INSERT OR IGNORE makes it safe to
+      // re-run.
+      db.exec(`
+        INSERT OR IGNORE INTO workspace_memberships (user_id, workspace_id, role, status, joined_at)
+        SELECT u.id, COALESCE(u.workspace_id, 1), COALESCE(u.role, 'operator'), 'active', COALESCE(u.created_at, unixepoch())
+        FROM users u
+        WHERE u.workspace_id IS NOT NULL
+      `)
+
+      // Conditional unique index on users.email — emails are only enforced unique
+      // when present. Existing NULL emails (legacy admin) are unaffected.
+      db.exec(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique
+        ON users(email COLLATE NOCASE)
+        WHERE email IS NOT NULL AND email != ''
+      `)
+    }
   }
 ]
 

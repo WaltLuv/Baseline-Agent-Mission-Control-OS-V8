@@ -110,7 +110,44 @@ function bind() {
     })
   })
 
+  const refreshBtn = document.getElementById('refresh-runtimes')
+  if (refreshBtn) refreshBtn.addEventListener('click', () => fetchRuntimeStatus(activeUrl(loadSettings())))
+
   probeConnection(activeUrl(settings))
+  fetchRuntimeStatus(activeUrl(settings))
+}
+
+async function fetchRuntimeStatus(baseUrl) {
+  const list = document.querySelector('[data-testid="flight-deck-runtime-list"]')
+  if (!list) return
+  const probe = baseUrl.replace(/\/+$/, '') + '/api/agent-runtimes'
+  try {
+    const ctrl = new AbortController()
+    const t = setTimeout(() => ctrl.abort(), 5000)
+    const r = await fetch(probe, { signal: ctrl.signal, credentials: 'include' })
+    clearTimeout(t)
+    if (!r.ok) {
+      list.querySelectorAll('li').forEach((li) => updateRuntimeRow(li, 'warn', 'login required'))
+      return
+    }
+    const body = await r.json()
+    const byId = Object.fromEntries((body.runtimes || []).map((rt) => [rt.id, rt]))
+    list.querySelectorAll('li').forEach((li) => {
+      const rt = byId[li.dataset.runtime]
+      if (!rt) { updateRuntimeRow(li, 'muted', 'unknown'); return }
+      if (rt.installed) updateRuntimeRow(li, 'ok', rt.version || 'connected')
+      else updateRuntimeRow(li, 'muted', 'not connected')
+    })
+  } catch {
+    list.querySelectorAll('li').forEach((li) => updateRuntimeRow(li, 'err', 'unreachable'))
+  }
+}
+
+function updateRuntimeRow(li, state, label) {
+  const dot = li.querySelector('.rt-dot')
+  if (dot) dot.dataset.state = state
+  const status = li.querySelector('.rt-status')
+  if (status) status.textContent = label
 }
 
 if (typeof document !== 'undefined') {

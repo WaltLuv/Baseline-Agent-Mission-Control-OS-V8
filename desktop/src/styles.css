@@ -59,3 +59,18 @@ button { font-family: inherit; cursor: pointer; }
 .pill-err::before { background: var(--rose); }
 
 footer { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Runtime status panel */
+.runtime-card { margin-top: 16px; }
+.runtime-list { list-style: none; margin: 8px 0 12px; padding: 0; }
+.runtime-list li { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.runtime-list li:last-child { border-bottom: 0; }
+.runtime-list strong { flex: 1; font-weight: 600; color: #e2e8f0; }
+.rt-dot { width: 8px; height: 8px; border-radius: 50%; background: #475569; }
+.rt-dot[data-state="ok"] { background: #34d399; }
+.rt-dot[data-state="warn"] { background: #fbbf24; }
+.rt-dot[data-state="err"] { background: #ef4444; }
+.rt-dot[data-state="muted"] { background: #475569; }
+.rt-status { font-family: ui-monospace, "JetBrains Mono", Menlo, monospace; font-size: 11px; color: #94a3b8; }
+.rt-refresh { background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.3); color: #38bdf8; padding: 6px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+.rt-refresh:hover { background: rgba(56,189,248,0.16); }

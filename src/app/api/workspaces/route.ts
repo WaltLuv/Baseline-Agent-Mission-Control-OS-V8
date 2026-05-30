@@ -9,13 +9,26 @@ export async function GET(request: NextRequest) {
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   try {
-    const db = getDatabase()
-    const tenantId = auth.user.tenant_id ?? 1
-    const workspaces = listWorkspacesForTenant(db, tenantId)
+    const { listMembershipsForUser } = await import('@/lib/memberships')
+    const memberships = listMembershipsForUser(auth.user.id)
+
+    // If memberships exist, use them (multi-workspace). Otherwise fall back to
+    // the legacy single-workspace view for admin / pre-migration accounts.
+    let workspaces: Array<{ id: number; slug: string; name: string; tenant_id: number; role?: string }>
+    if (memberships.length > 0) {
+      workspaces = memberships.map((m) => ({
+        id: m.id, slug: m.slug, name: m.name, tenant_id: m.tenant_id, role: m.role,
+      }))
+    } else {
+      const db = getDatabase()
+      const tenantId = auth.user.tenant_id ?? 1
+      workspaces = listWorkspacesForTenant(db, tenantId)
+    }
+
     return NextResponse.json({
       workspaces,
       active_workspace_id: auth.user.workspace_id,
-      tenant_id: tenantId,
+      tenant_id: auth.user.tenant_id ?? 1,
     })
   } catch {
     return NextResponse.json({ error: 'Failed to fetch workspaces' }, { status: 500 })

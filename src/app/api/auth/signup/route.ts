@@ -5,6 +5,7 @@ import { getMcSessionCookieName, getMcSessionCookieOptions, isRequestSecure } fr
 import { selfRegisterLimiter } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
 import { getBusinessTemplate, BUSINESS_TEMPLATES } from '@/lib/business-templates'
+import { upsertMembership } from '@/lib/memberships'
 
 /**
  * Customer self-signup.
@@ -108,6 +109,9 @@ export async function POST(request: Request) {
         is_approved: 1,
         workspace_id: workspaceId,
       })
+
+      // Multi-workspace membership: owner of their own workspace.
+      upsertMembership(user.id, workspaceId, 'owner', {}, db)
 
       // Stamp the chosen vertical into per-user settings so the onboarding wizard
       // (which reads `settings` scoped by `user.<username>.onboarding.*`) picks it up.
