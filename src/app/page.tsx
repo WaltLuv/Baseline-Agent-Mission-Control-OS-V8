@@ -2,14 +2,6 @@
 
 import Link from 'next/link'
 
-function SparkIcon() {
-  return (
-    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z" />
-    </svg>
-  )
-}
-
 function ArrowRight() {
   return (
     <svg className="w-4 h-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -27,6 +19,15 @@ function CheckCircleIcon() {
   )
 }
 
+function AlertIcon() {
+  return (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 8v4M12 16h.01" />
+    </svg>
+  )
+}
+
 function FeatureIcon({ children }: { children: React.ReactNode }) {
   return (
     <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
@@ -35,72 +36,85 @@ function FeatureIcon({ children }: { children: React.ReactNode }) {
   )
 }
 
+// Cost-of-chaos examples — concrete things a business owner already loses sleep over.
+const problems = [
+  'Leads that never get followed up.',
+  'Invoices that don\'t get chased.',
+  'Approvals that sit in someone\'s inbox for days.',
+  'Customer communication that\'s inconsistent across the team.',
+  'Repetitive work eating hours your team should spend with customers.',
+]
+
+// Outcome-led capabilities. Technology is the engine, not the headline.
 const features = [
   {
+    title: 'Work that doesn\'t fall through the cracks',
+    desc: 'Every lead, invoice, approval, and follow-up has an owner and a deadline. Nothing waits for someone to remember.',
     icon: (
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" rx="2" ry="2" width="18" height="18" />
-        <path d="M12 8v8M8 12h8" />
+        <path d="M9 11l3 3L22 4" />
+        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
       </svg>
     ),
-    title: 'Deploy AI Agents',
-    desc: 'Spin up autonomous workers for maintenance dispatch, tenant communication, invoice processing, and more — in seconds.',
   },
   {
+    title: 'Consistent execution, every day',
+    desc: 'Your best process runs the same way whether it\'s a Monday or a holiday weekend. No drift, no exceptions, no guesswork.',
     icon: (
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="22,12 18,12 15,21 9,3 6,12 2,12" />
       </svg>
     ),
-    title: 'Supervise Workflows',
-    desc: 'Real-time visibility into every agent task, approval queue, and escalation — with human intervention when it matters.',
   },
   {
-    icon: (
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
-      </svg>
-    ),
-    title: 'Track Costs',
-    desc: 'Per-agent, per-property, per-workspace cost tracking. Know exactly what each AI employee costs down to the cent.',
-  },
-  {
-    icon: (
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
-        <polyline points="22,4 12,14.01 9,11" />
-      </svg>
-    ),
-    title: 'Quality Gates',
-    desc: 'Define approval thresholds, validation rules, and quality checks that every agent output must pass before delivery.',
-  },
-  {
+    title: 'Visibility into who did what',
+    desc: 'See every task that ran, who owned it, what it cost, and what came out the other side. Accountability built in.',
     icon: (
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <rect x="2" y="3" rx="2" width="20" height="14" />
         <path d="M8 21h8M12 17v4" />
       </svg>
     ),
-    title: 'Multi-Tenant Workspaces',
-    desc: 'Isolated workspaces per property, team, or client. Share agents across portfolios without cross-contamination.',
   },
   {
+    title: 'Approval before anything risky',
+    desc: 'Define what needs a human signoff — a refund over $500, a contract update, a customer escalation — and the system pauses for you.',
     icon: (
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-        <path d="M7 11V7a5 5 0 0110 0v4" />
+        <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
+        <polyline points="22,4 12,14.01 9,11" />
       </svg>
     ),
-    title: 'Security Scanning',
-    desc: 'Automated vulnerability detection, prompt injection defense, and role-based access controls for every deployment.',
+  },
+  {
+    title: 'Costs you can actually see',
+    desc: 'Cost-per-task, cost-per-customer, cost-per-department. Know what each piece of your operation actually costs to run.',
+    icon: (
+      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+      </svg>
+    ),
+  },
+  {
+    title: 'Separate workspaces for each part of the business',
+    desc: 'Locations, departments, clients, or properties — each one gets its own clean workspace. No spillover, no cross-contamination.',
+    icon: (
+      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="3" rx="2" width="20" height="14" />
+        <path d="M8 21h8M12 17v4" />
+      </svg>
+    ),
   },
 ]
 
+// "How It Works" — outcome (Install / Automate / Monitor) on the surface,
+// technology (AI Employees / Skills / Workflows / Baseline OS) introduced
+// only here, after the value is already understood.
 const steps = [
   {
     num: '01',
-    title: 'Configure',
-    desc: 'Connect tools, workflows, SOPs, memory, and business rules.',
+    title: 'Install Systems',
+    desc: 'We map how your business actually runs today, then install the workflows, rules, and approval gates that make work happen on time and in order.',
     icon: (
       <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
@@ -109,8 +123,8 @@ const steps = [
   },
   {
     num: '02',
-    title: 'Deploy',
-    desc: 'Hire AI employees, install AI skills, and launch AI teams.',
+    title: 'Automate Work',
+    desc: 'AI employees and automated workflows pick up the repetitive jobs — intake, follow-ups, dispatch, status updates, reporting — and run them every day without being asked.',
     icon: (
       <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z" />
@@ -119,8 +133,8 @@ const steps = [
   },
   {
     num: '03',
-    title: 'Supervise',
-    desc: 'Monitor operations, approve critical actions, review memory-backed decisions, and track ROI from a single command center.',
+    title: 'Monitor Results',
+    desc: 'One executive view — Baseline OS — shows what ran, what got stuck, what saved time, and what each part of the operation is costing you.',
     icon: (
       <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <rect x="2" y="3" rx="2" width="20" height="14" />
@@ -153,132 +167,123 @@ export default function LandingPage() {
             Baseline Automations
           </Link>
           <nav className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-sm text-white/50 hover:text-white transition-colors">Features</a>
-            <a href="#how-it-works" className="text-sm text-white/50 hover:text-white transition-colors">How It Works</a>
-            <a href="#pricing" className="text-sm text-white/50 hover:text-white transition-colors">Pricing</a>
+            <a href="#problem" className="text-sm text-white/50 hover:text-white transition-colors" data-testid="nav-problem">The Problem</a>
+            <a href="#how-it-works" className="text-sm text-white/50 hover:text-white transition-colors" data-testid="nav-how-it-works">How It Works</a>
+            <a href="#features" className="text-sm text-white/50 hover:text-white transition-colors" data-testid="nav-features">What You Get</a>
+            <a href="#pricing" className="text-sm text-white/50 hover:text-white transition-colors" data-testid="nav-pricing">Pricing</a>
           </nav>
           <div className="flex items-center gap-3">
-            <Link href="/login" className="text-sm text-white/60 hover:text-white transition-colors px-3 py-1.5">
+            <Link href="/login" data-testid="header-sign-in" className="text-sm text-white/60 hover:text-white transition-colors px-3 py-1.5">
               Sign In
             </Link>
             <Link
-              href="/login"
+              href="/signup"
+              data-testid="header-start-free"
               className="text-sm font-medium bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.1] rounded-lg px-3.5 py-1.5 transition-colors"
             >
-              Get Started
+              Start Free
             </Link>
           </div>
         </div>
       </header>
 
-      {/* ─── HERO ─── */}
+      {/* ─── HERO ─── outcome-first headline; technology mentioned only as the engine */}
       <section className="relative z-10 mx-auto max-w-screen-xl px-6 pt-20 pb-24 md:pt-32 md:pb-36 text-center">
         <div className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/20 bg-violet-500/5 px-3.5 py-1 text-[13px] font-medium text-violet-300 mb-8">
-          <SparkIcon />
-          AI Workforce OS
+          Business Systems, Installed
         </div>
         <h1 className="mx-auto max-w-4xl text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.1]">
-          <span className="bg-gradient-to-b from-white via-white to-white/50 bg-clip-text text-transparent">
-            Hire AI Employees.
+          <span className="bg-gradient-to-b from-white via-white to-white/60 bg-clip-text text-transparent">
+            We install systems into your business so work gets done{' '}
           </span>
-          <br />
-          <span className="bg-gradient-to-b from-white via-white to-white/50 bg-clip-text text-transparent">
-            Install AI Skills.
-          </span>
-          <br />
           <span className="bg-gradient-to-r from-violet-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">
-            Operate Your Business.
+            faster, more consistently, and at a lower cost.
           </span>
         </h1>
-        <p className="mx-auto mt-6 max-w-2xl text-base md:text-lg text-white/45 leading-relaxed">
-          Businesses use AI Workforce OS to deploy AI employees, automate workflows, supervise operations, and track measurable value from a single command center.
+        <p className="mx-auto mt-6 max-w-2xl text-base md:text-lg text-white/55 leading-relaxed">
+          Powered by automation, workflows, AI employees, and operational systems managed through Baseline&nbsp;OS.
         </p>
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link
-            href="/login"
+          <a
+            href="#how-it-works"
+            data-testid="hero-see-how-it-works"
             className="h-11 px-6 rounded-lg bg-white text-[#09090b] text-sm font-semibold hover:bg-white/90 transition-colors flex items-center gap-2"
           >
-            Book a Demo
+            See How It Works
             <ArrowRight />
-          </Link>
-          <a
-            href="#pricing"
+          </a>
+          <Link
+            href="/signup"
+            data-testid="hero-start-free"
             className="h-11 px-6 rounded-lg bg-white/[0.06] text-white/80 text-sm font-medium border border-white/[0.08] hover:bg-white/[0.1] hover:text-white transition-colors"
           >
-            View Pricing
-          </a>
+            Start Free
+          </Link>
         </div>
-
-        {/* Verticals trust strip — keeps the language vertical-agnostic */}
-        <div className="mt-14 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-xs text-white/30 font-medium tracking-wide uppercase">
-          {[
-            'Property Management',
-            'Real Estate',
-            'Mortgage',
-            'CPA',
-            'Law Firm',
-            'General Contractor',
-            'Home Services',
-            'Marketing Agency',
-            'AI Agency',
-          ].map((label, i, arr) => (
-            <span key={label} className="flex items-center gap-x-6">
-              <span>{label}</span>
-              {i < arr.length - 1 && <span className="w-1 h-1 rounded-full bg-white/20" aria-hidden />}
-            </span>
-          ))}
-        </div>
-
-        {/* Who-it's-for paragraph (vertical-rich) */}
-        <p className="mx-auto mt-10 max-w-3xl text-sm md:text-[15px] text-white/40 leading-relaxed">
-          Property managers, real estate professionals, mortgage companies, CPA firms, law firms,
-          contractors, home-service businesses, agencies, and operators use AI Workforce OS to
-          create a digital workforce that works alongside human employees, follows company rules,
-          asks for approval when necessary, and reports measurable business results. They can
-          install specialized skills, automate business operations, and supervise everything from
-          one executive command center.
-        </p>
       </section>
 
-      {/* ─── FEATURES ─── */}
-      <section id="features" className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-36">
-        <div className="mb-14">
-          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">
-            Everything to manage your{' '}
-            <span className="text-violet-400">AI workforce</span>
+      {/* ─── PROBLEM ─── */}
+      <section id="problem" className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-32">
+        <div className="max-w-3xl mx-auto text-center mb-12">
+          <span className="inline-block text-xs font-mono uppercase tracking-widest text-white/40 mb-4">The Problem</span>
+          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight leading-tight">
+            Most businesses lose money because{' '}
+            <span className="bg-gradient-to-r from-orange-300 to-amber-300 bg-clip-text text-transparent">
+              work falls through the cracks.
+            </span>
           </h2>
-          <p className="mt-3 text-white/40 max-w-lg">
-            One platform for deployment, supervision, cost control, and security — built for teams that operate at scale.
+          <p className="mt-5 text-white/45 max-w-xl mx-auto">
+            You hire good people, but the work still doesn&apos;t get done on time. Sound familiar?
           </p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {features.map(f => (
-            <div
-              key={f.title}
-              className="group rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 hover:border-violet-500/20 hover:bg-violet-500/[0.03] transition-colors"
+        <ul className="mx-auto max-w-2xl space-y-3">
+          {problems.map((p) => (
+            <li
+              key={p}
+              className="flex items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4"
+              data-testid="problem-item"
             >
-              <FeatureIcon>{f.icon}</FeatureIcon>
-              <h3 className="mt-4 text-sm font-semibold text-white">{f.title}</h3>
-              <p className="mt-2 text-sm text-white/40 leading-relaxed">{f.desc}</p>
-            </div>
+              <div className="text-amber-300/80 mt-0.5">
+                <AlertIcon />
+              </div>
+              <p className="text-[15px] text-white/80 leading-relaxed">{p}</p>
+            </li>
           ))}
+        </ul>
+      </section>
+
+      {/* ─── SOLUTION ─── */}
+      <section className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-32">
+        <div className="max-w-3xl mx-auto text-center">
+          <span className="inline-block text-xs font-mono uppercase tracking-widest text-violet-300/80 mb-4">The Solution</span>
+          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight leading-tight">
+            We install systems that make sure the{' '}
+            <span className="bg-gradient-to-r from-violet-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">
+              right work gets done at the right time.
+            </span>
+          </h2>
+          <p className="mt-5 text-white/55 leading-relaxed max-w-2xl mx-auto">
+            Your team stops being the bottleneck. Repetitive work runs in the background. Critical decisions still come to you — only when they need to.
+          </p>
         </div>
       </section>
 
-      {/* ─── HOW IT WORKS ─── */}
+      {/* ─── HOW IT WORKS — Install → Automate → Monitor ─── */}
       <section
         id="how-it-works"
         className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-36"
       >
         <div className="text-center mb-14">
-          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">
-            Three steps to <span className="text-violet-400">full autonomy</span>
+          <span className="inline-block text-xs font-mono uppercase tracking-widest text-white/40 mb-3">How It Works</span>
+          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">
+            Three steps from chaos to{' '}
+            <span className="text-violet-400">running on rails</span>
           </h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-12">
           {steps.map((step, i) => (
-            <div key={step.num} className="relative">
+            <div key={step.num} className="relative" data-testid={`how-step-${step.num}`}>
               {/* Connector line between steps (hidden on mobile) */}
               {i < steps.length - 1 && (
                 <div className="hidden md:block absolute top-8 left-[60%] right-[-2.5rem] h-px bg-gradient-to-r from-white/10 to-transparent" />
@@ -294,18 +299,83 @@ export default function LandingPage() {
                     STEP {step.num}
                   </span>
                   <h3 className="mt-1 text-lg font-semibold">{step.title}</h3>
-                  <p className="mt-2 text-sm text-white/40 leading-relaxed">{step.desc}</p>
+                  <p className="mt-2 text-sm text-white/50 leading-relaxed">{step.desc}</p>
                 </div>
               </div>
             </div>
           ))}
         </div>
+
+        {/* The "engine" callout — AI is acknowledged as how, not what */}
+        <div className="mt-14 mx-auto max-w-3xl rounded-xl border border-white/[0.06] bg-white/[0.02] px-6 py-5 text-center">
+          <p className="text-sm text-white/55 leading-relaxed">
+            <span className="text-white/85 font-medium">Under the hood:</span>{' '}
+            AI employees, installable skills, supervised teams, defined workflows, and Baseline&nbsp;OS as the executive command center. You see outcomes; the engine handles the rest.
+          </p>
+        </div>
       </section>
 
-      {/* ─── ROI / TESTIMONIAL ─── */}
+      {/* ─── WHAT YOU GET (features) ─── */}
+      <section id="features" className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-36">
+        <div className="mb-14 text-center">
+          <span className="inline-block text-xs font-mono uppercase tracking-widest text-white/40 mb-3">What You Get</span>
+          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">
+            Operations that{' '}
+            <span className="text-violet-400">actually run themselves</span>
+          </h2>
+          <p className="mt-3 text-white/45 max-w-xl mx-auto">
+            Built for teams that depend on execution, not effort.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {features.map(f => (
+            <div
+              key={f.title}
+              data-testid="feature-card"
+              className="group rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 hover:border-violet-500/20 hover:bg-violet-500/[0.03] transition-colors"
+            >
+              <FeatureIcon>{f.icon}</FeatureIcon>
+              <h3 className="mt-4 text-sm font-semibold text-white">{f.title}</h3>
+              <p className="mt-2 text-sm text-white/50 leading-relaxed">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ─── VERTICALS — built for businesses that depend on execution ─── */}
+      <section className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-32">
+        <div className="text-center max-w-3xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">
+            Built for Businesses That{' '}
+            <span className="text-violet-400">Depend on Execution</span>
+          </h2>
+          <p className="mt-4 text-white/45">
+            If your business runs on follow-ups, dispatch, approvals, intake, and reporting — this is for you.
+          </p>
+        </div>
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-xs text-white/35 font-medium tracking-wide uppercase">
+          {[
+            'Property Management',
+            'Real Estate',
+            'Mortgage',
+            'CPA Firms',
+            'Law Firms',
+            'General Contractors',
+            'Home Services',
+            'Marketing Agencies',
+            'AI Agencies',
+          ].map((label, i, arr) => (
+            <span key={label} className="flex items-center gap-x-6" data-testid="vertical-item">
+              <span>{label}</span>
+              {i < arr.length - 1 && <span className="w-1 h-1 rounded-full bg-white/20" aria-hidden />}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      {/* ─── ROI / TESTIMONIAL — outcome-focused quote; same metrics ─── */}
       <section className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-36">
         <div className="relative rounded-2xl border border-white/[0.06] bg-gradient-to-br from-violet-500/[0.06] to-blue-500/[0.04] overflow-hidden">
-          {/* Subtle inner border glow */}
           <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-transparent to-blue-500/10 opacity-40" />
           <div className="relative px-8 py-14 md:px-16 md:py-20 text-center">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 mb-6">
@@ -314,21 +384,21 @@ export default function LandingPage() {
                 <polyline points="17,6 23,6 23,12" />
               </svg>
             </div>
-            <blockquote className="mx-auto max-w-2xl text-xl md:text-2xl font-light leading-relaxed text-white/80">
-              &ldquo;We save{' '}
-              <span className="text-white font-medium">20+ hours per week</span>{' '}
-              on operations. Baseline Automations turned our reactive workflows into a proactive AI-driven workforce — across maintenance, intake, dispatch, and reporting.&rdquo;
+            <blockquote className="mx-auto max-w-2xl text-xl md:text-2xl font-light leading-relaxed text-white/85">
+              &ldquo;Baseline Automations helped us install systems that{' '}
+              <span className="text-white font-medium">eliminated bottlenecks, improved accountability, and gave our team back over 20 hours per week</span>{' '}
+              — across maintenance, intake, dispatch, and reporting.&rdquo;
             </blockquote>
             <div className="mt-8 grid grid-cols-3 gap-6 max-w-md mx-auto">
-              <div>
+              <div data-testid="metric-hours-saved">
                 <div className="text-2xl md:text-3xl font-bold text-white">20+</div>
                 <div className="text-xs text-white/40 mt-1 uppercase tracking-wide font-medium">Hours Saved / Week</div>
               </div>
-              <div>
+              <div data-testid="metric-faster-dispatch">
                 <div className="text-2xl md:text-3xl font-bold text-white">3.2×</div>
                 <div className="text-xs text-white/40 mt-1 uppercase tracking-wide font-medium">Faster Dispatch</div>
               </div>
-              <div>
+              <div data-testid="metric-cost-reduction">
                 <div className="text-2xl md:text-3xl font-bold text-white">40%</div>
                 <div className="text-xs text-white/40 mt-1 uppercase tracking-wide font-medium">Cost Reduction</div>
               </div>
@@ -340,53 +410,53 @@ export default function LandingPage() {
       {/* ─── PRICING TEASER ─── */}
       <section id="pricing" className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-36">
         <div className="text-center mb-14">
-          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">
+          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">
             Pricing that <span className="text-violet-400">scales with you</span>
           </h2>
-          <p className="mt-3 text-white/40 max-w-lg mx-auto">
-            Start free. Upgrade as your AI workforce grows. No hidden fees, no surprises.
+          <p className="mt-3 text-white/45 max-w-lg mx-auto">
+            Start with the systems you need today and expand as your operation grows.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-3xl mx-auto">
           {/* Free */}
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6">
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6" data-testid="pricing-card-starter">
             <span className="inline-block text-xs font-medium uppercase tracking-wider text-white/40 mb-2">Starter</span>
             <div className="text-3xl font-bold">Free</div>
-            <p className="mt-2 text-sm text-white/35">For evaluating the platform.</p>
-            <ul className="mt-5 space-y-2 text-sm text-white/50">
-              <li className="flex items-center gap-2"><CheckCircleIcon /> 1 AI Agent</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> Basic workflows</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> 7-day log history</li>
+            <p className="mt-2 text-sm text-white/40">For evaluating the platform.</p>
+            <ul className="mt-5 space-y-2 text-sm text-white/55">
+              <li className="flex items-center gap-2"><CheckCircleIcon /> 1 automated workflow</li>
+              <li className="flex items-center gap-2"><CheckCircleIcon /> Basic systems library</li>
+              <li className="flex items-center gap-2"><CheckCircleIcon /> 7-day activity history</li>
             </ul>
           </div>
 
           {/* Pro — highlighted */}
-          <div className="relative rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6">
+          <div className="relative rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6" data-testid="pricing-card-professional">
             <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[11px] font-semibold uppercase tracking-wider text-violet-300 bg-violet-500/20 border border-violet-500/30 rounded-full px-3 py-0.5">
               Popular
             </span>
             <span className="inline-block text-xs font-medium uppercase tracking-wider text-violet-300/80 mb-2">Professional</span>
             <div className="mt-1 text-3xl font-bold">$49<span className="text-base font-normal text-white/40">/mo</span></div>
-            <p className="mt-2 text-sm text-white/35">For growing teams.</p>
-            <ul className="mt-5 space-y-2 text-sm text-white/50">
-              <li className="flex items-center gap-2"><CheckCircleIcon /> Up to 10 Agents</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> All workflows</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> Quality gates</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> 90-day log history</li>
+            <p className="mt-2 text-sm text-white/40">For growing teams.</p>
+            <ul className="mt-5 space-y-2 text-sm text-white/55">
+              <li className="flex items-center gap-2"><CheckCircleIcon /> Up to 10 active workflows</li>
+              <li className="flex items-center gap-2"><CheckCircleIcon /> Full systems library</li>
+              <li className="flex items-center gap-2"><CheckCircleIcon /> Approval &amp; quality gates</li>
+              <li className="flex items-center gap-2"><CheckCircleIcon /> 90-day activity history</li>
               <li className="flex items-center gap-2"><CheckCircleIcon /> Priority support</li>
             </ul>
           </div>
 
           {/* Enterprise */}
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6">
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6" data-testid="pricing-card-enterprise">
             <span className="inline-block text-xs font-medium uppercase tracking-wider text-white/40 mb-2">Enterprise</span>
             <div className="text-3xl font-bold">Custom</div>
-            <p className="mt-2 text-sm text-white/35">For large portfolios.</p>
-            <ul className="mt-5 space-y-2 text-sm text-white/50">
-              <li className="flex items-center gap-2"><CheckCircleIcon /> Unlimited Agents</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> Multi-tenant</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> Security scanning</li>
+            <p className="mt-2 text-sm text-white/40">For multi-location operators.</p>
+            <ul className="mt-5 space-y-2 text-sm text-white/55">
+              <li className="flex items-center gap-2"><CheckCircleIcon /> Unlimited workflows</li>
+              <li className="flex items-center gap-2"><CheckCircleIcon /> Per-location workspaces</li>
+              <li className="flex items-center gap-2"><CheckCircleIcon /> Security &amp; compliance</li>
               <li className="flex items-center gap-2"><CheckCircleIcon /> SSO &amp; audit logs</li>
               <li className="flex items-center gap-2"><CheckCircleIcon /> Dedicated support</li>
             </ul>
@@ -396,6 +466,7 @@ export default function LandingPage() {
         <div className="text-center mt-10">
           <Link
             href="/pricing"
+            data-testid="pricing-view-full"
             className="inline-flex items-center gap-2 h-11 px-6 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors"
           >
             View Full Pricing
@@ -404,28 +475,31 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── CTA ─── */}
+      {/* ─── FINAL CTA — outcome-focused ─── */}
       <section className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-36">
         <div className="text-center rounded-2xl border border-white/[0.06] bg-white/[0.02] px-8 py-14 md:px-16 md:py-20">
-          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">
-            Ready to deploy your <span className="text-violet-400">first AI employee</span>?
+          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">
+            Ready to stop chasing work and start{' '}
+            <span className="text-violet-400">finishing it?</span>
           </h2>
-          <p className="mt-4 text-white/40 max-w-md mx-auto">
-            Get started in minutes. No credit card required.
+          <p className="mt-4 text-white/45 max-w-md mx-auto">
+            Set up in minutes. No credit card required.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
-              href="/login"
+              href="/signup"
+              data-testid="footer-cta-start-free"
               className="h-11 px-6 rounded-lg bg-white text-[#09090b] text-sm font-semibold hover:bg-white/90 transition-colors flex items-center gap-2"
             >
               Start Free
               <ArrowRight />
             </Link>
             <a
-              href="#features"
+              href="#how-it-works"
+              data-testid="footer-cta-learn-more"
               className="h-11 px-6 rounded-lg bg-white/[0.06] text-white/80 text-sm font-medium border border-white/[0.08] hover:bg-white/[0.1] hover:text-white transition-colors"
             >
-              Learn More
+              See How It Works
             </a>
           </div>
         </div>

@@ -4,6 +4,44 @@ Append-only log of significant deliveries. PRD.md holds the durable product spec
 
 ---
 
+## 2026-05-30 (PM #3) · Homepage positioning rewrite + Stripe Connect clarification
+
+**1. Stripe Connect blocker resolved (without writing code):**
+Walter was being prompted in the Stripe Dashboard to choose Platform / Marketplace / Connect Express / Custom. Confirmed Mission Control needs **Stripe Billing + Checkout only**. No Connect, no platform/marketplace, no application fees, no seller onboarding. Mission Control sells subscriptions + credit packs directly to its own customers. The sample-code zip the user downloaded was Connect-specific and is being ignored.
+
+**2. Homepage positioning rewrite — outcomes first, AI as engine.**
+Spec from user: lead with outcomes, technology second. Rewrote `/app/src/app/page.tsx` end-to-end:
+
+| Section | Before | After |
+|---|---|---|
+| Hero pill | "AI Workforce OS" | "Business Systems, Installed" |
+| Hero H1 | "Hire AI Employees. Install AI Skills. Operate Your Business." | "We install systems into your business so work gets done faster, more consistently, and at a lower cost." |
+| Hero sub | "Businesses use AI Workforce OS to deploy AI employees, automate workflows, supervise operations…" | "Powered by automation, workflows, AI employees, and operational systems managed through Baseline OS." |
+| Primary CTA | "Book a Demo" | "See How It Works" |
+| Secondary CTA | "View Pricing" | "Start Free" |
+| Nav | Features · How It Works · Pricing | The Problem · How It Works · What You Get · Pricing |
+| NEW section | — | **Problem:** "Most businesses lose money because work falls through the cracks." + 5 concrete pain examples (leads, invoices, approvals, communication, repetitive work) |
+| NEW section | — | **Solution:** "We install systems that make sure the right work gets done at the right time." |
+| How It Works | "Configure · Deploy · Supervise" (technology framing) | "Install Systems · Automate Work · Monitor Results" (outcome framing) + "Under the hood" callout that introduces AI employees / skills / teams / workflows / Baseline OS *after* the value is understood |
+| Features | "Deploy AI Agents · Supervise Workflows · Track Costs · Quality Gates · Multi-Tenant Workspaces · Security Scanning" | "Work that doesn't fall through the cracks · Consistent execution every day · Visibility into who did what · Approval before anything risky · Costs you can actually see · Separate workspaces for each part of the business" |
+| Verticals heading | (just a trust strip below hero) | "Built for Businesses That Depend on Execution" — full section, dedicated heading + the 9-vertical strip |
+| Testimonial | "Baseline Automations turned our reactive workflows into a proactive AI-driven workforce…" | "Baseline Automations helped us install systems that eliminated bottlenecks, improved accountability, and gave our team back over 20+ hours per week…" |
+| Metrics | 20+ / 3.2× / 40% | **Preserved unchanged** |
+| Pricing sub | "Start free. Upgrade as your AI workforce grows…" | "Start with the systems you need today and expand as your operation grows." |
+| Pricing card copy | "1 AI Agent · Up to 10 Agents · Unlimited Agents" | "1 automated workflow · Up to 10 active workflows · Unlimited workflows · Per-location workspaces" |
+| Final CTA | "Ready to deploy your first AI employee?" | "Ready to stop chasing work and start finishing it?" |
+
+AI / agent / runtime / orchestration terminology is fully removed from the first impression and reintroduced only in the "Under the hood" callout in §How It Works (one paragraph, deeper in the page).
+
+**Verification:**
+- Hero H1 confirmed via DOM read: `"We install systems into your business so work gets done faster, more consistently, and at a lower cost."`
+- 5 problem items, 3 how-steps (Install / Automate / Monitor), 9 verticals, 3 pricing cards, 3 metrics all present and rendering.
+- bodyHeight = 5294px > viewport, scrollY reaches 4214 after scrollTo(bottom) — page scrolls cleanly.
+- Scroll regression test still passes (root layout fix from PM #2 preserved).
+- `tsc --noEmit` clean, `eslint` clean (one pre-existing `<img>` warning), `vitest run` **1239 / 1239**, `next build` clean.
+
+---
+
 ## 2026-05-30 (PM #2) · P0 FIX — homepage scroll trap
 
 **Root cause:** root layout `/app/src/app/layout.tsx` line 122 wrapped every page in `<div className="h-screen overflow-hidden">`. That made sense for the authenticated dashboard (a fixed-viewport split-pane workstation) but trapped scroll for every public route — homepage, `/login`, `/signup`, `/marketplace`, `/pricing`, etc., all of which use `min-h-screen` and expect to scroll. Mouse wheel, trackpad, and mobile touch all dead. Body height clipped to 100vh; content below the fold hidden entirely.
