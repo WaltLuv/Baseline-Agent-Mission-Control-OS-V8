@@ -28,3 +28,42 @@ Append-only log of significant deliveries. PRD.md holds the durable product spec
 
 ### Result
 All 9 launch verticals shipping with complete playbooks (PM · GC · Home Services · Real Estate · Mortgage · CPA · Law Firm · Marketing Agency · AI Agency). Production verification checklist validated end-to-end. A new sales operator can open `SALES_OPERATOR_QUICKSTART.md`, follow it linearly, and close pilots without coaching.
+
+
+---
+
+## 2026-05-30 · OpenClaw Live Proof + Google OAuth Wiring + DO Preflight PASS
+
+**Goal:** Close the last 3 blockers for DigitalOcean deployment — prove OpenClaw is a real runtime (not simulation), wire Google OAuth creds, and confirm the production env template passes preflight.
+
+### OpenClaw — real runtime proof (P0 complete)
+- `/app/scripts/connect-runtime.mjs` executed against the user's external OpenClaw instance:
+  - Registered `openclaw-prod-1` (agent_id=48, workspace_id=1, runtime_type=openclaw) via `POST /api/agents/register`.
+  - Probed `https://keen-matsumoto-2.preview.emergentagent.com` → HTTP 200, `probe=alive`.
+  - Heartbeats accepted at 10s cadence; `GET /api/agent-runtimes` shows `connection_status=connected`, `seconds_since_heartbeat=8`.
+  - Refresh persistence proven (multiple polls return same row).
+  - Connection transition proven: heartbeat halted → row aged to 81s (about to flip to offline at 90s window) → re-register restored `hb_age=7s, status=connected`, idempotent (`new=false`, same agent_id).
+  - SQLite row confirmed in `agents` table with `workspace_id=1`; isolated from older test workspaces (99/113/131/...).
+- Targeted vitest: `runtime-lifecycle.test.ts` — 5/5 pass (handshake, heartbeat-age transitions, persistence-across-restart).
+
+### Google OAuth — credentials wired (P0 complete)
+- Added to `/app/.env`:
+  - `GOOGLE_CLIENT_ID=271101705254-75q3pv36d1v7ogasnr9ccd8g7slldb2b.apps.googleusercontent.com`
+  - `GOOGLE_CLIENT_SECRET=GOCSPX-…NkOK`
+  - `GOOGLE_REDIRECT_URI=https://mission.baselineautomations.com/api/auth/google/callback`
+  - `NEXT_PUBLIC_GOOGLE_CLIENT_ID=` (same as `GOOGLE_CLIENT_ID`)
+- Implementation status:
+  - **Current flow:** Google Identity Services (GIS) popup with ID-token verification at `POST /api/auth/google` (`src/lib/google-auth.ts`). Uses `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (browser) + `GOOGLE_CLIENT_ID` (server audience check). **Does not require redirect URI or client secret to function.**
+  - **Authorized JavaScript origins** in GCP must include `https://mission.baselineautomations.com` (and any other origins users will log in from).
+  - `GOOGLE_CLIENT_SECRET` + `GOOGLE_REDIRECT_URI` are stored for future server-side OAuth-code-flow callback (`/api/auth/google/callback` route not yet implemented — only needed if Drive/Calendar scopes are added later).
+- Ecosystem audit result: **Sibling app source (PropControl / VoiceOps / VisionOps) not mounted in this container.** Public references to PropControl found in `/app/docs/source/` only — no shared OAuth client config inside MC. The user is providing one Google client for Mission Control; no duplication risk in this codebase.
+
+### OpenClaw gateway token wired
+- Added to `/app/.env`: `OPENCLAW_GATEWAY_TOKEN=aee2…fd16`, `OPENCLAW_GATEWAY_URL`, `OPENCLAW_GATEWAY_WS_URL`.
+
+### DigitalOcean deploy template — completed + preflight PASS
+- `/app/.env.production.example` updated: added `SHARE_SIGNING_SECRET`, `MC_ENABLE_HSTS`, `OPENCLAW_GATEWAY_TOKEN`, all four Google OAuth vars, Resend (`RESEND_API_KEY`, `RESEND_FROM`). Switched `OPENCLAW_GATEWAY_HOST` default from `host.docker.internal` → `127.0.0.1` (gateway-local enforcement).
+- `bash scripts/preflight-production.sh` run against a fully-populated synthetic `.env.production` → **Preflight PASSED** (1 warning: Stripe in mock mode — expected).
+
+### Result
+All P0 deployment blockers cleared. Operator can now follow `/app/docs/operations/DEPLOY_DAY_RUNBOOK.md` and `/app/docs/operations/DIGITALOCEAN_EXECUTION.md` end-to-end. Remaining steps are pure operator actions (DO account creds, push image to GHCR, `doctl apps create`, attach domain, configure live Stripe webhook).

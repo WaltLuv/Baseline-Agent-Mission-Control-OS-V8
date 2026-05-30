@@ -25,8 +25,20 @@ Use via `x-api-key` header for programmatic API calls.
 `src/app/api/stripe/checkout/route.ts` returns a mock session when `STRIPE_SECRET_KEY` is unset.
 
 ## Google Sign-In
-**Skipped** for this iteration (user choice).
-Use local `AUTH_USER` / `AUTH_PASS` path above.
+**Credentials configured** in `/app/.env` (popup/GIS flow via `POST /api/auth/google`).
+- `GOOGLE_CLIENT_ID` / `NEXT_PUBLIC_GOOGLE_CLIENT_ID` = `271101705254-75q3pv36d1v7ogasnr9ccd8g7slldb2b.apps.googleusercontent.com`
+- `GOOGLE_CLIENT_SECRET` = `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` (reserved for future server-side OAuth-code flow)
+- `GOOGLE_REDIRECT_URI` = `https://mission.baselineautomations.com/api/auth/google/callback`
+- GCP Console **Authorized JavaScript origins** must include `https://mission.baselineautomations.com` for the popup flow to work.
+
+Local fallback: use `AUTH_USER` / `AUTH_PASS` above.
+
+## OpenClaw runtime (verified live)
+- External runtime URL: `https://keen-matsumoto-2.preview.emergentagent.com`
+- WebSocket: `wss://keen-matsumoto-2.preview.emergentagent.com/api/openclaw/ws`
+- Gateway token: `aee22098773e796a3fdf9bf1f3660a0635a08fdf7f3241add58714ceb549fd16`
+- Connector script: `/app/scripts/connect-runtime.mjs` (requires `MC_SESSION` cookie from admin login)
+- Verified registered: agent `openclaw-prod-1` (id=48, workspace_id=1) on 2026-05-30.
 
 ## Quick login (cookie session)
 ```
