@@ -26,7 +26,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.baselineautomations.com https://*.preview.emergentagent.com http://127.0.0.1:* http://localhost:*; connect-src 'self' ipc: http://ipc.localhost https://mission.baselineautomations.com https://staging.baselineautomations.com https://*.preview.emergentagent.com http://127.0.0.1:* http://localhost:*; frame-src 'self' https://mission.baselineautomations.com https://staging.baselineautomations.com https://*.preview.emergentagent.com http://127.0.0.1:* http://localhost:*"
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.baseline-agents.com https://baseline-agents.com https://*.baselineautomations.com https://*.preview.emergentagent.com http://127.0.0.1:* http://localhost:*; connect-src 'self' ipc: http://ipc.localhost https://baseline-agents.com https://*.baseline-agents.com https://mission.baselineautomations.com https://staging.baselineautomations.com https://*.preview.emergentagent.com http://127.0.0.1:* http://localhost:*; frame-src 'self' https://baseline-agents.com https://*.baseline-agents.com https://mission.baselineautomations.com https://staging.baselineautomations.com https://*.preview.emergentagent.com http://127.0.0.1:* http://localhost:*"
     }
   },
   "bundle": {

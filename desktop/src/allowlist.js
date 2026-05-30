@@ -7,13 +7,16 @@
 // ───────────────────────────────────────────────────────────────────
 
 export const MODES = {
-  production: 'https://mission.baselineautomations.com',
+  production: 'https://baseline-agents.com',
   staging:    'https://token-monetization.preview.emergentagent.com',
   localhost:  'http://127.0.0.1:3000',
 }
 
 // Strict allowlist. Custom URLs that don't match a host here are rejected.
 export const ALLOWED_HOSTS = new Set([
+  'baseline-agents.com',
+  'mission.baseline-agents.com',
+  'staging.baseline-agents.com',
   'mission.baselineautomations.com',
   'staging.baselineautomations.com',
   'token-monetization.preview.emergentagent.com',

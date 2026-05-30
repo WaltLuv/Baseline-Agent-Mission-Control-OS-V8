@@ -1845,6 +1845,85 @@ const migrations: Migration[] = [
         WHERE email IS NOT NULL AND email != ''
       `)
     }
+  },
+  {
+    id: '052_agent_name_unique_per_workspace',
+    up(db: Database.Database) {
+      // Multi-tenant correctness: agents.name was UNIQUE globally, which meant
+      // two workspaces could not both have an agent named "researcher" or
+      // "hermes-prod-1". Switch to UNIQUE(name, workspace_id).
+      //
+      // Done via SQLite table-rebuild pattern (the only safe way to drop a
+      // column-level UNIQUE constraint).
+      const tbl = db.prepare(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='agents'"
+      ).get() as { sql?: string } | undefined
+      if (!tbl?.sql) return
+      // If we've already rebuilt (no column-level UNIQUE on name), skip.
+      if (!/name\s+TEXT\s+NOT\s+NULL\s+UNIQUE/i.test(tbl.sql)) return
+
+      // Resolve duplicate names within the same workspace before adding the
+      // composite UNIQUE — collisions are de-duplicated by appending the
+      // agent id to the later row. We keep the lowest id intact.
+      const dupes = db.prepare(`
+        SELECT id, name, workspace_id FROM agents
+        WHERE rowid NOT IN (
+          SELECT MIN(rowid) FROM agents GROUP BY name, workspace_id
+        )
+      `).all() as Array<{ id: number; name: string; workspace_id: number }>
+      const updateDupe = db.prepare('UPDATE agents SET name = ? WHERE id = ?')
+      for (const d of dupes) {
+        updateDupe.run(`${d.name}__dup_${d.id}`, d.id)
+      }
+
+      db.exec('PRAGMA foreign_keys = OFF')
+      db.transaction(() => {
+        db.exec(`
+          CREATE TABLE agents_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            role TEXT NOT NULL,
+            session_key TEXT UNIQUE,
+            soul_content TEXT,
+            status TEXT NOT NULL DEFAULT 'offline',
+            last_seen INTEGER,
+            last_activity TEXT,
+            created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+            updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+            config TEXT,
+            workspace_id INTEGER NOT NULL DEFAULT 1,
+            source TEXT DEFAULT 'manual',
+            content_hash TEXT,
+            workspace_path TEXT,
+            hidden INTEGER NOT NULL DEFAULT 0,
+            working_memory TEXT DEFAULT '',
+            runtime_type TEXT DEFAULT NULL,
+            UNIQUE(name, workspace_id)
+          )
+        `)
+        db.exec(`
+          INSERT INTO agents_new (
+            id, name, role, session_key, soul_content, status, last_seen,
+            last_activity, created_at, updated_at, config, workspace_id,
+            source, content_hash, workspace_path, hidden, working_memory,
+            runtime_type
+          )
+          SELECT
+            id, name, role, session_key, soul_content, status, last_seen,
+            last_activity, created_at, updated_at, config, workspace_id,
+            source, content_hash, workspace_path, hidden, working_memory,
+            runtime_type
+          FROM agents
+        `)
+        db.exec('DROP TABLE agents')
+        db.exec('ALTER TABLE agents_new RENAME TO agents')
+        db.exec('CREATE INDEX IF NOT EXISTS idx_agents_session_key ON agents(session_key)')
+        db.exec('CREATE INDEX IF NOT EXISTS idx_agents_status ON agents(status)')
+        db.exec('CREATE INDEX IF NOT EXISTS idx_agents_workspace_id ON agents(workspace_id)')
+        db.exec('CREATE INDEX IF NOT EXISTS idx_agents_source ON agents(source)')
+      })()
+      db.exec('PRAGMA foreign_keys = ON')
+    }
   }
 ]
 

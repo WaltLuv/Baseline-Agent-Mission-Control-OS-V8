@@ -4,6 +4,46 @@ Append-only log of significant deliveries. PRD.md holds the durable product spec
 
 ---
 
+## 2026-05-30 (PM) · Launch Readiness Pass — single consolidated execution
+
+**Goal:** finish every remaining engineering item between Mission Control and customer #1. No new dashboards / panels / analytics.
+
+### Hermes — real runtime proof (matches OpenClaw standard)
+- `agent_id=55`, name `hermes-prod-1`, workspace_id=1, runtime_type=hermes.
+- Registration, heartbeat, persistence, workspace scope, reconnect — all proven.
+- `/api/agent-runtimes` `registered[]` shows `status=connected, hb_age<10s` against both `hermes-prod-1` and `openclaw-prod-1` simultaneously.
+
+### Multi-tenant correctness fix (P0 — was a SaaS blocker)
+- Migration `052_agent_name_unique_per_workspace`: rebuilds `agents` table dropping global `UNIQUE(name)` in favor of `UNIQUE(name, workspace_id)`. SQLite table-rebuild pattern, duplicates de-duplicated by appending `__dup_<id>` to later collisions.
+- Two customers can now both name an agent `hermes-prod-1` / `researcher` / etc.
+
+### Domain migration: `baseline-agents.com` (Resend-verified canonical host)
+- `/app/.env`: `GOOGLE_REDIRECT_URI` flipped from `mission.baselineautomations.com` → `baseline-agents.com`.
+- `/app/.env.production.example`: `MC_ALLOWED_HOSTS`, `MC_HOST`, `GOOGLE_REDIRECT_URI`, `RESEND_FROM` all switched.
+- Flight Deck `desktop/src/allowlist.js`: `MODES.production` + `ALLOWED_HOSTS` updated.
+- Flight Deck `desktop/src-tauri/tauri.conf.json` CSP: added `https://baseline-agents.com` + `https://*.baseline-agents.com` to `connect-src` / `frame-src` / `img-src`.
+
+### Production hardening verification (all green)
+- `tsc --noEmit` — 0 errors
+- `eslint .` — 0 errors
+- `vitest run` — **1236 / 1236 pass**
+- `next build` — clean
+
+### Operator deliverable
+- `/app/docs/operations/LAUNCH_OPERATOR_PACKAGE.md` — single document, every command verbatim, covers DigitalOcean + Google + Stripe + Flight Deck + rollback + health verification. Supersedes prior multi-document readiness reports.
+
+### Result
+0 engineering blockers between current code and customer #1. All remaining items are operator credentials/registrations (DO token, GCP origins, Stripe live keys, Flight Deck signing).
+
+---
+
+
+# Mission Control — Changelog
+
+Append-only log of significant deliveries. PRD.md holds the durable product spec; this file holds the timeline.
+
+---
+
 ## 2026-05-29 · Revenue-Readiness Stack
 
 **Goal:** make the launch + sales materials complete and usable. A new operator should be able to read one quickstart, pick a vertical, mint a signed demo, run discovery, and propose a 14-day pilot without consulting anyone else.

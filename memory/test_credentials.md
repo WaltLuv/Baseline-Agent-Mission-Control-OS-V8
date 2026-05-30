@@ -28,8 +28,8 @@ Use via `x-api-key` header for programmatic API calls.
 **Credentials configured** in `/app/.env` (popup/GIS flow via `POST /api/auth/google`).
 - `GOOGLE_CLIENT_ID` / `NEXT_PUBLIC_GOOGLE_CLIENT_ID` = `271101705254-75q3pv36d1v7ogasnr9ccd8g7slldb2b.apps.googleusercontent.com`
 - `GOOGLE_CLIENT_SECRET` = `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` (reserved for future server-side OAuth-code flow)
-- `GOOGLE_REDIRECT_URI` = `https://mission.baselineautomations.com/api/auth/google/callback`
-- GCP Console **Authorized JavaScript origins** must include `https://mission.baselineautomations.com` for the popup flow to work.
+- `GOOGLE_REDIRECT_URI` = `https://baseline-agents.com/api/auth/google/callback`
+- GCP Console **Authorized JavaScript origins** must include `https://baseline-agents.com` for the popup flow to work.
 
 Local fallback: use `AUTH_USER` / `AUTH_PASS` above.
 
