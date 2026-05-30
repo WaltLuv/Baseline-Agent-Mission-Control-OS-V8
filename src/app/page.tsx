@@ -437,7 +437,7 @@ export default function LandingPage() {
               Popular
             </span>
             <span className="inline-block text-xs font-medium uppercase tracking-wider text-violet-300/80 mb-2">Professional</span>
-            <div className="mt-1 text-3xl font-bold">$49<span className="text-base font-normal text-white/40">/mo</span></div>
+            <div className="mt-1 text-3xl font-bold">$499<span className="text-base font-normal text-white/40">/mo</span></div>
             <p className="mt-2 text-sm text-white/40">For growing teams.</p>
             <ul className="mt-5 space-y-2 text-sm text-white/55">
               <li className="flex items-center gap-2"><CheckCircleIcon /> Up to 10 active workflows</li>
