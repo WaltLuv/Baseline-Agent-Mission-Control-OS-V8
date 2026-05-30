@@ -4,6 +4,35 @@ Append-only log of significant deliveries. PRD.md holds the durable product spec
 
 ---
 
+## 2026-05-30 (PM #2) · P0 FIX — homepage scroll trap
+
+**Root cause:** root layout `/app/src/app/layout.tsx` line 122 wrapped every page in `<div className="h-screen overflow-hidden">`. That made sense for the authenticated dashboard (a fixed-viewport split-pane workstation) but trapped scroll for every public route — homepage, `/login`, `/signup`, `/marketplace`, `/pricing`, etc., all of which use `min-h-screen` and expect to scroll. Mouse wheel, trackpad, and mobile touch all dead. Body height clipped to 100vh; content below the fold hidden entirely.
+
+**Fix (root-cause, not patched):**
+- `/app/src/app/layout.tsx` — removed `h-screen overflow-hidden`. Root wrapper now `<div className="bg-background text-foreground">`.
+- `/app/src/app/app/layout.tsx` — NEW. Re-applies `h-screen overflow-hidden` only to the authenticated `/app/*` segment.
+
+**Proof:**
+
+| Metric | Before | After |
+|---|---|---|
+| `document.body.scrollHeight` (home) | 1080 (= viewport, trapped) | 3923 |
+| `scrollY` after `scrollTo(bottom)` | 0 (frozen) | 2843 |
+| Mobile (390×844) bottom scrollY | 0 | 2843 |
+| Footer DOM visible | No | Yes — "© 2026 Baseline Automations" |
+| Main-frame navigations in 3-min observation | (n/a) | 0 (zero auto-refresh) |
+| Body height variation in 3-min observation | (n/a) | 0 (stable 3923) |
+
+**Regression test added:** `src/app/__tests__/homepage-scroll.test.ts` — 3 assertions guarding the layout shape, runs in the standard vitest suite.
+
+**Quality gates after fix:**
+- `tsc --noEmit` — 0 errors
+- `eslint .` — 0 errors
+- `vitest run` — **1239 / 1239 pass** (was 1236; +3 regression tests)
+- `next build` — clean
+
+---
+
 ## 2026-05-30 (PM) · Launch Readiness Pass — single consolidated execution
 
 **Goal:** finish every remaining engineering item between Mission Control and customer #1. No new dashboards / panels / analytics.

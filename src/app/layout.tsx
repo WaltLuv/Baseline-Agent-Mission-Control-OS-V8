@@ -119,7 +119,7 @@ export default async function RootLayout({
           >
             <ThemeBackground />
             <RefreshConfigProvider>
-              <div className="h-screen overflow-hidden bg-background text-foreground">
+              <div className="bg-background text-foreground">
                 {children}
               </div>
             </RefreshConfigProvider>
