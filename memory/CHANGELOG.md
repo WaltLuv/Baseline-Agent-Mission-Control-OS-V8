@@ -4,6 +4,53 @@ Append-only log of significant deliveries. PRD.md holds the durable product spec
 
 ---
 
+## 2026-05-30 (PM #4) · Google Auth GSI root-cause fix + hero reverts + host hardening runbook
+
+**P0a — Hero copy reverts (per user):**
+- Hero pill: `Business Systems, Installed` → `AI Workforce OS`
+- Final CTA H2: `Ready to stop chasing work and start finishing it?` → `Ready to deploy your first AI employee?`
+- All other outcome-first messaging (Problem section, Solution section, How-it-works "Install / Automate / Monitor", outcome-led features, verticals, testimonial, pricing copy) **preserved**.
+
+**P0b — Google Auth `[GSI_LOGGER]: Check credential status returns invalid response`:**
+
+Root-caused into TWO distinct issues:
+
+1. **CSP violation (code fix):** Console showed `Loading the stylesheet 'https://accounts.google.com/gsi/style' violates "style-src-elem 'self' 'unsafe-inline'"`. The CSP builder (`src/lib/csp.ts`) allowed `accounts.google.com` in `script-src` and `frame-src` only — missing from `style-src` / `style-src-elem` / `connect-src` / `img-src`-for-avatars. GSI cannot render its credential picker UI without all of those.
+
+   **Fix:** rewrote `buildMissionControlCsp` to grant the full GSI surface when `googleEnabled=true`:
+   - `script-src` → adds `https://accounts.google.com https://apis.google.com`
+   - `style-src` + `style-src-elem` → adds `https://accounts.google.com`
+   - `connect-src` → adds `https://accounts.google.com https://oauth2.googleapis.com`
+   - `frame-src` → adds `https://accounts.google.com https://content.googleapis.com`
+   - `img-src` → adds `https://*.googleusercontent.com https://lh3.googleusercontent.com`
+
+   Browser re-verification: the stylesheet CSP violation is gone; GSI button renders cleanly. New regression tests in `src/lib/__tests__/csp.test.ts` pin every Google surface and assert nothing leaks when `googleEnabled=false`.
+
+2. **Missing origin in Google Cloud Console (operator action):** Google's credential-status endpoint replies "invalid" for any origin not in the OAuth client's Authorized JavaScript origins. The Emergent preview URL `https://e3fc518c-…preview.emergentagent.com` was never added (only `mission.baselineautomations.com` was, and that domain isn't owned by us). Updated `docs/operations/LAUNCH_OPERATOR_PACKAGE.md §C.1` with the current preview URL + a warning that this error has no code-side fix and disappears the moment the origin lands in GCP.
+
+**P1 — Host hardening runbook (new §I in `LAUNCH_OPERATOR_PACKAGE.md`):**
+
+Added a complete §I "Host hardening" section covering:
+- I.1 — Non-root container user (already in `Dockerfile.hardened` line 92 — `USER nextjs` UID 1001 — documented with verification command)
+- I.2 — NTP (`timedatectl set-ntp true` + verification)
+- I.3 — UFW firewall (allow OpenSSH, 80, 443, then enable)
+- I.4 — Unattended-upgrades for Debian/Ubuntu and dnf-automatic for RHEL/Fedora
+- I.5 — fail2ban (SSH brute-force lockout)
+- I.6 — `/tmp` hardening with `noexec,nosuid,nodev` in `/etc/fstab`
+- I.7 — AppArmor (Ubuntu/Debian) or SELinux (RHEL/Fedora) confirmation
+- I.8 — Core-dump suppression (`kernel.core_pattern = |/bin/false`) persisted via `/etc/sysctl.d`
+- I.9 — Optional LUKS encryption of the data volume
+- I.10 — 8-step verification checklist
+
+Explicit note at top of §I: if the operator uses **DigitalOcean App Platform** (the recommended path), DO manages all of this; this section only applies to raw droplet deployments.
+
+**Verification:**
+- `tsc --noEmit` — clean
+- `vitest run` — **1241 / 1241 pass** (was 1239; +2 new CSP regression tests)
+- Browser re-test on `/login`: GSI script loaded, `window.google.accounts` present, Sign-in-with-Google button rendered, stylesheet CSP violation **gone**. Remaining `inline script violates CSP` is a `next dev` HMR injection — not present in production builds and unrelated to GSI.
+
+---
+
 ## 2026-05-30 (PM #3) · Homepage positioning rewrite + Stripe Connect clarification
 
 **1. Stripe Connect blocker resolved (without writing code):**

@@ -237,11 +237,13 @@ Go to: https://console.cloud.google.com/apis/credentials → click the OAuth 2.0
 
 | Field | Value |
 |---|---|
-| Authorized JavaScript origins | `https://baseline-agents.com` <br/>`https://baseline-agents.com:443` <br/>(optional) `http://localhost:3000` for dev |
+| Authorized JavaScript origins | `https://baseline-agents.com` <br/>`https://www.baseline-agents.com` <br/>`https://e3fc518c-8e0a-4829-ab12-14c781079505.preview.emergentagent.com` (current Emergent preview — add for dev testing; remove later) <br/>(optional) `http://localhost:3000` for local dev |
 | Authorized redirect URIs | `https://baseline-agents.com/api/auth/google/callback` |
 | OAuth consent screen — Publishing status | **In production** (not "Testing", which caps at 100 users) |
 | OAuth consent screen — User type | **External** |
 | Scopes | `openid`, `email`, `profile` (already the default — no additional scopes needed for sign-in) |
+
+> ⚠ **The error `[GSI_LOGGER]: Check credential status returns invalid response` is Google's literal way of saying "this origin is not in my Authorized JavaScript origins list."** The CSP/code fix landed on 2026-05-30 cleared the secondary CSP violation. The remaining error will disappear the moment you add the page's actual origin to the GCP OAuth client. There is no other code-side fix possible — Google's credential-status endpoint refuses to respond to unknown origins.
 
 ### C.2 — Env vars (already configured in dev `/app/.env`)
 
@@ -437,7 +439,125 @@ Signing config goes in `desktop/src-tauri/tauri.conf.json` under `bundle.macOS` 
 
 ---
 
-## Reference — what got delivered in this pass
+## I. Host hardening (DigitalOcean droplet only — App Platform handles this for you)
+
+If you go with **DigitalOcean App Platform** (§B.4, the recommended path), DO manages the underlying host: non-root container user, automatic kernel patches, managed firewall, and time sync are all baked in. **Skip this whole section.**
+
+If you instead deploy on a **DigitalOcean Droplet** (a raw Ubuntu VM you own), the operator must harden the host. Run every command below as root or via `sudo`.
+
+### I.1 — Confirm the app runs as a non-root user
+Mission Control's Docker image already drops to `USER nextjs` (UID 1001 — see `Dockerfile.hardened` line 92). No host action needed for the app process itself. To prove it after deploy:
+```bash
+docker exec <container> whoami
+# Expect: nextjs   (NOT root)
+docker exec <container> id
+# Expect: uid=1001(nextjs) gid=1001(nodejs)
+```
+
+### I.2 — NTP (clock sync, required for TLS + JWT)
+```bash
+sudo timedatectl set-ntp true
+timedatectl status                 # confirm: "NTP service: active" + "System clock synchronized: yes"
+```
+
+### I.3 — Firewall (UFW)
+```bash
+sudo ufw allow OpenSSH
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw --force enable
+sudo ufw status verbose             # confirm: 22 / 80 / 443 listed, default deny incoming
+```
+
+### I.4 — Unattended security upgrades
+**Ubuntu / Debian:**
+```bash
+sudo apt update
+sudo apt install -y unattended-upgrades apt-listchanges
+sudo dpkg-reconfigure --priority=low unattended-upgrades
+# Verify:
+sudo systemctl is-active unattended-upgrades
+cat /etc/apt/apt.conf.d/20auto-upgrades   # confirm both directives = "1"
+```
+**RHEL / Fedora / Rocky / Alma:**
+```bash
+sudo dnf install -y dnf-automatic
+sudo systemctl enable --now dnf-automatic.timer
+systemctl status dnf-automatic.timer
+```
+
+### I.5 — fail2ban (brute-force SSH lockout)
+```bash
+sudo apt install -y fail2ban
+sudo systemctl enable --now fail2ban
+sudo fail2ban-client status sshd    # confirm: jail active
+```
+
+### I.6 — `/tmp` hardening (Ubuntu/Debian)
+Add `noexec,nosuid,nodev` so attackers can't run payloads dropped into `/tmp`. Append to `/etc/fstab`:
+```bash
+# /etc/fstab
+tmpfs   /tmp   tmpfs   defaults,noexec,nosuid,nodev,size=512M   0  0
+```
+Then:
+```bash
+sudo mount -o remount /tmp
+mount | grep ' /tmp '              # confirm: noexec,nosuid,nodev appear
+```
+
+### I.7 — Mandatory access control
+- **Ubuntu/Debian:** AppArmor is enabled out-of-the-box. Confirm:
+  ```bash
+  sudo aa-status
+  # Expect: "X profiles are loaded" and "Y processes are in enforce mode"
+  ```
+  Leave Docker's default profile (`docker-default`) in place — it sandboxes containers automatically.
+- **RHEL/Fedora:** SELinux is enabled out-of-the-box. Confirm: `getenforce` → `Enforcing`.
+
+### I.8 — Restrict core dumps (prevent secrets from leaking to disk)
+```bash
+echo "|/bin/false" | sudo tee /proc/sys/kernel/core_pattern
+# Persist across reboot — append to /etc/sysctl.d/99-mission-control.conf:
+echo "kernel.core_pattern = |/bin/false" | sudo tee -a /etc/sysctl.d/99-mission-control.conf
+sudo sysctl --system
+```
+
+### I.9 — (Optional) LUKS on the data volume
+If your droplet has a separate data disk (recommended for `MISSION_CONTROL_DATA_DIR=/var/lib/mission-control`), encrypt it before mounting:
+```bash
+# DESTRUCTIVE — only on a fresh data disk
+sudo cryptsetup -y -v luksFormat /dev/sda      # replace with your data device
+sudo cryptsetup open /dev/sda mc-data
+sudo mkfs.ext4 /dev/mapper/mc-data
+sudo mkdir -p /var/lib/mission-control
+sudo mount /dev/mapper/mc-data /var/lib/mission-control
+```
+Then add to `/etc/crypttab` so it unlocks at boot (either keyfile on root, or you'll have to type the passphrase via console after every reboot).
+
+### I.10 — Verification checklist after running §I
+```bash
+# 1. App container is non-root
+docker exec mc whoami                                  # nextjs
+# 2. NTP active
+timedatectl status | grep "System clock synchronized"  # yes
+# 3. UFW active
+sudo ufw status | head -1                              # Status: active
+# 4. Unattended-upgrades running
+sudo systemctl is-active unattended-upgrades           # active
+# 5. fail2ban jail up
+sudo fail2ban-client status sshd | grep "Currently banned"
+# 6. /tmp hardened
+mount | grep ' /tmp '                                  # noexec,nosuid,nodev
+# 7. AppArmor/SELinux enforcing
+sudo aa-status 2>/dev/null || getenforce               # enforce / Enforcing
+# 8. Core dumps disabled
+cat /proc/sys/kernel/core_pattern                      # |/bin/false
+```
+
+If all 8 lines return as expected, the host is hardened. Move on to §B.8 (health verification).
+
+---
+
 
 - Real Hermes runtime proof (matches OpenClaw standard)
 - Multi-tenant fix: `agents.name` UNIQUE constraint scoped to workspace (migration 052)

@@ -190,7 +190,7 @@ export default function LandingPage() {
       {/* ─── HERO ─── outcome-first headline; technology mentioned only as the engine */}
       <section className="relative z-10 mx-auto max-w-screen-xl px-6 pt-20 pb-24 md:pt-32 md:pb-36 text-center">
         <div className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/20 bg-violet-500/5 px-3.5 py-1 text-[13px] font-medium text-violet-300 mb-8">
-          Business Systems, Installed
+          AI Workforce OS
         </div>
         <h1 className="mx-auto max-w-4xl text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.1]">
           <span className="bg-gradient-to-b from-white via-white to-white/60 bg-clip-text text-transparent">
@@ -479,8 +479,8 @@ export default function LandingPage() {
       <section className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-36">
         <div className="text-center rounded-2xl border border-white/[0.06] bg-white/[0.02] px-8 py-14 md:px-16 md:py-20">
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">
-            Ready to stop chasing work and start{' '}
-            <span className="text-violet-400">finishing it?</span>
+            Ready to deploy your{' '}
+            <span className="text-violet-400">first AI employee?</span>
           </h2>
           <p className="mt-4 text-white/45 max-w-md mx-auto">
             Set up in minutes. No credit card required.
