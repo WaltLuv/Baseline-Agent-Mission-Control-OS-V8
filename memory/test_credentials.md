@@ -88,3 +88,18 @@ curl -b /tmp/cookies.txt -X POST http://127.0.0.1:3000/api/tokens \
 - Workspace ID: 3, User ID: 3.
 - **Teammate invite (operator)**: `teammate-cz-prod@example.com` — invite id=1 generated; accept_url returned by `/api/workspaces/3/invites`. email_status=`not_sent`, email_provider=`resend`.
 - Earlier curl-only signup: `cz-prod-1780220167@example.com` / `ChangeMe!1234ABC` (workspace 2).
+
+
+## 2026-05-31 — Email pipeline LIVE (iter 6)
+- Resend verified domain: `baseline-agents.com` (us-east-1, status: verified)
+- `MC_EMAIL_FROM=Baseline OS <onboarding@baseline-agents.com>` set in /app/.env
+- Proven delivery: `POST /api/auth/forgot-password` → Resend → DELIVERED to `newmoney2217+mc1780224624@gmail.com` (Resend id 10:50:24 UTC 2026-05-31)
+- Standalone env loader: `scripts/load-env.cjs` + supervisor start script now exports /app/.env into process.env at startup. Next.js standalone does not parse .env at runtime — without this, every env update after `yarn build` is invisible.
+
+## 2026-05-31 — Stripe live (partial, iter 6)
+- `STRIPE_PUBLISHABLE_KEY=pk_live_51TcdsmAu5pCrx2N6...` (wired)
+- `STRIPE_WEBHOOK_SECRET=whsec_PIIdSKTcABY8VhpZlvMyUnr8i6f8btO4` (verified — signed HMAC accepted by /api/webhooks/stripe → 200)
+- `STRIPE_WEBHOOK_ENDPOINT_ID=we_1TcfbtAu5pCrx2N64UDukzfQ`
+- `NEXT_PUBLIC_STRIPE_LIVE_MODE=true`
+- BLOCKED: pasted `mk_1Tcdsr...` is not a Stripe key (Stripe API: Invalid API Key). Need `sk_live_*` or `rk_live_*`.
+

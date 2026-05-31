@@ -14,6 +14,17 @@ set -e
 export PATH="/app/.node22/bin:$PATH"
 cd /app
 
+# Load /app/.env into the environment before exec'ing the standalone server.
+# Next.js' built-in dotenv only runs at build time; the standalone runtime
+# does NOT re-parse .env. Without this, env values added after `yarn build`
+# (e.g. STRIPE_*, MC_EMAIL_FROM updates) are invisible to the running server.
+# NUL-separated stream tolerates values with spaces / `<` `>` / quotes.
+if [ -f /app/.env ] && [ -x /app/.node22/bin/node ]; then
+  while IFS= read -r -d '' line; do
+    export "$line"
+  done < <(/app/.node22/bin/node /app/scripts/load-env.cjs /app/.env 2>/dev/null)
+fi
+
 NODE_BIN="/app/.node22/bin/node"
 NPM_BIN="/app/.node22/bin/npm"
 

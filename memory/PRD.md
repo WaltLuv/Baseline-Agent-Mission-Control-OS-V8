@@ -3256,3 +3256,28 @@ Mission Control itself is shippable. No more capability additions until the thre
   the runtime's responsibility.
 - **`mc-cli.cjs` at 1470 lines** — recommended to split into per-group
   modules in a follow-up refactor (testing-agent flagged).
+
+---
+
+## 38. — Operator Input Audit + Resend Domain LIVE (2026-05-31, iter 6)
+
+**Root-cause discovery:** Next.js 16 standalone runtime does not parse `.env` at server start. Every "operator pasted keys but app didn't see them" symptom over the last 3 passes was caused by this. Process environment had only NODE_ENV/PORT/HOSTNAME — zero MC_/STRIPE_/GOOGLE_/etc.
+
+**Fix:** `scripts/load-env.cjs` + supervisor start script NUL-stream parses `/app/.env` and exports all values before exec'ing the standalone server. Tolerates `Display Name <email@domain>` value shape (which bash `source` chokes on).
+
+**Resend email pipeline LIVE through `baseline-agents.com`:**
+- Domain verified by operator at Resend (us-east-1).
+- `MC_EMAIL_FROM=Baseline OS <onboarding@baseline-agents.com>` applied.
+- Real proof: `POST /api/auth/forgot-password` for `newmoney2217+mc1780224624@gmail.com` → Resend delivered (status: `delivered`, 2026-05-31 10:50:24 UTC).
+
+**Stripe live (partial):**
+- Webhook signing secret verified end-to-end (HMAC-SHA256 signed event accepted by `/api/webhooks/stripe`).
+- Live publishable key + live-mode flag wired.
+- Secret key pasted by operator (`mk_1Tcdsr…`) was rejected by Stripe API as "Invalid API Key provided" — `mk_` is not a Stripe credential prefix. Still need `sk_live_*` or `rk_live_*` to unlock live checkout and the full `/api/stripe/webhook` handler.
+
+**Webhook allowlist patched:** both `/api/stripe/webhook` and `/api/webhooks/stripe` are now public in the proxy.
+
+**Updated outstanding operator inputs:** down to TWO precise items:
+1. Stripe live secret key (`sk_live_*` or `rk_live_*`).
+2. Flight Deck CI tag push (`git tag flight-deck-v0.1.0` from a local clone — this sandbox has no `origin` remote).
+
