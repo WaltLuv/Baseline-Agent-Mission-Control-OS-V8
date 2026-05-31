@@ -3150,3 +3150,93 @@ domain.
 - Tag `flight-deck-v0.1.0` and push to fire the GH Actions matrix to produce macOS + Windows + Linux-x64 artifacts.
 - Move artifact matrix in `/api/flight-deck/manifest` to a `manifest.json` per-version file when v0.2.0 ships, so the source-of-truth is the build pipeline (testing agent recommendation).
 - Optional: split `mc-cli.cjs` into command-group modules when it crosses 1500 lines.
+
+
+---
+
+## 36. — MCP Audit + CLI Mapping + Runtime & Operator Proof Pass (2026-05-31, iter 4)
+
+### 36.1 — Discovery: Mission Control already has a 49-tool MCP surface
+- `scripts/mc-mcp-server.cjs` (849 lines, zero deps) exposes the entire
+  Mission Control brain as MCP tools over stdio: agents, tasks, runs,
+  evals, provenance, sessions, skills, SOUL, per-agent memory, the
+  workspace knowledge vault, knowledge ops (gaps / consolidate / rebuild),
+  connections, cost/cron, health/dashboard.
+- Every MCP tool wraps an existing HTTP route — single source of truth.
+
+### 36.2 — Two docs written
+- `docs/MCP_TOOL_AUDIT.md` — every tool: route, status, CLI parity,
+  UI parity, destructive flag, workspace scope, test coverage,
+  intentionally-excluded list, safety classification.
+- `docs/CLI_MCP_MAPPING.md` — explicit 1:1 mapping of every CLI verb to
+  the MCP tool(s) and the HTTP route behind them. Lists operator-only
+  verbs that intentionally have no MCP counterpart.
+
+### 36.3 — CLI extended with MCP-aligned operator verbs (`mc-cli.cjs` → 1470 lines)
+- New singular-noun groups: `agent`, `task`, `run`, `eval`, `session`,
+  `memory`, `soul`, `knowledge`, `queue`.
+- Top-level shortcuts: `mc health`, `mc dashboard` (both → `/api/status`).
+- All commands honor `--json` and emit non-zero exit codes on failure.
+- **Safety guard implemented at dispatcher level**: 8 destructive verbs
+  refuse to run without `--yes`, short-circuit to `ok=false` exit=2
+  (USAGE) **before any HTTP call**:
+  - `memory write`, `memory clear`
+  - `soul write`
+  - `knowledge write-file`, `knowledge consolidate`, `knowledge rebuild-index`
+  - `session control`
+  - `agent mint-key`
+  - `employee install`, `skill install`
+  - `deploy rollback`
+- Previously-stubbed CLI commands now `working`:
+  - `mc employee install --slug <s> --yes` → `POST /api/marketplace/purchase`
+  - `mc skill install --slug <s> --yes` → `POST /api/marketplace/purchase`
+  - `mc deploy preflight` → exec's `/app/scripts/preflight-production.sh` and captures stdout/stderr/exit_code
+  - `mc deploy rollback --yes` → returns honest INFO + 5-step runbook
+    (no fake 200) because rollback is platform-specific.
+
+### 36.4 — Runtime proof loop (4 of 4 runtimes verified end-to-end)
+End-to-end transcript at `/app/test_reports/cli_proof_run.log`. For
+each runtime kind (`claude`, `hermes`, `openclaw`, `codex`):
+
+```
+[connect-runtime] registered name=proof-<kind>-runtime runtime_type=<kind> agent_id=N new=true auth=api-key
+[connect-runtime] heartbeat ok @ 2026-05-31T09:09:..Z probe=alive auth=api-key
+```
+
+All four appear in `mc agent list --json` with correct `runtime_type`.
+Auth mode: agent-scoped `mca_` API key minted via
+`mc agent mint-key --id 1 --scopes runtime --yes`.
+
+### 36.5 — Task execution loop proven
+```
+mc task create  →  id=1, status=assigned, assigned_to=proof-claude-runtime
+mc queue poll --agent proof-claude-runtime → task=1 status=in_progress (auto-flip)
+```
+
+### 36.6 — Gateway operational
+- `mc gateway health` reports the FastMCP agent gateway at
+  `127.0.0.1:8765`: `enabled_agents=[claude, codex, opencode, hermes]`,
+  `mc_connected=true`.
+
+### 36.7 — Runtime Setup Guide
+- `docs/RUNTIME_SETUP_GUIDE.md` — operator-ready guide with
+  per-runtime env templates (Hermes / OpenClaw / Claude Code / Codex),
+  task examples, key rotation, Flight Deck section, full proof
+  transcript at the bottom.
+
+### 36.8 — Tests
+- `/app/test_reports/iteration_4.json` — 77/77 effective assertions
+  pass on the new CLI/MCP surface, docs files, destructive guards,
+  proof runtimes, deploy preflight EXEC behavior, employee install
+  marketplace routing.
+
+### 36.9 — Outstanding boundaries
+- **Cross-platform Flight Deck installers** (macOS .dmg, Windows .msi,
+  Linux x64 .AppImage/.deb) still require pushing `flight-deck-v0.1.0`
+  tag — CI workflow is wired (`.github/workflows/flight-deck-release.yml`).
+- **Real autonomous worker round-trip** (Claude Code actually opening a
+  PR after `mc task create`) requires a Claude Code / Codex daemon on
+  the runtime host. CLI surfaces the assignment; worker semantics are
+  the runtime's responsibility.
+- **`mc-cli.cjs` at 1470 lines** — recommended to split into per-group
+  modules in a follow-up refactor (testing-agent flagged).
