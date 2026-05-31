@@ -20,15 +20,20 @@ export function FirstRunTour() {
   const [index, setIndex] = useState(0)
   const navigateToPanel = useNavigateToPanel()
 
-  // Auto-open once per browser
+  // Auto-open once per browser — ONLY on the dashboard overview. Customer
+  // Zero bug: if a user navigates straight to /app/team or /app/billing on
+  // first visit, the tour would still auto-open after 1.5s and yank them
+  // back to /app/overview (because step 1's panel = 'overview'). Solution:
+  // require the user to actually be on the overview before triggering.
   useEffect(() => {
     if (typeof window === 'undefined') return
     const seen = window.localStorage.getItem(STORAGE_KEY)
-    if (!seen) {
-      // Small delay so the dashboard has time to settle.
-      const t = setTimeout(() => setOpen(true), 1500)
-      return () => clearTimeout(t)
-    }
+    if (seen) return
+    // Only auto-open when the user is on the dashboard root, not any sub-panel.
+    const path = window.location.pathname
+    if (path !== '/app' && path !== '/app/') return
+    const t = setTimeout(() => setOpen(true), 1500)
+    return () => clearTimeout(t)
   }, [])
 
   // Listen for explicit replay

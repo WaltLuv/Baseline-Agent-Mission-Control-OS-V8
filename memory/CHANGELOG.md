@@ -4,6 +4,42 @@ Append-only log of significant deliveries. PRD.md holds the durable product spec
 
 ---
 
+## 2026-05-31 · Customer Zero Browser Pass (browser-proven)
+
+### Shipped — closes 3 launch-blockers
+- **TeamPanel** at `/app/team` — `src/components/panels/team-panel.tsx`. Members list, invite form, role picker, pending invites with copy/revoke buttons. Admin-only invite section; operator sees read-only members.
+- **RuntimeKeysPanel** at `/app/runtime-keys` — `src/components/panels/runtime-keys-panel.tsx`. Pick agent → name → days → mint. Returned `mca_…` value shown ONCE in copy-now amber block with ready-to-paste systemd snippet. Existing keys table with revoke.
+- **AgentGatewayPanel** at `/app/agent-gateway` — `src/components/panels/agent-gateway-panel.tsx`. Health card (uptime, mc_connected, agent pills), tasks list, click-to-expand log viewer (stdout + stderr).
+- `/api/workspaces/[id]/members` — GET endpoint backing TeamPanel; cross-workspace 403.
+- Nav rail entries for Team, Runtime keys, Agent Gateway in `src/components/layout/nav-rail.tsx`.
+- `/login` label fix: `username` → `Username or email` to match what the field actually accepts.
+
+### Root-cause fixes found during the browser pass
+1. **Supervisor was running `next start` under `output: standalone`** — silently fell back to a stale mode, new routes weren't served. Switched to `node /app/.next/standalone/server.js`. Added symlinks `.next/standalone/{.data,.env,.next/static}` so standalone server reads the real DB / env / static chunks.
+2. **FirstRunTour auto-opened on every URL** and yanked the user back to `/app` because step 1's panel = 'overview'. Customer navigates to `/app/team` → 1.5s → tour opens → tour navigates → URL reverts. Fix in `src/components/help/first-run-tour.tsx`: only auto-open when `window.location.pathname === '/app'`.
+3. **Onboarding wizard re-opened on every new browser session** for users who had skipped previously, because `dismissedThisSession` is sessionStorage-scoped. Fix in `src/lib/onboarding-session.ts`: trust server-side `completed`/`skipped` flags as the source of truth; do NOT auto-replay.
+4. **TeamPanel filter on non-existent `status` field** — API returns `used_at`/`revoked_at`/`expires_at`. Filter rewritten; new invite optimistically prepends to UI.
+
+### Verification (live, this pass)
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | ✅ 0 errors |
+| `pnpm vitest run` | ✅ all green (1259 baseline + 5 new agent-gateway-client + 5 onboarding) |
+| `yarn build` | ✅ Compiled in 131s |
+| `/app/team` panel renders in browser | ✅ data-testid='team-panel' count=1 |
+| Invite submit → accept_url box | ✅ data-testid='invite-accept-url-box' count=1 |
+| `/app/runtime-keys` mint key | ✅ minted `mca_de792a7720…` shown in fresh-key-block |
+| `/app/agent-gateway` health | ✅ "Gateway reachable" + 4 agent pills + 3 task rows visible |
+| Cross-workspace `/api/workspaces/1/members` | ✅ 403 |
+| `/forgot-password` on a freshly-signed-up user | ✅ 200 (was 429) |
+
+### Operator actions still required
+- Push `flight-deck-v0.1.0` git tag → installer binaries
+- Stripe live keys → `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_LIVE_MODE=true`
+- Google Cloud Console → add production origin to OAuth Authorized JavaScript origins
+
+
+
 ## 2026-05-31 · FastMCP Agent Gateway bootstrap + MC_API_KEY connector
 
 **Goal:** finish the architectural mandate — bootstrap the scaffolded

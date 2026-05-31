@@ -14,7 +14,7 @@ describe('onboarding-session', () => {
     ).toEqual({ shouldOpen: true, replayFromStart: false })
   })
 
-  it('replays onboarding from the start on a fresh session after completion', () => {
+  it('does NOT replay onboarding after completion (server is the source of truth)', () => {
     expect(
       getOnboardingSessionDecision({
         isAdmin: true,
@@ -23,7 +23,22 @@ describe('onboarding-session', () => {
         skipped: false,
         dismissedThisSession: false,
       })
-    ).toEqual({ shouldOpen: true, replayFromStart: true })
+    ).toEqual({ shouldOpen: false, replayFromStart: false })
+  })
+
+  it('does NOT replay onboarding after skip on a brand-new browser session', () => {
+    // Customer Zero bug: skipping persisted server-side but a new tab/Playwright
+    // session triggered shouldOpen=true again because dismissedThisSession is
+    // sessionStorage-scoped. This must NOT happen.
+    expect(
+      getOnboardingSessionDecision({
+        isAdmin: true,
+        serverShowOnboarding: false,
+        completed: false,
+        skipped: true,
+        dismissedThisSession: false,
+      })
+    ).toEqual({ shouldOpen: false, replayFromStart: false })
   })
 
   it('does not reopen onboarding once dismissed in the current session', () => {

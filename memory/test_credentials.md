@@ -73,3 +73,11 @@ curl -b /tmp/cookies.txt -X POST http://127.0.0.1:3000/api/tokens \
        "inputTokens":10000,"outputTokens":5000,
        "provider":"openrouter","agentId":1,"idempotencyKey":"test-001"}'
 ```
+
+## 2026-05-31 — Customer Zero Browser Pass (browser-proven)
+- Customer Zero (workspace 338): `cz-1780200960@example.com` / `ChangeMe!1234ABC`
+- Teammate Zero (operator, workspace 338): `teammate-cz3@example.com` / `TeammatePass!1234`
+- 4 runtime agents in workspace 338: `cz-hermes` (100), `cz-openclaw` (101), `cz-claude` (102), `cz-codex` (103) — each has at least one minted API key
+- Gateway running locally: `127.0.0.1:8765`, agent_gateway venv at `/opt/agent-gateway-venv`
+- Supervisor: `nextjs` now runs `node /app/.next/standalone/server.js` (not `next start` — which silently broke under `output: standalone`)
+- Standalone runtime symlinks: `/app/.next/standalone/{.data,.env,.next/static}` → `/app/{.data,.env,.next/static}`

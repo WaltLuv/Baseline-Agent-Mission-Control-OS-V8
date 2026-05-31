@@ -21,12 +21,15 @@ export function getOnboardingSessionDecision(
     return { shouldOpen: false, replayFromStart: false }
   }
 
-  if (params.serverShowOnboarding) {
-    return { shouldOpen: true, replayFromStart: false }
+  // The server is the source of truth. If the admin previously completed OR
+  // skipped onboarding, do NOT re-open it just because this is a fresh browser
+  // session. (The replay-from-start branch was firing on every new tab.)
+  if (params.completed || params.skipped) {
+    return { shouldOpen: false, replayFromStart: false }
   }
 
-  if (params.completed || params.skipped) {
-    return { shouldOpen: true, replayFromStart: true }
+  if (params.serverShowOnboarding) {
+    return { shouldOpen: true, replayFromStart: false }
   }
 
   return { shouldOpen: false, replayFromStart: false }
