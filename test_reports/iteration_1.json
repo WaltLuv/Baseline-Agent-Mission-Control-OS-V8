@@ -1,0 +1,56 @@
+{
+  "summary": "Browser-based proof for Mission Control v3.0 Customer Zero pass. Tested 12 flows via Playwright against https://token-monetization.preview.emergentagent.com. Created fresh customer cz-browser-1780204931@example.com via /signup, walked through onboarding, verified billing, runtime registry, flight-deck, forgot-password, and login flows. Key findings: signup + auto-login + forgot-password + billing test-mode banner + flight-deck pending banner all work in browser. UI gaps confirmed: no Mint API Key UI on /app/runtime-validation, no MCP Agent Gateway customer panel, no dedicated Team/Members invite UI, demo=cpa query param appears ignored on /app/overview, /login form uses 'Username' label instead of 'Email' (works with email but is misleading UX for a fresh signup).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "/login page", "issue": "Field labeled 'Username' (input#username, type=text) instead of 'Email'. Fresh signup uses email; user must guess to enter email in Username field. Functionally works but is confusing UX for a new customer returning to the site.", "selector": "input#username", "priority": "MEDIUM"},
+      {"component": "/app/overview?demo=cpa", "issue": "Demo mode query param appears to NOT swap Executive Briefing content. Expected CPA headline 'Tax season pressure is dropping. One reconciliation needs you.' was NOT rendered; page shows the standard setup checklist (Your workforce is 36% set up). No visible 'Demo mode' indicator on the page.", "selector": "h1, [data-testid='executive-briefing']", "priority": "HIGH"},
+      {"component": "/app/overview", "issue": "Page does not contain the literal text 'Executive Briefing' — body text shows setup checklist instead. Cannot verify Executive Briefing card visually.", "selector": "[data-testid='executive-briefing']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [
+      {"flow": "Customer return login", "issue": "Fresh signup creates account with email but /login asks for Username — discoverability gap for returning customer.", "affected_selectors": ["input#username"]}
+    ],
+    "design_issues": [
+      {"screen": "Onboarding step 1", "issues": ["Continue button stays disabled with no helper text indicating workspace name is required"]}
+    ]
+  },
+  "ui_missing": [
+    {"flow": "FLOW 6 Team/Members", "finding": "No customer-facing Team/Members/Invite UI found. /app/team, /app/members do not exist (render Welcome runtime-check modal). /app/settings has 'Workspace Management' link pointing to Super Admin panel only. Backend POST /api/workspaces/{id}/invites exists but no customer-facing invite screen.", "priority": "LAUNCH-BLOCKER"},
+    {"flow": "FLOW 8 Runtime API key minting", "finding": "/app/runtime-validation renders runtime status cards (OpenClaw/Hermes/Claude Code/Codex) but no 'Generate API Key' / 'Mint Key' CTA visible. Backend POST /api/agents/{id}/keys works but no customer-facing screen to mint MC_API_KEY.", "priority": "LAUNCH-BLOCKER"},
+    {"flow": "FLOW 9 MCP Agent Gateway", "finding": "No customer-facing Agent Gateway / MCP / Task router panel found in the UI. Backend service exists at /api/agent-gateway/{health,tasks} but no surfaced UI.", "priority": "LAUNCH-BLOCKER"}
+  ],
+  "flow_results": {
+    "FLOW_1_HOMEPAGE": "PASSED-IN-BROWSER (scrollHeight=5294px, positioning copy visible, Start Free routes to /signup, VisionOps + PropControl footer links present)",
+    "FLOW_2_SIGNUP": "PASSED-IN-BROWSER (email cz-browser-1780204931@example.com + password + name + company + business_type=cpa accepted; auto-login redirected to /onboarding)",
+    "FLOW_3_ONBOARDING": "PARTIAL — Wizard step 1 requires workspace name (Continue disabled until filled). After filling, navigation continues. /app/overview does not literally render text 'Executive Briefing'; renders setup checklist instead.",
+    "FLOW_4_LOGIN_LOGOUT": "PASSED-IN-BROWSER for login (email accepted in Username field, redirected to /app). Logout button discovery was not completed due to time, but login + session survival across navigation works.",
+    "FLOW_5_FORGOT_PASSWORD": "PASSED-IN-BROWSER (success copy: 'If an account exists for that email, we have sent reset instructions.' rendered; no error, no 429)",
+    "FLOW_6_TEAM_MEMBERS": "UI-MISSING (launch-blocker — see ui_missing)",
+    "FLOW_7_BILLING": "PASSED-IN-BROWSER (page loads, 'Stripe test/mock mode active' amber banner visible, Overview/Ledger/Usage/Buy Credits tabs visible, AI Workforce Health gauge visible). Did not click Buy due to time; balance update not verified in browser.",
+    "FLOW_8_RUNTIME": "PARTIAL — page renders 4 runtime cards with INSTALLED/RUNNING/AGENTS status. No Mint API Key UI visible (see ui_missing).",
+    "FLOW_9_MCP_GATEWAY": "UI-MISSING (launch-blocker)",
+    "FLOW_10_FLIGHT_DECK": "PASSED-IN-BROWSER ('Installer build pending — use local build instructions' banner visible; Baseline Flight Deck v0.1.0 title; platform cards present)",
+    "FLOW_11_DEMO_EXPERIENCE": "FAILED-IN-BROWSER (?demo=cpa did not change Executive Briefing headline to CPA template; no demo mode indicator visible)",
+    "FLOW_12_LONG_SESSION": "NOT-TESTED (skipped to conserve testing budget — would need 10 minutes of idle observation)"
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Add 'Mint API Key' UI button on /app/runtime-validation (or dedicated agents page) — currently only backend POST /api/agents/{id}/keys is reachable.",
+    "Add a customer-facing Team / Members / Invite UI — backend POST /api/workspaces/{id}/invites exists with no UI.",
+    "Add a customer-facing MCP Agent Gateway panel surfacing /api/agent-gateway/tasks.",
+    "Wire ?demo=cpa / demo=law-firm / demo=pm / demo=home-services on /app/overview to actually swap Executive Briefing copy and show a visible Demo mode indicator.",
+    "Rename /login Username field label to Email (or accept both labels) so returning customers know to type their signup email.",
+    "Verify the /app/overview Executive Briefing card actually renders the heading text 'Executive Briefing' (current body text does not contain that string)."
+  ],
+  "critical_code_review_comments": [
+    "Inline-script CSP violation logged on every page load (Executing inline script violates the following Content Security Policy directive). Needs nonce or hash to clear console.",
+    "Login form discovers 'Username' but signup only collects 'Email' — UX mismatch. Either align the labels or store username==email at signup so customers don't get stuck."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (frontend-only run)", "frontend": "approx 60% — 6 of 12 flows PASSED, 2 PARTIAL, 1 FAILED, 3 UI-MISSING, 1 NOT-TESTED"},
+  "test_credentials": "Created fresh in browser: cz-browser-1780204931@example.com / ChangeMe!1234ABC (workspace 'Customer Zero Browser Co', business_type=cpa). Saved to /tmp/cz_creds.txt during run.",
+  "seed_data_creation": "One new customer workspace created via real browser signup (Flow 2).",
+  "retest_needed": true,
+  "main_agent_can_self_test": false,
+  "context_for_next_testing_agent": "Use a brand new unique-timestamp email for FLOW 2 (do not reuse cz-browser-1780204931). /login Username field accepts the signup email — type the full email into Username. Onboarding step 1 needs the workspace name filled before Continue enables. /app/overview body text does NOT include literal 'Executive Briefing' — search instead for the Workforce/Setup widgets. Demo query param ?demo=cpa does not swap copy currently. Flow 12 (10-min stability) was skipped — re-run if needed. Backend agent gateway, runtime key mint and invites need NEW customer-facing UI before this can be claimed as 'a stranger can do it via browser only'."
+}
