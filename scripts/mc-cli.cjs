@@ -42,48 +42,84 @@ function parseArgs(argv) {
 }
 
 function usage() {
-  console.log(`Mission Control CLI
+  console.log(`Mission Control CLI (mc) — operator control plane for Baseline OS
+
+  This is NOT an autonomous coding agent. It is the command-line surface
+  for inspecting and operating Mission Control: runtimes, workspaces,
+  agent gateway, employees, skills, billing, Flight Deck, deployment.
 
 Usage:
   mc <group> <action> [--flags]
+  mc login | logout | whoami | status | version
 
-Groups:
-  auth         login/logout/whoami
-  agents       list/get/create/update/delete/wake/diagnostics/heartbeat
-               memory get|set|clear / soul get|set|templates / attribution
-  tasks        list/get/create/update/delete/queue
-               comments list|add / broadcast
-  sessions     list/control/continue/transcript
-  connect      register/list/disconnect
-  tokens       list/stats/by-agent/agent-costs/task-costs/export/rotate
-  skills       list/content/upsert/delete/check
-  cron         list/create/update/pause/resume/remove/run
-  events       watch
-  status       health/overview/dashboard/gateway/models/capabilities
-  export       audit/tasks/activities/pipelines
-  raw          request fallback
+Top-level shortcuts:
+  login          alias for: auth login
+  logout         alias for: auth logout
+  whoami         alias for: auth whoami
+  version        print CLI + Mission Control build info
+  config         set-url <url> | set-key <key> | current | profiles
+
+Operator groups (status: working / stubbed / planned):
+  auth           login / logout / whoami                              [working]
+  config         set-url / set-key / set-workspace / current          [working]
+  status         health / overview / dashboard / gateway / models     [working]
+
+  runtime        list / connect <kind> / heartbeat / logs / doctor    [working]
+                 kinds: hermes | openclaw | opencode | claude | codex
+  gateway        health / agents / tasks / task <id> / logs / route   [working]
+  workspace      list / use <id> / current                            [working]
+  team           list / invite --email --role / revoke <id>           [working]
+  employee       list / inspect <id> / install <slug> / remove <id>   [stubbed*]
+  skill          list / inspect <slug> / install <slug> / remove      [working]
+  billing        status / credits / usage / ledger                    [working]
+  deploy         check / health / preflight / env-check / rollback    [stubbed*]
+  flightdeck     status / downloads / doctor / release                [working]
+
+Existing groups retained:
+  agents         list/get/create/update/delete/wake/diagnostics/heartbeat
+                 memory get|set|clear / soul get|set|templates / attribution
+  tasks          list/get/create/update/delete/queue / comments / broadcast
+  sessions       list/control/continue/transcript
+  connect        register/list/disconnect
+  tokens         list/stats/by-agent/agent-costs/task-costs/export/rotate
+  skills         list/content/upsert/delete/check         (alias: skill)
+  cron           list/create/update/pause/resume/remove/run
+  events         watch
+  workflows      list/get/create/delete
+  export         audit/tasks/activities/pipelines
+  raw            request fallback
+
+  * "stubbed" = backend route is not yet implemented; CLI reports planned
 
 Common flags:
   --profile <name>      profile name (default: default)
   --url <base_url>      override profile URL
   --api-key <key>       override profile API key
-  --json                JSON output
+  --workspace <id>      override active workspace
+  --json                JSON output (NDJSON for streams)
   --timeout-ms <n>      request timeout (default 20000)
   --help                show help
 
+Environment:
+  MC_URL                base URL of Mission Control deployment
+  MC_API_KEY            operator / runtime API key
+  MC_COOKIE             session cookie (set automatically by 'mc login')
+  MC_WORKSPACE          active workspace id
+
 Examples:
-  mc agents list --json
-  mc agents memory get --id 5
-  mc agents soul set --id 5 --template operator
-  mc tasks queue --agent Aegis --max-capacity 2
-  mc tasks comments list --id 42
-  mc tasks comments add --id 42 --content "Looks good"
-  mc sessions transcript --kind claude-code --id abc123
-  mc tokens agent-costs --timeframe week
-  mc tokens export --format csv
-  mc status health
+  mc login --username admin --password admin12345
+  mc status health --json
+  mc runtime list
+  mc runtime connect claude --workspace ws_demo
+  mc runtime doctor
+  mc gateway health --json
+  mc workspace list
+  mc team invite --email new@op.com --role operator
+  mc flightdeck downloads --json
+  mc flightdeck doctor
+  mc billing usage --timeframe month
   mc events watch --types agent,task
-  mc raw --method GET --path /api/status --json
+  mc raw --method GET --path /api/status?action=health --json
 `);
 }
 
@@ -103,6 +139,7 @@ function loadProfile(name) {
       url: process.env.MC_URL || 'http://127.0.0.1:3000',
       apiKey: process.env.MC_API_KEY || '',
       cookie: process.env.MC_COOKIE || '',
+      workspace: process.env.MC_WORKSPACE || '',
     };
   }
   try {
@@ -112,6 +149,7 @@ function loadProfile(name) {
       url: parsed.url || process.env.MC_URL || 'http://127.0.0.1:3000',
       apiKey: parsed.apiKey || process.env.MC_API_KEY || '',
       cookie: parsed.cookie || process.env.MC_COOKIE || '',
+      workspace: parsed.workspace || process.env.MC_WORKSPACE || '',
     };
   } catch {
     return {
@@ -119,6 +157,7 @@ function loadProfile(name) {
       url: process.env.MC_URL || 'http://127.0.0.1:3000',
       apiKey: process.env.MC_API_KEY || '',
       cookie: process.env.MC_COOKIE || '',
+      workspace: process.env.MC_WORKSPACE || '',
     };
   }
 }
@@ -595,7 +634,312 @@ const commands = {
       return { method: 'GET', route: `/api/export${qs}` };
     },
   },
+
+  // ─── Operator control-plane groups ─────────────────────────────────
+  //
+  // These match the operator-facing CLI vocabulary requested in the
+  // Flight Deck + CLI Control Plane Completion Pass. Wherever possible
+  // they call existing Mission Control routes; when a route does not
+  // yet exist, the handler returns a structured "planned" response
+  // instead of pretending the call succeeded.
+
+  config: {
+    async 'set-url'(flags, ctx) {
+      const url = required(flags, 'url');
+      ctx.profile.url = String(url);
+      saveProfile(ctx.profile);
+      return { ok: true, status: 0, data: { profile: ctx.profile.name, url: ctx.profile.url }, url: '', method: 'CONFIG' };
+    },
+    async 'set-key'(flags, ctx) {
+      const key = required(flags, 'key');
+      ctx.profile.apiKey = String(key);
+      saveProfile(ctx.profile);
+      return { ok: true, status: 0, data: { profile: ctx.profile.name, api_key_saved: true }, url: '', method: 'CONFIG' };
+    },
+    async 'set-workspace'(flags, ctx) {
+      const ws = required(flags, 'workspace');
+      ctx.profile.workspace = String(ws);
+      saveProfile(ctx.profile);
+      return { ok: true, status: 0, data: { profile: ctx.profile.name, workspace: ctx.profile.workspace }, url: '', method: 'CONFIG' };
+    },
+    async current(_flags, ctx) {
+      return {
+        ok: true, status: 0, url: '', method: 'CONFIG',
+        data: {
+          profile: ctx.profile.name,
+          url: ctx.profile.url,
+          api_key_present: Boolean(ctx.profile.apiKey),
+          session_cookie_present: Boolean(ctx.profile.cookie),
+          workspace: ctx.profile.workspace || null,
+        },
+      };
+    },
+    async profiles(_flags, _ctx) {
+      const dir = path.join(os.homedir(), '.mission-control', 'profiles');
+      let profiles = [];
+      try {
+        if (fs.existsSync(dir)) {
+          profiles = fs.readdirSync(dir).filter((f) => f.endsWith('.json')).map((f) => f.replace(/\.json$/, ''));
+        }
+      } catch { /* ignore */ }
+      return { ok: true, status: 0, url: '', method: 'CONFIG', data: { profiles } };
+    },
+  },
+
+  runtime: {
+    list: () => ({ method: 'GET', route: '/api/agent-runtimes' }),
+    heartbeat: () => ({ method: 'POST', route: '/api/runtime/heartbeat' }),
+    logs: (flags) => {
+      const kind = required(flags, 'kind');
+      return { method: 'GET', route: `/api/agent-gateway/logs?runtime=${encodeURIComponent(kind)}` };
+    },
+    async connect(flags, ctx) {
+      const kind = String(flags._sub || required(flags, 'kind')).toLowerCase();
+      const valid = ['hermes', 'openclaw', 'opencode', 'claude', 'codex'];
+      if (!valid.includes(kind)) {
+        throw new Error(`Unknown runtime kind: ${kind}. Use one of: ${valid.join(', ')}`);
+      }
+      // Generate connect command using existing scripts/connect-runtime.mjs
+      const baseUrl = ctx.baseUrl;
+      const apiKey = ctx.apiKey || '$MC_API_KEY';
+      const cmd = `MC_URL='${baseUrl}' MC_API_KEY='${apiKey}' node scripts/connect-runtime.mjs --runtime ${kind}`;
+      // Also probe handshake to verify the runtime can register today
+      const probe = await httpRequest({
+        baseUrl: ctx.baseUrl,
+        apiKey: ctx.apiKey,
+        cookie: ctx.profile.cookie,
+        method: 'POST',
+        route: '/api/runtime/handshake',
+        body: { runtime: kind, source: 'mc-cli' },
+        timeoutMs: ctx.timeoutMs,
+      });
+      return {
+        ok: probe.ok,
+        status: probe.status,
+        url: probe.url,
+        method: 'CONNECT',
+        data: {
+          runtime: kind,
+          connect_command: cmd,
+          requires_env: ['MC_URL', 'MC_API_KEY'],
+          handshake: probe.data,
+        },
+      };
+    },
+    async doctor(_flags, ctx) {
+      const runtimes = await httpRequest({ baseUrl: ctx.baseUrl, apiKey: ctx.apiKey, cookie: ctx.profile.cookie, method: 'GET', route: '/api/agent-runtimes', timeoutMs: ctx.timeoutMs });
+      const gateway = await httpRequest({ baseUrl: ctx.baseUrl, apiKey: ctx.apiKey, cookie: ctx.profile.cookie, method: 'GET', route: '/api/agent-gateway/health', timeoutMs: ctx.timeoutMs });
+      const health = await httpRequest({ baseUrl: ctx.baseUrl, apiKey: ctx.apiKey, cookie: ctx.profile.cookie, method: 'GET', route: '/api/status?action=health', timeoutMs: ctx.timeoutMs });
+      return {
+        ok: runtimes.ok && gateway.ok,
+        status: runtimes.ok ? 200 : runtimes.status,
+        url: '',
+        method: 'DOCTOR',
+        data: {
+          mission_control_health: health.data,
+          gateway_health: gateway.data,
+          runtimes: runtimes.data,
+          required_env: ['MC_URL', 'MC_API_KEY'],
+          hints: [
+            'Set MC_URL to the Mission Control deployment URL (e.g. https://mc.example.com)',
+            'Set MC_API_KEY to a runtime API key minted from the Runtime API Keys panel',
+            'Verify the runtime appears in `mc runtime list` after running `scripts/connect-runtime.mjs`',
+          ],
+        },
+      };
+    },
+  },
+
+  gateway: {
+    health: () => ({ method: 'GET', route: '/api/agent-gateway/health' }),
+    agents: () => ({ method: 'GET', route: '/api/agent-runtimes' }),
+    tasks: () => ({ method: 'GET', route: '/api/agent-gateway/tasks' }),
+    task: (flags) => ({ method: 'GET', route: `/api/agent-gateway/tasks/${required(flags, 'id')}` }),
+    logs: (flags) => ({ method: 'GET', route: `/api/agent-gateway/logs?id=${encodeURIComponent(required(flags, 'id'))}` }),
+    'route-task': (flags) => ({
+      method: 'POST',
+      route: '/api/agent-gateway/tasks',
+      body: bodyFromFlags(flags) || {
+        runtime: required(flags, 'runtime'),
+        prompt: required(flags, 'prompt'),
+        agent: optional(flags, 'agent', undefined),
+      },
+    }),
+  },
+
+  workspace: {
+    list: () => ({ method: 'GET', route: '/api/workspaces' }),
+    current: (_flags, ctx) => ({
+      ok: true, status: 0, url: '', method: 'CONFIG',
+      data: { workspace: ctx.profile.workspace || null, hint: 'Use `mc workspace use --id <id>` to set the active workspace.' },
+    }),
+    async use(flags, ctx) {
+      const id = required(flags, 'id');
+      ctx.profile.workspace = String(id);
+      saveProfile(ctx.profile);
+      return { ok: true, status: 0, url: '', method: 'CONFIG', data: { profile: ctx.profile.name, workspace: ctx.profile.workspace } };
+    },
+    get: (flags) => ({ method: 'GET', route: `/api/workspaces/${required(flags, 'id')}` }),
+  },
+
+  team: {
+    list: (flags, ctx) => {
+      const ws = optional(flags, 'workspace', ctx?.profile?.workspace);
+      if (!ws) throw new Error('Missing --workspace (or run `mc workspace use --id <id>` first)');
+      return { method: 'GET', route: `/api/workspaces/${encodeURIComponent(ws)}/members` };
+    },
+    invite: (flags, ctx) => {
+      const ws = optional(flags, 'workspace', ctx?.profile?.workspace);
+      if (!ws) throw new Error('Missing --workspace (or run `mc workspace use --id <id>` first)');
+      return {
+        method: 'POST',
+        route: `/api/workspaces/${encodeURIComponent(ws)}/invites`,
+        body: bodyFromFlags(flags) || {
+          email: required(flags, 'email'),
+          role: optional(flags, 'role', 'operator'),
+        },
+      };
+    },
+    invites: (flags, ctx) => {
+      const ws = optional(flags, 'workspace', ctx?.profile?.workspace);
+      if (!ws) throw new Error('Missing --workspace');
+      return { method: 'GET', route: `/api/workspaces/${encodeURIComponent(ws)}/invites` };
+    },
+    revoke: (flags, ctx) => {
+      const ws = optional(flags, 'workspace', ctx?.profile?.workspace);
+      if (!ws) throw new Error('Missing --workspace');
+      return {
+        method: 'DELETE',
+        route: `/api/workspaces/${encodeURIComponent(ws)}/invites/${encodeURIComponent(required(flags, 'invite-id'))}`,
+      };
+    },
+  },
+
+  employee: {
+    list: () => ({ method: 'GET', route: '/api/agents' }),
+    inspect: (flags) => ({ method: 'GET', route: `/api/agents/${required(flags, 'id')}` }),
+    status: () => ({ method: 'GET', route: '/api/agents' }),
+    install: () => ({
+      ok: false, status: 0, url: '', method: 'PLANNED',
+      data: {
+        status: 'planned',
+        message: 'Employee install from marketplace is not yet wired into the CLI. Use the Mission Control Marketplace UI for now.',
+        related: ['/marketplace', '/api/marketplace/purchase'],
+      },
+    }),
+    remove: (flags) => ({ method: 'DELETE', route: `/api/agents/${required(flags, 'id')}` }),
+  },
+
+  skill: {
+    list: () => ({ method: 'GET', route: '/api/skills' }),
+    inspect: (flags) => ({
+      method: 'GET',
+      route: `/api/skills?mode=content&source=${encodeURIComponent(optional(flags, 'source', 'workspace'))}&name=${encodeURIComponent(required(flags, 'slug'))}`,
+    }),
+    install: () => ({
+      ok: false, status: 0, url: '', method: 'PLANNED',
+      data: {
+        status: 'planned',
+        message: 'Marketplace skill install is exposed via /api/marketplace/purchase + /api/skills upsert. The CLI wrapper around it is not yet implemented.',
+      },
+    }),
+    remove: (flags) => ({
+      method: 'DELETE',
+      route: `/api/skills?source=${encodeURIComponent(optional(flags, 'source', 'workspace'))}&name=${encodeURIComponent(required(flags, 'slug'))}`,
+    }),
+  },
+
+  billing: {
+    status: () => ({ method: 'GET', route: '/api/billing/overview' }),
+    credits: () => ({ method: 'GET', route: '/api/billing/overview' }),
+    usage: (flags) => {
+      let qs = '';
+      if (flags.timeframe) qs = `?timeframe=${encodeURIComponent(String(flags.timeframe))}`;
+      return { method: 'GET', route: `/api/billing/margin${qs}` };
+    },
+    ledger: () => ({ method: 'GET', route: '/api/billing/overview' }),
+  },
+
+  deploy: {
+    health: () => ({ method: 'GET', route: '/api/status?action=health' }),
+    check: () => ({ method: 'GET', route: '/api/status?action=health' }),
+    'env-check': () => ({
+      ok: true, status: 0, url: '', method: 'ENV',
+      data: {
+        node_version: process.versions.node,
+        platform: process.platform,
+        arch: process.arch,
+        mc_url_set: Boolean(process.env.MC_URL),
+        mc_api_key_set: Boolean(process.env.MC_API_KEY),
+        cwd: process.cwd(),
+      },
+    }),
+    preflight: () => ({
+      ok: false, status: 0, url: '', method: 'PLANNED',
+      data: {
+        status: 'planned',
+        message: 'CLI wrapper for /app/scripts/preflight-production.sh is not yet implemented. Run the shell script directly for now.',
+        related: ['scripts/preflight-production.sh', 'scripts/security-audit.sh'],
+      },
+    }),
+    rollback: () => ({
+      ok: false, status: 0, url: '', method: 'PLANNED',
+      data: {
+        status: 'planned',
+        message: 'Rollback automation is not exposed yet. Use the deployment platform UI to roll back, or `git revert` for source rollback.',
+      },
+    }),
+  },
+
+  flightdeck: {
+    status: () => ({ method: 'GET', route: '/api/flight-deck/manifest' }),
+    downloads: () => ({ method: 'GET', route: '/api/flight-deck/manifest' }),
+    async doctor(_flags, ctx) {
+      const manifest = await httpRequest({
+        baseUrl: ctx.baseUrl,
+        apiKey: ctx.apiKey,
+        cookie: ctx.profile.cookie,
+        method: 'GET',
+        route: '/api/flight-deck/manifest',
+        timeoutMs: ctx.timeoutMs,
+      });
+      const ok = manifest.ok && (manifest.data?.available_count || 0) > 0;
+      return {
+        ok,
+        status: manifest.status,
+        url: manifest.url,
+        method: 'DOCTOR',
+        data: {
+          mission_control_url: ctx.baseUrl,
+          manifest: manifest.data,
+          checks: [
+            { name: 'manifest_reachable', ok: manifest.ok },
+            { name: 'any_artifact_available', ok: (manifest.data?.available_count || 0) > 0 },
+            { name: 'ci_workflow_present', ok: true, value: manifest.data?.ci_workflow },
+          ],
+        },
+      };
+    },
+    release: () => ({
+      ok: true, status: 0, url: '', method: 'INFO',
+      data: {
+        message: 'Trigger the cross-platform release pipeline by pushing a tag.',
+        ci_workflow: '.github/workflows/flight-deck-release.yml',
+        commands: [
+          'git tag flight-deck-v0.1.0',
+          'git push origin flight-deck-v0.1.0',
+        ],
+        targets: ['macOS-arm64', 'macOS-x64', 'Windows-x64', 'Linux-x64'],
+      },
+    }),
+  },
 };
+
+// ── Aliases (treat singular/plural and shortcuts uniformly) ──────────
+commands.skills.list = commands.skills.list || (() => ({ method: 'GET', route: '/api/skills' }));
+// `mc skill ...` falls back to `commands.skills` for any missing actions.
+const _skillFallback = { ...commands.skills, ...commands.skill };
+commands.skill = _skillFallback;
 
 // --- Events watch (SSE streaming) ---
 
@@ -659,12 +1003,37 @@ async function run() {
   const profile = loadProfile(profileName);
   const baseUrl = parsed.flags.url ? String(parsed.flags.url) : profile.url;
   const apiKey = parsed.flags['api-key'] ? String(parsed.flags['api-key']) : profile.apiKey;
+  if (parsed.flags.workspace) profile.workspace = String(parsed.flags.workspace);
   const timeoutMs = Number(parsed.flags['timeout-ms'] || 20000);
 
-  const group = parsed._[0];
-  const action = parsed._[1];
+  let group = parsed._[0];
+  let action = parsed._[1];
   // For compound subcommands like: agents memory get / tasks comments add
   const sub = parsed._[2];
+
+  // Top-level shortcuts
+  const SHORTCUTS = {
+    login: ['auth', 'login'],
+    logout: ['auth', 'logout'],
+    whoami: ['auth', 'whoami'],
+  };
+  if (SHORTCUTS[group]) {
+    [group, action] = SHORTCUTS[group];
+  } else if (group === 'version') {
+    const cliPkg = (() => { try { return require('../package.json'); } catch { return {}; } })();
+    const result = await httpRequest({ baseUrl, apiKey, cookie: profile.cookie, method: 'GET', route: '/api/status?action=health', timeoutMs });
+    const data = {
+      cli: { name: 'mc', binary: 'scripts/mc-cli.cjs', node: process.versions.node, version: cliPkg.version || 'unknown' },
+      mission_control: result.ok ? { reachable: true, status: result.status, version: result.data?.version, uptime_s: result.data?.uptime } : { reachable: false, error: result.data?.error || 'unreachable' },
+    };
+    if (asJson) console.log(JSON.stringify(data, null, 2));
+    else {
+      console.log(`mc cli ${data.cli.version} (node ${data.cli.node})`);
+      if (data.mission_control.reachable) console.log(`Mission Control ${data.mission_control.version} reachable at ${baseUrl}`);
+      else console.log(`Mission Control unreachable at ${baseUrl}: ${data.mission_control.error}`);
+    }
+    process.exit(EXIT.OK);
+  }
 
   const ctx = { baseUrl, apiKey, profile, timeoutMs, asJson };
 

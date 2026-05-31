@@ -7,9 +7,5 @@
 // the minimal plugin set, and hands control to the webview.
 
 fn main() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_store::Builder::new().build())
-        .run(tauri::generate_context!())
-        .expect("error while running Baseline Flight Deck");
+    baseline_flight_deck_lib::run();
 }
