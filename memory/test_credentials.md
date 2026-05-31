@@ -81,3 +81,10 @@ curl -b /tmp/cookies.txt -X POST http://127.0.0.1:3000/api/tokens \
 - Gateway running locally: `127.0.0.1:8765`, agent_gateway venv at `/opt/agent-gateway-venv`
 - Supervisor: `nextjs` now runs `node /app/.next/standalone/server.js` (not `next start` — which silently broke under `output: standalone`)
 - Standalone runtime symlinks: `/app/.next/standalone/{.data,.env,.next/static}` → `/app/{.data,.env,.next/static}`
+
+## 2026-05-31 — Customer Zero Production Pass (iteration_5)
+- **Customer Zero (workspace 3)**: `cz-prod-1780220227@example.com` / `ChangeMe!1234ABC` (role=admin)
+- Browser-proven signup → onboarding redirect succeeded.
+- Workspace ID: 3, User ID: 3.
+- **Teammate invite (operator)**: `teammate-cz-prod@example.com` — invite id=1 generated; accept_url returned by `/api/workspaces/3/invites`. email_status=`not_sent`, email_provider=`resend`.
+- Earlier curl-only signup: `cz-prod-1780220167@example.com` / `ChangeMe!1234ABC` (workspace 2).
