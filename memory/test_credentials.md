@@ -116,3 +116,19 @@ curl -b /tmp/cookies.txt -X POST http://127.0.0.1:3000/api/tokens \
 - NEXT_PUBLIC_APP_URL=https://baseline-agents.com (required by Stripe for success/cancel URLs)
 - Checkout route accepts: {plan: starter|growth, billingCycle: monthly|annual, userEmail, workspaceName}
 
+
+
+## Customer Zero Activation Pass (created via /signup E2E on 2026-01)
+Created during iteration_6 testing of the 3-step Activation Hub.
+
+| Email | Password | Company | Business | Workspace |
+|---|---|---|---|---|
+| `cz-activation-1780234141@example.com` | `Password12345!` | CZ Activation Co | ai-agency | (default) |
+| `cz-activation-1780234199@example.com` | `Password12345!` | CZ Activation Co | ai-agency | (default) |
+| `cz-activation-1780234289@example.com` | `Password12345!` | CZ Activation Co | ai-agency | CZ Activation Workspace |
+
+Flow verified end-to-end:
+1. `POST /api/auth/signup` (full_name, email, company_name, business_type=`ai-agency`, password ≥12 chars)
+2. Redirects to `/onboarding` (NOT `/app/overview`)
+3. Onboarding 3 steps → `Launch AI Workforce` → `Activate Workforce →` button
+4. Lands on `/app/activate?source=onboarding` with progress = 1/3, step `system=done`, `runtime=active`, `invite=pending`

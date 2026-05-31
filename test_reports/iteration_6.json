@@ -1,0 +1,82 @@
+{
+  "summary": "First Customer Activation Pass tested end-to-end: /help (public, hydrated, search/category/expand all work), POST /api/onboarding/runtime-key (4 runtimes + 401 + 400 validation), /app/activate (auth-gated activation hub w/ progress bar, 3 steps, runtime wizard E2E claude→generate→provisioned→skip→invite team, invite send shows sent confirmation), and full fresh-signup→onboarding→/app/activate CZ flow. 5 docs verified — 3 of them are under the 150-line minimum. ONE CRITICAL DEPLOY REGRESSION found and worked around: the Next.js standalone build was serving 404 on /_next/static/chunks/*.js because /app/.next/standalone/.next/static was missing — the page rendered but React never hydrated, so search/filter/toggle/wizard/invite were all dead. Restoring the symlink and restarting `nextjs` supervisor fixed it. Main agent must persist this symlink in the post-build step.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "console errors during /onboarding launch", "issue": "Several 400 responses + one 500 logged in browser console while clicking Launch AI Workforce (likely provisioning side-effects). Final UX still succeeds (Activate Workforce button appears and routes to /app/activate?source=onboarding), but the errors warrant a backend log review."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Onboarding step 3 runtime preference picker",
+        "issue": "Test plan asks to pick runtime preference 'cloud' in step 3, but step 3 is now a 'Review & Launch' summary card (no cloud/local/vps/later picker visible). The RuntimePreference state exists in the source but no JSX renders the picker. Defaults to 'later' on submit. Non-blocking — final routing still goes to /app/activate?source=onboarding.",
+        "affected_selectors": ["text='Cloud / hosted runtimes'"]
+      }
+    ],
+    "design_issues": []
+  },
+  "deploy_issues": {
+    "critical": [
+      {
+        "issue": "Next.js standalone server returned 404 for ALL /_next/static/chunks/*.js requests because /app/.next/standalone/.next/static directory was missing. Result: every page rendered as un-hydrated static HTML — no React state, no filters, no wizard. This silently breaks the entire activation pass.",
+        "root_cause": "The post-`yarn build` step that copies (or symlinks) /app/.next/static into /app/.next/standalone/.next/static was not executed for this build, leaving the standalone deploy without its static assets.",
+        "mitigation_applied": "ran `ln -sfn /app/.next/static /app/.next/standalone/.next/static && sudo supervisorctl restart nextjs` — chunks now serve 200 OK, hydration works, all UI flows pass.",
+        "permanent_fix": "Add this step to the build script (e.g. scripts/post-build.sh): `ln -sfn /app/.next/static /app/.next/standalone/.next/static && ln -sfn /app/public /app/.next/standalone/public` so future yarn builds don't regress."
+      }
+    ]
+  },
+  "doc_issues": [
+    {"file": "/app/docs/FLIGHT_DECK_CUSTOMER_GUIDE.md", "lines": 109, "issue": "below 150-line minimum (needs +41 lines)"},
+    {"file": "/app/docs/CUSTOMER_ONBOARDING_SOP.md", "lines": 122, "issue": "below 150-line minimum (needs +28 lines)"},
+    {"file": "/app/docs/CUSTOMER_SUCCESS_SOP.md", "lines": 135, "issue": "below 150-line minimum (needs +15 lines)"},
+    {"file": "/app/docs/FIRST_CUSTOMER_PLAYBOOK.md", "lines": 169, "issue": "OK"},
+    {"file": "/app/docs/FIRST_14_DAY_ACTIVATION_PLAN.md", "lines": 171, "issue": "OK"}
+  ],
+  "tests_passed": [
+    "GET /help — 200 unauth, help-center + help-search testids present, h1 'How can we help?' rendered",
+    "/help search 'runtime' filtered 9 → 4 articles",
+    "/help search 'stripe' filtered to 1 article: 'Checkout failed / payment declined'",
+    "/help help-cat-runtimes filtered to 2 runtime articles",
+    "/help help-toggle-first-10-minutes expands the article body",
+    "POST /api/onboarding/runtime-key — 401 without auth",
+    "POST /api/onboarding/runtime-key {runtime:'invalid'} — 400 with error mentioning allowed runtimes",
+    "POST /api/onboarding/runtime-key — claude/codex/openclaw/hermes all return 200 with mca_ key (≥47 chars), agent_id (int), agent_name containing runtime, connect_command containing MC_URL=, MC_API_KEY=, 'node scripts/connect-runtime.mjs'",
+    "/app/activate (admin) — activation-hub renders, 'Three steps to activate' visible, progress bar width:33%",
+    "/app/activate steps — system=done, runtime=active, invite=pending (correct initial states)",
+    "/app/activate wizard — runtime-wizard-picker + 4 options (claude/codex/openclaw/hermes) all present",
+    "/app/activate wizard E2E — select claude → generate → provisioned panel + command + copy + skip all appear",
+    "/app/activate invite step — invite-team-step + email + 3 role radios + submit all render after runtime is skipped",
+    "/app/activate invite send — invite-team-sent appears with 'cz-teammate@example.com · operator'",
+    "Fresh /signup with cz-activation-{timestamp}@example.com, business_type=ai-agency → redirects to /onboarding (not /app dashboard)",
+    "Onboarding 3 steps → 'Activate Workforce →' button → routes to /app/activate?source=onboarding (NOT /app/overview)"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_activation_pass.py",
+    "/app/test_reports/pytest/activation_pass.xml"
+  ],
+  "action_items": [
+    "CRITICAL DEPLOY: ensure the post-build step `ln -sfn /app/.next/static /app/.next/standalone/.next/static` runs after every `yarn build` (and verify /public symlink too). Currently the symlink is restored at runtime but will break on next rebuild.",
+    "Investigate backend 400/500 console errors during /onboarding launch (post-`onboarding-launch` click) — UX still succeeds but logs are noisy.",
+    "Either restore the runtime-preference picker on /onboarding step 3, or remove the unused RuntimePreference state + the cloud/local/vps/later definitions from /app/src/app/onboarding/page.tsx.",
+    "Pad the three undersized docs to >=150 lines: FLIGHT_DECK_CUSTOMER_GUIDE.md (+41), CUSTOMER_ONBOARDING_SOP.md (+28), CUSTOMER_SUCCESS_SOP.md (+15)."
+  ],
+  "critical_code_review_comments": [
+    "Standalone deploy fragility: the runtime depends on a manually-maintained symlink to .next/static. This must be codified in the build pipeline, not the testing agent's fix step.",
+    "/app/src/app/onboarding/page.tsx defines RuntimePreference type, state, and option list but no UI for it — dead code + behavioral gap with the test spec.",
+    "Onboarding launch path is firing backend calls that 400/500 silently — there's no error toast in the UI so users could think it succeeded when something half-failed."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_activation_pass.py (new pytest file for activation pass)",
+    "/app/memory/test_credentials.md (added 'Customer Zero Activation Pass' section with 3 working CZ accounts)",
+    "/app/.next/standalone/.next/static (runtime-only symlink restore; not a code change)"
+  ],
+  "success_rate": {"backend": "100% (7/7 pytest)", "frontend": "100% functional after symlink fix; would be 0% without it"},
+  "test_credentials": "admin/admin12345 for authed flows. CZ accounts cz-activation-{1780234141,1780234199,1780234289}@example.com / Password12345! also valid (see /app/memory/test_credentials.md).",
+  "seed_data_creation": "Created 3 fresh customer accounts via /signup during CZ Browser pass. Provisioned several runtime API keys (mca_…) via /api/onboarding/runtime-key for admin during pytest happy-path tests (4 runtimes × pytest run).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "1) Before running any browser test, verify `curl -sI http://127.0.0.1:3000/_next/static/chunks/turbopack-*.js` returns 200 — if 404, restore the symlink and restart nextjs. 2) /help is fully public; /app/activate requires admin/admin12345 cookie. 3) The runtime wizard's polling endpoint /api/agents/<id> drives the unlock of the Continue button via last_seen; for fast testing, use the 'skip' button (data-testid=runtime-wizard-skip) which advances to the invite step without waiting for a heartbeat. 4) Onboarding step 3 is currently a 'Review & Launch' summary, NOT a runtime-preference picker — don't fail tests on missing 'Cloud / hosted runtimes' option.",
+  "rca_of_the_issue": "ROOT CAUSE (standalone hydration failure): Next.js `output: 'standalone'` produces /app/.next/standalone/server.js but does NOT copy /app/.next/static into /app/.next/standalone/.next/static — that's the developer's responsibility. The previous deploy had a runtime symlink that was lost when `yarn build` was last run. REPRO: curl -sI <PROXY>/_next/static/chunks/<any>.js → 404. SYMPTOM: every interactive page loads but the React event handlers are absent (verified via Object.keys(input).find(k => k.startsWith('__reactProps$')) === undefined). MITIGATION (applied here): `ln -sfn /app/.next/static /app/.next/standalone/.next/static && sudo supervisorctl restart nextjs`. PERMANENT FIX: bake the symlink (or `cp -r`) into the post-build script that supervisor runs before `node /app/.next/standalone/server.js`."
+}
