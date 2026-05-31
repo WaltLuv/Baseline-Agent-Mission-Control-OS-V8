@@ -97,6 +97,30 @@ The gateway registers itself with Mission Control as a runtime named
 
 Then from inside Claude Code: `> use codex_run_task to add tests for /src/auth`.
 
+### 4b · Mission Control HTTP control plane
+
+In addition to the FastMCP protocol at `/mcp`, the gateway exposes a small
+JSON API on the same host/port so Mission Control's UI (and external monitors)
+can introspect state without speaking MCP:
+
+| Method | Path | Purpose | Auth |
+|---|---|---|---|
+| GET | `/health`            | Liveness + identity + agent inventory | Open |
+| GET | `/v1/agents`         | Enabled agents + advertised tool names | Open |
+| GET | `/v1/tasks?limit=&agent=` | Recent task rows | `MC_API_KEY` |
+| GET | `/v1/tasks/{task_id}`| Single task row | `MC_API_KEY` |
+| GET | `/v1/logs/{task_id}?stream=stdout&tail_bytes=16384` | Tail logs | `MC_API_KEY` |
+| POST | `/v1/bootstrap`     | Force telemetry register/heartbeat (idempotent) | Open |
+
+Mission Control proxies these as `/api/agent-gateway/{health,tasks,logs/...}`
+so operators access them through the same domain + session/cookie they already
+use. Set on the Mission Control host:
+
+```bash
+AGENT_GATEWAY_URL=http://127.0.0.1:8765
+AGENT_GATEWAY_API_KEY=<same value as gateway's MC_API_KEY>
+```
+
 ### 5 · Run as a service (systemd, prod)
 
 ```ini

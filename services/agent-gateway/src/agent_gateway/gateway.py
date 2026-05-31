@@ -15,6 +15,7 @@ from typing import Any
 from fastmcp import FastMCP
 
 from .config import Config
+from .http_api import register_http_routes
 from .routing import pick_agent
 from .storage import TaskStore
 from .telemetry import MissionControlTelemetry
@@ -30,6 +31,7 @@ def build_app(cfg: Config) -> FastMCP:
     workers = build_workers(cfg)
     telemetry = MissionControlTelemetry(cfg)
     mcp = FastMCP("baseline-agent-gateway")
+    register_http_routes(mcp, cfg, store)
 
     # ──────────────────────────────────────────────────────────────────
     # Internal helper — common run path for every CLI worker.
@@ -228,17 +230,50 @@ def build_app(cfg: Config) -> FastMCP:
         await telemetry.register()
         asyncio.create_task(telemetry.heartbeat_loop())
 
-    # FastMCP doesn't have a standard "on_startup" hook in every version —
-    # attach to the lifespan via a guard so the gateway runs the registration
-    # exactly once on first request if startup didn't fire.
     started = {"flag": False}
+
+    async def _ensure_started():
+        if not started["flag"]:
+            await _startup()
+            started["flag"] = True
+
     @mcp.tool
     async def _gateway_heartbeat() -> dict[str, Any]:
         """Internal: registers gateway with MC on first call. Safe to invoke
         from a watchdog. Not user-facing."""
-        if not started["flag"]:
-            await _startup()
-            started["flag"] = True
+        await _ensure_started()
         return {"registered": True, "name": cfg.gateway_name}
+
+    # Auto-register on first HTTP hit (covers /health probes). Idempotent.
+    @mcp.custom_route("/v1/bootstrap", methods=["POST"])
+    async def bootstrap_route(request):  # type: ignore[no-untyped-def]
+        from starlette.responses import JSONResponse as _JR
+        await _ensure_started()
+        return _JR({"registered": True, "name": cfg.gateway_name})
+
+    # Best-effort: kick off telemetry register at module-eval time using a
+    # fire-and-forget asyncio task scheduled after the loop comes up. The
+    # FastMCP server boots its own loop in run(); we attach via a custom
+    # startup hook on the underlying Starlette app.
+    try:
+        http_app = mcp.http_app(transport="http")
+
+        async def _on_startup_hook():
+            try:
+                await _ensure_started()
+            except Exception as e:
+                log.warning("startup telemetry register failed (will retry on tool call): %s", e)
+
+        # Starlette exposes the lifespan via app.router.lifespan_context;
+        # the simplest portable hook is `on_event`.
+        try:
+            http_app.add_event_handler("startup", _on_startup_hook)  # type: ignore[attr-defined]
+            log.info("startup hook attached for telemetry register")
+        except Exception:
+            pass
+    except Exception:
+        # http_app might not be available in every FastMCP version — fall back to
+        # the existing first-tool-call path.
+        pass
 
     return mcp

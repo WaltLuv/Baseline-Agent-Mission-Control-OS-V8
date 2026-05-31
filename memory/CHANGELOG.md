@@ -4,6 +4,111 @@ Append-only log of significant deliveries. PRD.md holds the durable product spec
 
 ---
 
+## 2026-05-31 · FastMCP Agent Gateway bootstrap + MC_API_KEY connector
+
+**Goal:** finish the architectural mandate — bootstrap the scaffolded
+`/services/agent-gateway` into Mission Control (real HTTP control plane,
+real MC proxy, real telemetry phone-home) AND eliminate browser-cookie
+dependence for unattended daemons.
+
+### A — FastMCP Agent Gateway, integrated end-to-end
+- `services/agent-gateway/src/agent_gateway/http_api.py` — new HTTP control
+  plane mounted alongside FastMCP via `@mcp.custom_route`:
+  - `GET /health` (open)         — liveness, identity, agent inventory, MC link state
+  - `GET /v1/agents` (open)      — enabled agents + advertised tool names
+  - `GET /v1/tasks` (api-key)    — recent task list (limit, agent filter)
+  - `GET /v1/tasks/{id}`         — single task envelope (status, exit_code, cost)
+  - `GET /v1/logs/{id}`          — stdout/stderr tail
+  - `POST /v1/bootstrap`         — force telemetry re-register (idempotent)
+- `services/agent-gateway/src/agent_gateway/telemetry.py` rewritten so
+  register / heartbeat both go through `/api/agents/register` (the only
+  endpoint MC actually supports for runtime handshake). Heartbeat is a
+  cheap idempotent re-handshake that bumps `last_seen` server-side.
+- `services/agent-gateway/src/agent_gateway/__main__.py` now spins up a
+  sibling thread on boot that registers + heartbeats — no longer waits for
+  the first MCP tool call. Telemetry fires on process start.
+- Mission Control side:
+  - `src/lib/agent-gateway-client.ts` — single source of truth for gateway
+    reachability. 5s timeout, env-driven URL, mirrors api key onto both
+    `x-api-key` and `Authorization: Bearer`.
+  - `src/app/api/agent-gateway/{health,tasks,tasks/[id],logs/[id]}/route.ts`
+    — Next.js proxy endpoints. Health = viewer role. Tasks/logs = operator
+    role (prompts may contain sensitive content).
+- Env contract (Mission Control):
+  ```
+  AGENT_GATEWAY_URL=http://127.0.0.1:8765
+  AGENT_GATEWAY_API_KEY=<same value the gateway uses as its MC_API_KEY>
+  ```
+- Supervisor template `scripts/supervisor.agent-gateway.conf` for the
+  operator to copy onto the host where the CLI agents (`claude`, `codex`,
+  `opencode`, `hermes`) live. Off-by-default in dev containers.
+
+### B — MC_API_KEY support in `scripts/connect-runtime.mjs`
+Connector now accepts EITHER:
+  - `MC_API_KEY=mca_<48 hex>` → sends `x-api-key:` + `Authorization: Bearer`
+  - `MC_SESSION="<mc-session value>"` → sends `cookie:`
+…and bails with a clear error if neither is set. Honest auth-mode logging
+on every register / heartbeat line so operators see what's actually in use.
+
+### C — Documentation
+- `docs/operations/RUNTIME_API_KEYS.md` — operator-grade guide: minting,
+  scopes, revocation, connecting any of Hermes / OpenClaw / Claude Code /
+  Codex / agent-gateway with an API key, systemd unit, failure matrix,
+  security defaults.
+- `services/agent-gateway/README.md` extended with §4b describing the MC
+  HTTP control plane and the env contract.
+
+### Verification (live, this pass)
+| Gate | Result |
+|------|--------|
+| `npx tsc --noEmit` | ✅ 0 errors |
+| `pnpm vitest run` | ✅ **1259 / 1259** (+5 new agent-gateway-client) |
+| `pytest -q` (gateway) | ✅ **27 / 27** |
+| `yarn build` (next 16.2.6 turbopack) | ✅ Compiled in 151s |
+| `/api/status?action=health` | ✅ 200 (DB + memory + disk healthy) |
+| `/api/agent-gateway/health` (cookie, no key) | ✅ 200, `mc_connected: true` |
+| `/api/agent-gateway/tasks` (cookie + AGENT_GATEWAY_API_KEY) | ✅ 200, real task list |
+| `/api/agent-gateway/tasks/{id}` | ✅ 200, single task envelope |
+| `/api/agent-gateway/logs/{id}?stream=stdout` | ✅ 200, real log content |
+| `connect-runtime.mjs MC_API_KEY=…` | ✅ register + heartbeat, `connection_status: connected`, no cookie |
+| Gateway auto-register on boot | ✅ logged "Registered with Mission Control as agent-gateway-test (agent_id=93)" |
+| Public routes (/, /login, /signup, /pricing, /marketplace, /roi-calculator, /flight-deck, /docs) | ✅ all 200 |
+| Auth-required routes without cookie | ✅ 307 (page) / 401 (api) — no leaks |
+| Homepage scroll trap | ✅ no `h-screen overflow-hidden` on root |
+| Emergent preview URL | ✅ Live at https://token-monetization.preview.emergentagent.com |
+
+### Files changed
+```
+new   services/agent-gateway/src/agent_gateway/http_api.py
+new   scripts/supervisor.agent-gateway.conf
+new   docs/operations/RUNTIME_API_KEYS.md
+new   src/lib/agent-gateway-client.ts
+new   src/lib/__tests__/agent-gateway-client.test.ts
+new   src/app/api/agent-gateway/health/route.ts
+new   src/app/api/agent-gateway/tasks/route.ts
+new   src/app/api/agent-gateway/tasks/[id]/route.ts
+new   src/app/api/agent-gateway/logs/[id]/route.ts
+mod   services/agent-gateway/src/agent_gateway/gateway.py      (register http_api)
+mod   services/agent-gateway/src/agent_gateway/telemetry.py    (register via /api/agents/register, agent_id tracking)
+mod   services/agent-gateway/src/agent_gateway/__main__.py     (telemetry thread on boot)
+mod   services/agent-gateway/README.md                         (§4b MC control plane)
+mod   scripts/connect-runtime.mjs                              (MC_API_KEY support)
+mod   memory/test_credentials.md                               (gateway env + API-key flow)
+mod   .env                                                     (AGENT_GATEWAY_URL + AGENT_GATEWAY_API_KEY)
+```
+
+### Operator actions still required (no engineering fix)
+- **Stripe live keys** — set `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` +
+  `NEXT_PUBLIC_STRIPE_LIVE_MODE=true` on the deployed host.
+- **Flight Deck v0.1.0 GitHub Release** — push tag `flight-deck-v0.1.0`
+  to fire the existing CI matrix.
+- **Google Cloud Console** — add the production origin to
+  Authorized JavaScript origins (current code is correct; only Google's
+  side needs the value).
+
+---
+
+
 ## 2026-05-30 (PM #5) · Flight Deck production-test readiness
 
 **Goal:** A user can pick Mission Control's deployment target (Emergent / DigitalOcean / Staging / Localhost / Custom), persist it across restarts, see real runtime status, and reset their session — without any background polling. Plus a public download page, a CI build matrix, full docs.

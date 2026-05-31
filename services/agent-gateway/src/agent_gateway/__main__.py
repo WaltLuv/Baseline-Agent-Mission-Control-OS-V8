@@ -73,6 +73,36 @@ def main(argv: list[str] | None = None) -> int:
 
     cfg.ensure_dirs()
     app = build_app(cfg)
+
+    # Start telemetry in a sibling thread so the gateway registers with MC
+    # immediately on boot, not on first MCP tool call. The thread runs its
+    # own asyncio loop and dies cleanly when the process exits.
+    import threading
+
+    def _telemetry_runner():
+        import asyncio as _aio
+        from .telemetry import MissionControlTelemetry
+        loop = _aio.new_event_loop()
+        _aio.set_event_loop(loop)
+        try:
+            tele = MissionControlTelemetry(cfg)
+            loop.run_until_complete(tele.register())
+            loop.run_until_complete(tele.heartbeat_loop())
+        except Exception as e:
+            log.warning("telemetry thread terminated: %s", e)
+        finally:
+            try:
+                loop.close()
+            except Exception:
+                pass
+
+    if cfg.mc_url and cfg.mc_api_key:
+        t = threading.Thread(target=_telemetry_runner, name="mc-telemetry", daemon=True)
+        t.start()
+        log.info("Telemetry thread started — will register and heartbeat MC every %ss", cfg.mc_report_interval_secs)
+    else:
+        log.info("MC_URL/MC_API_KEY not set — telemetry disabled (gateway runs locally only)")
+
     # FastMCP's run helper handles its own asyncio loop
     log.info("Starting agent-gateway on http://%s:%s/mcp", args.host, args.port)
     log.info("Enabled agents: %s", cfg.enabled_agents)

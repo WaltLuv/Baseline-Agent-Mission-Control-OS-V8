@@ -37,8 +37,26 @@ Local fallback: use `AUTH_USER` / `AUTH_PASS` above.
 - External runtime URL: `https://keen-matsumoto-2.preview.emergentagent.com`
 - WebSocket: `wss://keen-matsumoto-2.preview.emergentagent.com/api/openclaw/ws`
 - Gateway token: `aee22098773e796a3fdf9bf1f3660a0635a08fdf7f3241add58714ceb549fd16`
-- Connector script: `/app/scripts/connect-runtime.mjs` (requires `MC_SESSION` cookie from admin login)
+- Connector script: `/app/scripts/connect-runtime.mjs` — now supports BOTH `MC_SESSION` (cookie) AND `MC_API_KEY` (header `x-api-key`).
 - Verified registered: agent `openclaw-prod-1` (id=48, workspace_id=1) on 2026-05-30.
+
+## FastMCP Agent Gateway (Feb 2026 pass)
+- Local control plane: `http://127.0.0.1:8765`
+- `/health` (open), `/v1/agents` (open), `/v1/tasks`, `/v1/tasks/{id}`, `/v1/logs/{id}` (gated by `MC_API_KEY`)
+- Mission Control proxy: `/api/agent-gateway/{health,tasks,tasks/[id],logs/[id]}`
+- Mission Control env:
+  ```
+  AGENT_GATEWAY_URL=http://127.0.0.1:8765
+  AGENT_GATEWAY_API_KEY=<same value as gateway's MC_API_KEY>
+  ```
+- Install: `python3 -m venv /opt/agent-gateway-venv && /opt/agent-gateway-venv/bin/pip install -e /app/services/agent-gateway`
+- Run: `/opt/agent-gateway-venv/bin/agent-gateway --host 127.0.0.1 --port 8765`
+- Supervisor template: `/app/scripts/supervisor.agent-gateway.conf`
+
+## Runtime API keys (preferred for daemons)
+- Mint: `POST /api/agents/{id}/keys { name, scopes, expires_in_days }` → returns `api_key: "mca_<48 hex>"` ONCE.
+- Use: connect-runtime.mjs reads `MC_API_KEY` env and sends both `x-api-key:` and `Authorization: Bearer`.
+- Verified live this pass: agent id 92 (`runtime-test-1`) registered + heartbeated using ONLY the API key, no cookie.
 
 ## Quick login (cookie session)
 ```
