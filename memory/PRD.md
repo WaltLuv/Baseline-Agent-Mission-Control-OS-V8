@@ -3091,3 +3091,62 @@ domain.
   (explicitly prohibited)
 
 - P3 — Email SMTP STARTTLS hardening + saved-card auto-reload for Stripe.
+
+---
+
+## 35. — Flight Deck + CLI Control Plane Completion Pass (2026-05-31)
+
+### 35.1 — Flight Deck downloads (P0 — fixed)
+- New API routes (PUBLIC, allowlisted in `src/proxy.ts`):
+  - `GET /api/flight-deck/manifest` — returns `{ version, available_count, pending_count, artifacts[] }`. Each artifact carries `platform`, `arch`, `file_type`, `filename`, `size_bytes`, `size_human`, `sha256` (read from `SHA256SUMS`), `download_url`, `status: 'available' | 'pending-build'`, `signed`.
+  - `GET /api/flight-deck/download/[...path]` — streams artifact with `Content-Disposition: attachment`, correct `Content-Type`, and exact `Content-Length`. Strict allowlist regex + path-traversal guard.
+- `src/app/flight-deck/page.tsx` rewritten to fetch the manifest at runtime, render per-platform AVAILABLE / pending-build cards with size + sha256 prefix, and only show real download buttons for `status==='available'`.
+- Linux ARM64 `.deb` (4.0 MB) + `.AppImage` (90.0 MB) now served live:
+  - `/api/flight-deck/download/v0.1.0/baseline-flight-deck_0.1.0_linux-arm64.deb` (sha256 `052130815271…`)
+  - `/api/flight-deck/download/v0.1.0/baseline-flight-deck_0.1.0_linux-arm64.AppImage` (sha256 `511ccd2e634c…`)
+- macOS x64/arm64 + Windows x64 + Linux x64 are marked `pending-build` and produced via CI workflow.
+- Standalone build fix: `cp -R .next/static .next/standalone/.next/static` is now required after `yarn build` (Next.js doesn't copy static assets to standalone automatically).
+
+### 35.2 — Flight Deck runtime connection (P1 — verified)
+- Linux ARM64 binary at `/app/desktop/src-tauri/target/release/baseline-flight-deck` launches under headless Xvfb :99 and creates window "Baseline Flight Deck" 1280x800 (verified via `xwininfo -tree -root`).
+- Runtime handshake endpoint `/api/runtime/handshake` returns 401 without `MC_API_KEY` (correct gate). CLI surfaces required env (`MC_URL`, `MC_API_KEY`) via `mc runtime doctor`.
+
+### 35.3 — CI release workflow (P1 — already present)
+- `.github/workflows/flight-deck-release.yml` exists and is comprehensive:
+  - Matrix of `macos-14` (arm64), `macos-13` (x64), `windows-latest`, `ubuntu-22.04`
+  - Triggers on `flight-deck-v*` tags
+  - Cache: Cargo registry + tauri target
+  - Optional Apple/Windows signing via secrets
+  - Stage 2 publishes a GitHub Release with `softprops/action-gh-release@v2`
+
+### 35.4 — Mission Control CLI upgrade (P2 + P3 — done)
+- `scripts/mc-cli.cjs` extended (was 745 lines → ~1100 lines).
+- Top-level shortcuts: `mc login`, `mc logout`, `mc whoami`, `mc version`.
+- New operator groups (all `working` unless noted):
+  - `config` — set-url / set-key / set-workspace / current / profiles
+  - `runtime` — list / connect <kind> / heartbeat / logs / doctor
+    (kinds: hermes | openclaw | opencode | claude | codex)
+  - `gateway` — health / agents / tasks / task / logs / route-task
+  - `workspace` — list / use / current / get
+  - `team` — list / invite / invites / revoke
+  - `employee` — list / inspect / status / remove (install = `planned`)
+  - `skill` — list / inspect / remove (install = `planned`)
+  - `billing` — status / credits / usage / ledger
+  - `deploy` — health / check / env-check (preflight + rollback = `planned`)
+  - `flightdeck` — status / downloads / doctor / release
+- Existing groups (`agents`, `tasks`, `sessions`, `connect`, `tokens`, `skills`, `cron`, `workflows`, `events`, `export`, `raw`) preserved.
+- Honest status surface: stubbed commands return `{ status: 'planned', message }` instead of a fake 200.
+- Profile persistence extended to track `workspace`. Profiles live at `~/.mission-control/profiles/<name>.json`.
+
+### 35.5 — CLI documentation
+- `docs/CLI_GUIDE.md` (full reference) covers install, auth setup, env vars, every command group, workflows, output format, exit codes, troubleshooting, and the explicit boundary with Claude Code / Codex / OpenClaw / Hermes.
+
+### 35.6 — Tests (iteration_3.json)
+- 6/6 backend Flight Deck endpoint checks pass (manifest public, downloads serve correct sha256/CT/CL, traversal + non-allowlist blocked).
+- 9/9 browser checks pass (testids `download-linux-arm64-deb` and `download-linux-arm64-AppImage` present; click returns HTTP 200).
+- 14/14 CLI behavioral checks pass (login persists cookie; runtime/employee/workspace list succeed; planned commands honestly report planned; flightdeck doctor reports `any_artifact_available=true`).
+
+### 35.7 — Next action items
+- Tag `flight-deck-v0.1.0` and push to fire the GH Actions matrix to produce macOS + Windows + Linux-x64 artifacts.
+- Move artifact matrix in `/api/flight-deck/manifest` to a `manifest.json` per-version file when v0.2.0 ships, so the source-of-truth is the build pipeline (testing agent recommendation).
+- Optional: split `mc-cli.cjs` into command-group modules when it crosses 1500 lines.
