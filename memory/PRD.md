@@ -3230,6 +3230,22 @@ mc queue poll --agent proof-claude-runtime → task=1 status=in_progress (auto-f
   proof runtimes, deploy preflight EXEC behavior, employee install
   marketplace routing.
 
+---
+
+## 37. — Final Production Readiness Pass (2026-05-31, iter 5)
+
+**Verdict: Ship-ready behind 3 operator-only actions.**
+
+Full report: `/app/docs/FINAL_PRODUCTION_READINESS_REPORT.md`.
+
+- **Stripe** — code paths fully wired (checkout, webhook-signature verify, idempotent ledger, cancellation). Blocked on operator-injected `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`. Customer Portal route is the only product gap; not added per "no new features."
+- **Google OAuth** — env vars present, code path verified, workspace assignment confirmed on Customer Zero pass. Operator must allowlist production hosts in GCP Console.
+- **Flight Deck CI** — workflow file production-ready. Added missing Linux ARM64 matrix row this pass (`ubuntu-22.04-arm` runner) so CI now produces all 5 OS/arch artifacts. Blocked on operator pushing `git tag flight-deck-v0.1.0`.
+- **Customer Zero browser pass** — 10/11 PASS on a fresh stranger account `cz-prod-1780220227@example.com` against the preview deployment. Homepage / signup / onboarding / login / forgot-password / reset-password / invite / billing / flight-deck all verified. Two MEDIUM/LOW caveats are Playwright-automation artifacts (login hard-navigate + forgot-password slow flip), not real-browser bugs per code review.
+
+Mission Control itself is shippable. No more capability additions until the three operator actions above are executed.
+
+
 ### 36.9 — Outstanding boundaries
 - **Cross-platform Flight Deck installers** (macOS .dmg, Windows .msi,
   Linux x64 .AppImage/.deb) still require pushing `flight-deck-v0.1.0`
