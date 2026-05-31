@@ -2,11 +2,11 @@ import { NextResponse } from 'next/server'
 import { createHash } from 'crypto'
 import { getDatabase, logAuditEvent } from '@/lib/db'
 import { updateUser, destroyAllUserSessions } from '@/lib/auth'
-import { selfRegisterLimiter } from '@/lib/rate-limit'
+import { resetPasswordLimiter } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
 
 export async function POST(request: Request) {
-  const rateCheck = selfRegisterLimiter(request)
+  const rateCheck = resetPasswordLimiter(request)
   if (rateCheck) return rateCheck
 
   try {

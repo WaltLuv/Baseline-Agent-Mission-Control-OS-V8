@@ -259,3 +259,29 @@ export const selfRegisterLimiter = createRateLimiter({
   maxRequests: 5,
   message: 'Too many registration attempts. Please try again later.',
 })
+
+/** Agent self-registration: 30/min per IP. Higher than user signup because
+ *  a single VPS may host 4+ runtimes (Hermes / OpenClaw / Claude / Codex)
+ *  that all register at boot. Lower than the heartbeat limiter because
+ *  a true daemon should re-register rarely (boot + reconnect only). */
+export const agentRegisterLimiter = createRateLimiter({
+  windowMs: 60_000,
+  maxRequests: 30,
+  message: 'Too many agent registrations. Slow your boot loop.',
+})
+
+/** Forgot-password request: 5/min per IP. Independent of registration limiter
+ *  so a brand-new customer who just signed up can still kick off recovery. */
+export const forgotPasswordLimiter = createRateLimiter({
+  windowMs: 60_000,
+  maxRequests: 5,
+  message: 'Too many password reset requests. Please try again in a minute.',
+})
+
+/** Reset-password submit: 10/min per IP. Slightly higher because legitimate
+ *  retries (typos in the new password, browser autofill) are common. */
+export const resetPasswordLimiter = createRateLimiter({
+  windowMs: 60_000,
+  maxRequests: 10,
+  message: 'Too many password reset attempts. Please try again in a minute.',
+})

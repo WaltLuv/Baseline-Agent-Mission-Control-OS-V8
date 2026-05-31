@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { randomBytes, createHash } from 'crypto'
 import { getDatabase } from '@/lib/db'
 import { logAuditEvent } from '@/lib/db'
-import { selfRegisterLimiter } from '@/lib/rate-limit'
+import { selfRegisterLimiter, forgotPasswordLimiter } from '@/lib/rate-limit'
 import { sendEmail, getEmailProvider } from '@/lib/email'
 import { logger } from '@/lib/logger'
 
@@ -22,7 +22,7 @@ const RESET_TTL_SECONDS = 60 * 60 // 1 hour
  *     receive an email" so behaviour is identical to the user.
  */
 export async function POST(request: Request) {
-  const rateCheck = selfRegisterLimiter(request)
+  const rateCheck = forgotPasswordLimiter(request)
   if (rateCheck) return rateCheck
 
   try {

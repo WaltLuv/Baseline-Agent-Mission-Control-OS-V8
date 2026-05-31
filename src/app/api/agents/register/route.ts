@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDatabase, db_helpers } from '@/lib/db'
 import { requireRole } from '@/lib/auth'
-import { selfRegisterLimiter } from '@/lib/rate-limit'
+import { agentRegisterLimiter } from '@/lib/rate-limit'
 import { logAuditEvent } from '@/lib/db'
 import { eventBus } from '@/lib/event-bus'
 import { logger } from '@/lib/logger'
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
   const auth = requireRole(request, 'viewer')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
-  const limited = selfRegisterLimiter(request)
+  const limited = agentRegisterLimiter(request)
   if (limited) return limited
 
   let body: any
