@@ -1,16 +1,55 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import Link from "next/link";
 import { ThemeBackground } from "@/components/ui/theme-background";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { BUSINESS_TEMPLATES, getBusinessTemplate } from "@/lib/business-templates";
+
+// "Where will your AI workforce run?" — the four answers that decide which
+// post-onboarding setup card the dashboard surfaces. Persisted alongside
+// the workspace so we don't ask again on relaunch.
+type RuntimePreference = "cloud" | "local" | "vps" | "later";
+
+const RUNTIME_OPTIONS: Array<{
+  id: RuntimePreference;
+  title: string;
+  desc: string;
+  cta: string;
+}> = [
+  {
+    id: "cloud",
+    title: "Cloud / hosted runtimes",
+    desc: "Use Mission Control entirely in the browser. AI employees run on our managed infrastructure. The fastest way to see value.",
+    cta: "Use in browser",
+  },
+  {
+    id: "local",
+    title: "Local computer with Flight Deck",
+    desc: "Power-user mode. Install the Baseline Flight Deck desktop app to plug your local Claude Code, Codex, OpenClaw, and Obsidian vault into Mission Control.",
+    cta: "I'll download Flight Deck",
+  },
+  {
+    id: "vps",
+    title: "VPS / server runtime",
+    desc: "You already run agents on a server. Mission Control connects to it with a single runtime connector command — no desktop install needed.",
+    cta: "I'll connect a server",
+  },
+  {
+    id: "later",
+    title: "Not now — supervise demo workflows first",
+    desc: "Skip runtime setup. Explore demo workflows and approvals. You can connect your first runtime any time from the setup checklist.",
+    cta: "Skip for now",
+  },
+];
 
 export default function OnboardingWizardClient() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [workspaceName, setWorkspaceName] = useState("");
   const [businessTypeId, setBusinessTypeId] = useState("");
+  const [runtimePreference, setRuntimePreference] = useState<RuntimePreference | "">("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [provisionedEmployees, setProvisionedEmployees] = useState<string[]>([])
   const [done, setDone] = useState(false);
@@ -27,6 +66,7 @@ export default function OnboardingWizardClient() {
           name: workspaceName,
           business_type: businessTypeId,
           template: template.id,
+          runtime_preference: runtimePreference || "later",
         }),
       });
       // Cinematic provisioning: stagger employee + skill creation so the

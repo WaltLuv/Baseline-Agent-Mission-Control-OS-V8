@@ -1,0 +1,11 @@
+# Gateway-local data (created at runtime — never commit)
+tasks.db
+tasks.db-wal
+tasks.db-shm
+logs/
+worktrees/
+.venv/
+*.egg-info/
+build/
+dist/
+__pycache__/

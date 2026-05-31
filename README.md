@@ -97,6 +97,21 @@ yarn tauri:dev                              # native window opens
 
 Pick **Localhost** in the Flight Deck target picker, click **Open Mission Control**, sign in. Full Flight Deck docs: [`desktop/README.md`](./desktop/README.md). Public install page (with build-from-source instructions): `/flight-deck`.
 
+### Optional — run the Agent Gateway (MCP bus for Claude Code / Codex / OpenCode / Hermes)
+
+The gateway is a separate backend service at [`services/agent-gateway/`](./services/agent-gateway/). Install on a machine that has your CLI agents on PATH (your Mac or a VPS):
+
+```bash
+cd services/agent-gateway
+python -m venv .venv && source .venv/bin/activate
+pip install -e .
+cp .env.example .env   # then edit MC_URL, MC_API_KEY, ENABLED_AGENTS
+agent-gateway --doctor # check which CLIs are reachable
+agent-gateway          # start FastMCP server on http://127.0.0.1:8765/mcp
+```
+
+Once running, Mission Control's Runtime Registry shows it as `agent-gateway-<host>` (connected). Full docs in `services/agent-gateway/README.md`.
+
 ### Docker Zero-Config
 
 ```bash
