@@ -96,13 +96,87 @@ Multiple profiles are supported via `--profile <name>`.
 mc login --username <u> --password <p>
 mc logout
 mc whoami
-mc status health
+mc status health         # or simply: mc health
+mc dashboard             # or: mc status dashboard
 mc config set-url --url https://mc.example.com
 mc config set-key --key mca_...
 mc config set-workspace --workspace ws_demo
 mc config current
 mc config profiles
 mc version
+```
+
+### Agents — `working` (singular `agent` is MCP-aligned)
+
+```bash
+mc agent list
+mc agent get --id 5
+mc agent heartbeat --id 5
+mc agent wake --id 5
+mc agent diagnostics --id 5
+mc agent attribution --id 5 --hours 24
+mc agent costs --timeframe week
+mc agent keys --id 5
+mc agent mint-key --id 5 --name runtime-prod-1 --scopes runtime --expires-in-days 90 --yes
+```
+
+### Tasks — `working`
+
+```bash
+mc task list --status open --limit 50
+mc task get --id 42
+mc task create --title "Review Q3 deck" --priority high
+mc task update --id 42 --body '{"status":"completed"}'
+mc task comment --id 42 --content "Looks good"
+mc task comments --id 42
+mc task broadcast --id 42 --message "ping subscribers"
+mc queue poll --agent claude-prod-1
+```
+
+### Runs / evals / provenance — `working`
+
+```bash
+mc run list
+mc run get --run-id run_abc
+mc run create --agent-id 5 --kind task
+mc run update --run-id run_abc --body '{"status":"done"}'
+mc run provenance --run-id run_abc
+mc eval attach --run-id run_abc --score 0.92 --rubric helpfulness
+mc eval leaderboard
+```
+
+### Sessions — `working` (destructive ops require `--yes`)
+
+```bash
+mc session list
+mc session continue --kind claude-code --id sess_abc --prompt "next step"
+mc session control --id sess_abc --action pause --yes
+mc session transcript --kind claude-code --id sess_abc --limit 100
+```
+
+### Memory & SOUL (per-agent) — `working` (writes require `--yes`)
+
+```bash
+mc memory read  --id 5
+mc memory write --id 5 --content "..." --yes
+mc memory write --id 5 --file /tmp/working-memory.md --append --yes
+mc memory clear --id 5 --yes
+
+mc soul read --id 5
+mc soul write --id 5 --template operator --yes
+mc soul templates --id 5
+```
+
+### Knowledge (workspace vault) — `working` (writes require `--yes`)
+
+```bash
+mc knowledge search --q "billing" --limit 20
+mc knowledge read-file --path docs/runbook.md
+mc knowledge write-file --path docs/runbook.md --file ./new.md --create --yes
+mc knowledge health
+mc knowledge gaps
+mc knowledge consolidate --yes    # long-running
+mc knowledge rebuild-index --yes  # long-running
 ```
 
 ### Runtimes — `working`
@@ -149,23 +223,23 @@ mc team invite --workspace ws_demo --email operator@example.com --role operator
 mc team revoke --workspace ws_demo --invite-id inv_abc
 ```
 
-### Employees — `working` (install command is `planned`)
+### Employees — `working`
 
 ```bash
 mc employee list
 mc employee inspect --id 5
 mc employee status
+mc employee install --slug crm.lead.qualify --yes   # routes through /api/marketplace/purchase
 mc employee remove --id 5
-# install is stubbed — use the Marketplace UI
 ```
 
-### Skills — `working` (install command is `planned`)
+### Skills — `working`
 
 ```bash
 mc skill list
 mc skill inspect --slug crm.lead.qualify
+mc skill install --slug crm.lead.qualify --yes   # routes through /api/marketplace/purchase
 mc skill remove --slug crm.lead.qualify
-# install is stubbed — use the Marketplace UI
 ```
 
 ### Billing — `working` (read-only)
@@ -177,13 +251,14 @@ mc billing usage --timeframe month
 mc billing ledger
 ```
 
-### Deployment — `working` (`preflight` / `rollback` are `planned`)
+### Deployment — `working`
 
 ```bash
 mc deploy health
 mc deploy check
 mc deploy env-check
-# preflight + rollback are stubbed — call /app/scripts/preflight-production.sh directly
+mc deploy preflight              # runs scripts/preflight-production.sh and returns stdout/exit code
+mc deploy rollback --yes         # advisory: prints platform-specific runbook + cli hooks
 ```
 
 ### Flight Deck — `working`
@@ -203,6 +278,39 @@ The existing groups are preserved:
 `workflows`, `events`, `export`, `raw`.
 
 See `mc --help` for full lists.
+
+## Safety rules — destructive commands require `--yes`
+
+The following CLI verbs mutate workspace state irreversibly and **refuse
+to run without `--yes`** (the CLI exits with a usage error before any
+HTTP call is made):
+
+| Verb | Why it's destructive |
+| ---- | -------------------- |
+| `mc memory write --id ...` | overwrites agent working memory |
+| `mc memory clear --id ...` | deletes agent working memory |
+| `mc soul write --id ...` | overwrites agent SOUL prompt |
+| `mc knowledge write-file ...` | overwrites a knowledge vault file |
+| `mc knowledge consolidate` | long-running re-index of the vault |
+| `mc knowledge rebuild-index` | long-running rebuild of the search index |
+| `mc session control --id ... --action ...` | start / pause / cancel a live session |
+| `mc agent mint-key --id ...` | issues a new agent API key (audit-relevant) |
+| `mc employee install --slug ...` | purchases an employee from marketplace |
+| `mc skill install --slug ...` | purchases a skill from marketplace |
+| `mc deploy rollback` | advisory output but `--yes` still required to surface the runbook |
+
+Example:
+
+```bash
+$ mc memory clear --id 5
+USAGE ERROR: refusing to clear agent 5 memory without --yes (destructive). Re-run with --yes to confirm.
+
+$ mc memory clear --id 5 --yes
+OK 200 DELETE http://127.0.0.1:3000/api/agents/5/memory
+```
+
+Read-only verbs (every `list`, `get`, `read`, `search`, `health`,
+`status`, `leaderboard`, `provenance`, `doctor`) never require `--yes`.
 
 ## Common workflows
 

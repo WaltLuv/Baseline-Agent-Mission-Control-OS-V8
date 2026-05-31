@@ -62,17 +62,34 @@ Top-level shortcuts:
 Operator groups (status: working / stubbed / planned):
   auth           login / logout / whoami                              [working]
   config         set-url / set-key / set-workspace / current          [working]
+  health         (shortcut) → status health                           [working]
   status         health / overview / dashboard / gateway / models     [working]
+  dashboard      (shortcut) → status dashboard                        [working]
+
+  agent          list / get / heartbeat / wake / diagnostics /        [working]
+                 attribution / costs / keys / mint-key (--yes)
+  task           list / get / create / update / comment / comments    [working]
+                 broadcast
+  queue          poll --agent                                         [working]
+  run            list / get / create / update / provenance            [working]
+  eval           attach --run-id / leaderboard                        [working]
+  session        list / continue / control (--yes) / transcript       [working]
+
+  memory         read --id / write --id (--yes) / clear --id (--yes)  [working]
+  soul           read --id / write --id (--yes) / templates --id      [working]
+  knowledge      search / read-file / write-file (--yes) / health     [working]
+                 gaps / consolidate (--yes) / rebuild-index (--yes)
 
   runtime        list / connect <kind> / heartbeat / logs / doctor    [working]
                  kinds: hermes | openclaw | opencode | claude | codex
   gateway        health / agents / tasks / task <id> / logs / route   [working]
   workspace      list / use <id> / current                            [working]
   team           list / invite --email --role / revoke <id>           [working]
-  employee       list / inspect <id> / install <slug> / remove <id>   [stubbed*]
-  skill          list / inspect <slug> / install <slug> / remove      [working]
+  employee       list / inspect / install (--yes) / remove            [working]
+  skill          list / inspect / install (--yes) / remove            [working]
   billing        status / credits / usage / ledger                    [working]
-  deploy         check / health / preflight / env-check / rollback    [stubbed*]
+  deploy         check / health / preflight / env-check /             [working]
+                 rollback (--yes, advisory)
   flightdeck     status / downloads / doctor / release                [working]
 
 Existing groups retained:
@@ -107,8 +124,20 @@ Environment:
   MC_WORKSPACE          active workspace id
 
 Examples:
+  mc health
   mc login --username admin --password admin12345
-  mc status health --json
+  mc agent list --json
+  mc agent costs --timeframe week
+  mc task create --title "Review Q3 deck" --priority high
+  mc task list --status open --limit 50
+  mc run list --json
+  mc eval leaderboard --json
+  mc session transcript --kind claude-code --id abc123
+  mc memory read --id 42 --json
+  mc memory write --id 42 --content "..." --yes
+  mc soul write --id 42 --template operator --yes
+  mc knowledge search --q "billing" --limit 5
+  mc knowledge consolidate --yes
   mc runtime list
   mc runtime connect claude --workspace ws_demo
   mc runtime doctor
@@ -117,7 +146,7 @@ Examples:
   mc team invite --email new@op.com --role operator
   mc flightdeck downloads --json
   mc flightdeck doctor
-  mc billing usage --timeframe month
+  mc deploy preflight --json
   mc events watch --types agent,task
   mc raw --method GET --path /api/status?action=health --json
 `);
@@ -196,6 +225,14 @@ function optional(flags, key, fallback) {
 function bodyFromFlags(flags) {
   if (flags.body) return JSON.parse(String(flags.body));
   return undefined;
+}
+
+// Destructive command guard. Refuses to execute unless --yes is passed.
+// Throws so the central error path emits a clean USAGE error.
+function requireYes(flags, what) {
+  if (!flags.yes) {
+    throw new Error(`refusing to ${what} without --yes (destructive). Re-run with --yes to confirm.`);
+  }
 }
 
 async function httpRequest({ baseUrl, apiKey, cookie, method, route, body, timeoutMs = 20000 }) {
@@ -941,6 +978,321 @@ commands.skills.list = commands.skills.list || (() => ({ method: 'GET', route: '
 const _skillFallback = { ...commands.skills, ...commands.skill };
 commands.skill = _skillFallback;
 
+// ─────────────────────────────────────────────────────────────────────
+// MCP-aligned operator verbs (matches docs/CLI_MCP_MAPPING.md 1:1).
+// Singular nouns (agent, task, session, run, eval, memory, soul,
+// knowledge, dashboard, health, queue) so the CLI reads naturally.
+// Destructive verbs require --yes via requireYes().
+// ─────────────────────────────────────────────────────────────────────
+
+// Top-level health shortcut (in addition to `mc status health`)
+commands.health = {
+  default: () => ({ method: 'GET', route: '/api/status?action=health' }),
+};
+commands.dashboard = {
+  default: () => ({ method: 'GET', route: '/api/status?action=dashboard' }),
+};
+
+// Singular `agent` group — mirrors MCP agent surface
+commands.agent = {
+  list: () => ({ method: 'GET', route: '/api/agents' }),
+  get: (flags) => ({ method: 'GET', route: `/api/agents/${required(flags, 'id')}` }),
+  heartbeat: (flags) => ({ method: 'POST', route: `/api/agents/${required(flags, 'id')}/heartbeat` }),
+  wake: (flags) => ({ method: 'POST', route: `/api/agents/${required(flags, 'id')}/wake` }),
+  diagnostics: (flags) => ({ method: 'GET', route: `/api/agents/${required(flags, 'id')}/diagnostics` }),
+  attribution: (flags) => {
+    const id = required(flags, 'id');
+    const hours = optional(flags, 'hours', '24');
+    const section = optional(flags, 'section', undefined);
+    let qs = `?hours=${encodeURIComponent(hours)}`;
+    if (section) qs += `&section=${encodeURIComponent(section)}`;
+    return { method: 'GET', route: `/api/agents/${id}/attribution${qs}` };
+  },
+  costs: (flags) => {
+    let qs = '?action=agent-costs';
+    if (flags.timeframe) qs += `&timeframe=${encodeURIComponent(String(flags.timeframe))}`;
+    return { method: 'GET', route: `/api/tokens${qs}` };
+  },
+  keys: (flags) => ({ method: 'GET', route: `/api/agents/${required(flags, 'id')}/keys` }),
+  'mint-key': (flags) => {
+    requireYes(flags, 'mint a new agent API key');
+    return {
+      method: 'POST',
+      route: `/api/agents/${required(flags, 'id')}/keys`,
+      body: {
+        name: optional(flags, 'name', 'cli-minted'),
+        scopes: String(optional(flags, 'scopes', 'runtime')).split(','),
+        expires_in_days: Number(optional(flags, 'expires-in-days', '90')),
+      },
+    };
+  },
+};
+
+// Singular `task` group
+commands.task = {
+  list: (flags) => {
+    let qs = '';
+    if (flags.status || flags['assigned-to'] || flags.priority || flags.search || flags.limit) {
+      const parts = [];
+      if (flags.status) parts.push(`status=${encodeURIComponent(String(flags.status))}`);
+      if (flags['assigned-to']) parts.push(`assigned_to=${encodeURIComponent(String(flags['assigned-to']))}`);
+      if (flags.priority) parts.push(`priority=${encodeURIComponent(String(flags.priority))}`);
+      if (flags.search) parts.push(`search=${encodeURIComponent(String(flags.search))}`);
+      if (flags.limit) parts.push(`limit=${encodeURIComponent(String(flags.limit))}`);
+      qs = `?${parts.join('&')}`;
+    }
+    return { method: 'GET', route: `/api/tasks${qs}` };
+  },
+  get: (flags) => ({ method: 'GET', route: `/api/tasks/${required(flags, 'id')}` }),
+  create: (flags) => ({
+    method: 'POST',
+    route: '/api/tasks',
+    body: bodyFromFlags(flags) || {
+      title: required(flags, 'title'),
+      description: optional(flags, 'description', ''),
+      priority: optional(flags, 'priority', 'normal'),
+      assigned_to: optional(flags, 'assigned-to', undefined),
+    },
+  }),
+  update: (flags) => ({
+    method: 'PUT',
+    route: `/api/tasks/${required(flags, 'id')}`,
+    body: bodyFromFlags(flags) || {},
+  }),
+  comment: (flags) => ({
+    method: 'POST',
+    route: `/api/tasks/${required(flags, 'id')}/comments`,
+    body: { content: required(flags, 'content') },
+  }),
+  comments: (flags) => ({ method: 'GET', route: `/api/tasks/${required(flags, 'id')}/comments` }),
+  broadcast: (flags) => ({
+    method: 'POST',
+    route: `/api/tasks/${required(flags, 'id')}/broadcast`,
+    body: { message: required(flags, 'message') },
+  }),
+};
+
+commands.queue = {
+  poll: (flags) => {
+    const agent = required(flags, 'agent');
+    let qs = `?agent=${encodeURIComponent(agent)}`;
+    if (flags['max-capacity']) qs += `&max_capacity=${encodeURIComponent(String(flags['max-capacity']))}`;
+    return { method: 'GET', route: `/api/tasks/queue${qs}` };
+  },
+};
+
+// Singular `session` group
+commands.session = {
+  list: () => ({ method: 'GET', route: '/api/sessions' }),
+  continue: (flags) => ({
+    method: 'POST',
+    route: '/api/sessions/continue',
+    body: {
+      kind: required(flags, 'kind'),
+      id: required(flags, 'id'),
+      prompt: required(flags, 'prompt'),
+    },
+  }),
+  control: (flags) => {
+    requireYes(flags, `control session ${required(flags, 'id')}`);
+    return {
+      method: 'POST',
+      route: `/api/sessions/${required(flags, 'id')}/control`,
+      body: { action: required(flags, 'action') },
+    };
+  },
+  transcript: (flags) => {
+    const kind = required(flags, 'kind');
+    const id = required(flags, 'id');
+    let qs = `?kind=${encodeURIComponent(kind)}&id=${encodeURIComponent(id)}`;
+    if (flags.limit) qs += `&limit=${encodeURIComponent(String(flags.limit))}`;
+    return { method: 'GET', route: `/api/sessions/transcript${qs}` };
+  },
+};
+
+// `run` group
+commands.run = {
+  list: () => ({ method: 'GET', route: '/api/v1/runs' }),
+  get: (flags) => ({ method: 'GET', route: `/api/v1/runs/${encodeURIComponent(required(flags, 'run-id'))}` }),
+  create: (flags) => ({
+    method: 'POST',
+    route: '/api/v1/runs',
+    body: bodyFromFlags(flags) || {
+      agent_id: Number(required(flags, 'agent-id')),
+      kind: optional(flags, 'kind', 'task'),
+      input: optional(flags, 'input', undefined),
+    },
+  }),
+  update: (flags) => ({
+    method: 'PUT',
+    route: `/api/v1/runs/${encodeURIComponent(required(flags, 'run-id'))}`,
+    body: bodyFromFlags(flags) || {},
+  }),
+  provenance: (flags) => ({
+    method: 'GET',
+    route: `/api/v1/runs/${encodeURIComponent(required(flags, 'run-id'))}/provenance`,
+  }),
+};
+
+commands.eval = {
+  attach: (flags) => ({
+    method: 'POST',
+    route: `/api/v1/runs/${encodeURIComponent(required(flags, 'run-id'))}/eval`,
+    body: bodyFromFlags(flags) || {
+      score: Number(required(flags, 'score')),
+      rubric: optional(flags, 'rubric', 'manual'),
+      notes: optional(flags, 'notes', undefined),
+    },
+  }),
+  leaderboard: () => ({ method: 'GET', route: '/api/v1/evals/leaderboard' }),
+};
+
+// Top-level `memory` and `soul` (operate on a specific agent id, not the
+// "workspace memory" which is `knowledge`).
+commands.memory = {
+  read: (flags) => ({ method: 'GET', route: `/api/agents/${required(flags, 'id')}/memory` }),
+  write: (flags) => {
+    requireYes(flags, `overwrite agent ${required(flags, 'id')} memory`);
+    const content = flags.file
+      ? fs.readFileSync(String(flags.file), 'utf8')
+      : required(flags, 'content');
+    return {
+      method: 'PUT',
+      route: `/api/agents/${required(flags, 'id')}/memory`,
+      body: { working_memory: content, append: Boolean(flags.append) },
+    };
+  },
+  clear: (flags) => {
+    requireYes(flags, `clear agent ${required(flags, 'id')} memory`);
+    return { method: 'DELETE', route: `/api/agents/${required(flags, 'id')}/memory` };
+  },
+};
+
+commands.soul = {
+  read: (flags) => ({ method: 'GET', route: `/api/agents/${required(flags, 'id')}/soul` }),
+  write: (flags) => {
+    requireYes(flags, `overwrite agent ${required(flags, 'id')} soul`);
+    const body = {};
+    if (flags.template) body.template_name = String(flags.template);
+    else if (flags.file) body.soul_content = fs.readFileSync(String(flags.file), 'utf8');
+    else body.soul_content = required(flags, 'content');
+    return { method: 'PUT', route: `/api/agents/${required(flags, 'id')}/soul`, body };
+  },
+  templates: (flags) => {
+    const template = optional(flags, 'template', undefined);
+    const qs = template ? `?template=${encodeURIComponent(template)}` : '';
+    return { method: 'PATCH', route: `/api/agents/${required(flags, 'id')}/soul${qs}` };
+  },
+};
+
+// Workspace-scoped knowledge vault (distinct from per-agent `memory`).
+commands.knowledge = {
+  search: (flags) => {
+    const q = required(flags, 'q');
+    const limit = optional(flags, 'limit', '20');
+    return {
+      method: 'GET',
+      route: `/api/memory/search?q=${encodeURIComponent(q)}&limit=${encodeURIComponent(limit)}`,
+    };
+  },
+  'read-file': (flags) => ({
+    method: 'GET',
+    route: `/api/memory?action=content&path=${encodeURIComponent(required(flags, 'path'))}`,
+  }),
+  'write-file': (flags) => {
+    requireYes(flags, `write knowledge file ${required(flags, 'path')}`);
+    const content = flags.file
+      ? fs.readFileSync(String(flags.file), 'utf8')
+      : required(flags, 'content');
+    return {
+      method: 'PUT',
+      route: '/api/memory',
+      body: { path: required(flags, 'path'), content, create: Boolean(flags.create) },
+    };
+  },
+  health: () => ({ method: 'GET', route: '/api/memory/health' }),
+  gaps: () => ({ method: 'POST', route: '/api/memory/process', body: { action: 'gap-detect' } }),
+  consolidate: (flags) => {
+    requireYes(flags, 'consolidate the knowledge index (long-running, costly)');
+    return { method: 'POST', route: '/api/memory/process', body: { action: 'consolidate' } };
+  },
+  'rebuild-index': (flags) => {
+    requireYes(flags, 'rebuild the knowledge search index (long-running, costly)');
+    return { method: 'POST', route: '/api/memory/search', body: { action: 'rebuild' } };
+  },
+};
+
+// ── Resolve previously-stubbed CLI commands using existing backend ───
+// `employee install` and `skill install` route through the marketplace
+// purchase endpoint which already exists at /api/marketplace/purchase.
+commands.employee.install = (flags) => {
+  requireYes(flags, `install employee from slug ${required(flags, 'slug')}`);
+  return {
+    method: 'POST',
+    route: '/api/marketplace/purchase',
+    body: {
+      slug: required(flags, 'slug'),
+      kind: 'employee',
+      workspace_id: optional(flags, 'workspace', undefined),
+    },
+  };
+};
+commands.skill.install = (flags) => {
+  requireYes(flags, `install skill from slug ${required(flags, 'slug')}`);
+  return {
+    method: 'POST',
+    route: '/api/marketplace/purchase',
+    body: {
+      slug: required(flags, 'slug'),
+      kind: 'skill',
+      workspace_id: optional(flags, 'workspace', undefined),
+    },
+  };
+};
+
+// `deploy preflight` runs the on-disk script and returns its stdout.
+commands.deploy.preflight = async (_flags, _ctx) => {
+  const cp = require('node:child_process');
+  return new Promise((resolve) => {
+    cp.execFile('/bin/bash', ['/app/scripts/preflight-production.sh'], { timeout: 60000 }, (err, stdout, stderr) => {
+      resolve({
+        ok: !err,
+        status: err ? 500 : 200,
+        url: '/app/scripts/preflight-production.sh',
+        method: 'EXEC',
+        data: {
+          exit_code: err ? (err.code || 1) : 0,
+          stdout: String(stdout || '').slice(0, 8000),
+          stderr: String(stderr || '').slice(0, 4000),
+        },
+      });
+    });
+  });
+};
+
+// `deploy rollback` is platform-specific. We surface the exact runbook
+// rather than silently returning OK.
+commands.deploy.rollback = (flags) => {
+  requireYes(flags, 'declare deployment rollback (advisory output only)');
+  return {
+    ok: true, status: 0, url: '', method: 'INFO',
+    data: {
+      message: 'Rollback is platform-driven. Mission Control surfaces the runbook.',
+      runbook: [
+        'Capture current commit:           git rev-parse HEAD',
+        'Identify target commit:           git log --oneline -n 20',
+        'Tag rollback target (optional):   git tag rollback-$(date +%s) <sha>',
+        'Trigger DO redeploy on prior sha: doctl apps create-deployment $APP_ID --force-rebuild',
+        'Verify health post-redeploy:      mc deploy health --json',
+      ],
+      cli_hooks: [
+        'mc deploy health',
+        'mc deploy env-check',
+      ],
+    },
+  };
+};
+
 // --- Events watch (SSE streaming) ---
 
 async function handleEventsWatch(flags, ctx) {
@@ -1062,9 +1414,14 @@ async function run() {
       process.exit(EXIT.USAGE);
     }
 
+    // If no action given but the group has a `default` handler (e.g. `mc health`), use it.
+    if (!action && typeof groupMap.default === 'function') {
+      action = 'default';
+    }
+
     let handler = groupMap[action];
     if (!handler) {
-      console.error(`Unknown action: ${group} ${action}`);
+      console.error(`Unknown action: ${group} ${action || '(missing)'}`);
       usage();
       process.exit(EXIT.USAGE);
     }
