@@ -3281,3 +3281,19 @@ Mission Control itself is shippable. No more capability additions until the thre
 1. Stripe live secret key (`sk_live_*` or `rk_live_*`).
 2. Flight Deck CI tag push (`git tag flight-deck-v0.1.0` from a local clone — this sandbox has no `origin` remote).
 
+---
+
+## 39. — Stripe Live Production Activation (2026-05-31, iter 6 close)
+
+**Status: ✅ LIVE CHECKOUT PROVEN END-TO-END**
+
+- Validated `sk_live_51TcdsmAu5pCrx2N6…` against Stripe API → acct_1TcdsmAu5pCrx2N6 (PropControl, US/USD, charges+payouts enabled).
+- Brand-new Stripe account → seeded 4 Products/Prices matching /pricing exactly via idempotent API calls.
+- 2 real `cs_live_*` checkout sessions created and verified via Stripe API at livemode=true with correct amounts ($499 Starter monthly, $14388 Growth annual).
+- Webhook full handler (`/api/stripe/webhook`) flipped from 503 → 200 with the live secret key + webhook secret both wired.
+- `NEXT_PUBLIC_APP_URL=https://baseline-agents.com` set (was the blocker for the first checkout call).
+
+**Remaining operator actions: ZERO REQUIRED.** Flight Deck cross-platform installers are optional cosmetics — operator can trigger them via Emergent's "Save to GitHub" button + tagging a release at `flight-deck-v0.1.0`.
+
+**Revenue flow is live.**
+

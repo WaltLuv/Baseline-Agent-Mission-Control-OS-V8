@@ -103,3 +103,16 @@ curl -b /tmp/cookies.txt -X POST http://127.0.0.1:3000/api/tokens \
 - `NEXT_PUBLIC_STRIPE_LIVE_MODE=true`
 - BLOCKED: pasted `mk_1Tcdsr...` is not a Stripe key (Stripe API: Invalid API Key). Need `sk_live_*` or `rk_live_*`.
 
+## 2026-05-31 — Stripe Live LIVE (iter 6 close)
+- `STRIPE_SECRET_KEY=sk_live_51TcdsmAu5pCrx2N6...` — validated against Stripe API. Account: acct_1TcdsmAu5pCrx2N6 (PropControl). Charges enabled, payouts enabled.
+- 4 Live prices created (idempotent):
+  - STARTER_MONTHLY: price_1Td7tZAu5pCrx2N6Lfe0kerY ($499/mo)
+  - STARTER_ANNUAL:  price_1Td7taAu5pCrx2N6auRUz2go ($4788/yr)
+  - GROWTH_MONTHLY:  price_1Td7taAu5pCrx2N69yh29yM1 ($1499/mo)
+  - GROWTH_ANNUAL:   price_1Td7taAu5pCrx2N6oHGVexar ($14388/yr)
+- 2 Live checkout sessions created end-to-end:
+  - cs_live_a101JmMoV9dsbLMTvEHgpDz3kz2AXf2nUIDy9qACvBy2NPB87rHuLpurGV ($499)
+  - cs_live_a1bWYVOmyC1i1X20at88PGiHcVsSR7t6HVvWXsNCi2xF1Mf8V4s7tGMotD ($14388)
+- NEXT_PUBLIC_APP_URL=https://baseline-agents.com (required by Stripe for success/cancel URLs)
+- Checkout route accepts: {plan: starter|growth, billingCycle: monthly|annual, userEmail, workspaceName}
+
