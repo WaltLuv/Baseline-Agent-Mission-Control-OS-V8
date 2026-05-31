@@ -74,7 +74,9 @@
     "testConnection": "Test Connection",
     "connectionSuccess": "Connection successful",
     "connectionFailed": "Connection failed",
-    "advancedSettings": "Advanced Settings"
+    "advancedSettings": "Advanced Settings",
+    "usernameOrEmail": "Username or email",
+    "enterUsernameOrEmail": "Enter username or email"
   },
   "nav": {
     "overview": "Overview",

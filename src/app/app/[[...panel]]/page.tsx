@@ -50,6 +50,9 @@ import { SystemMonitorPanel } from '@/components/panels/system-monitor-panel'
 import { DailyOptimizationPanel } from '@/components/panels/daily-optimization-panel'
 import { AgentScannerPanel } from '@/components/panels/scanner-panel'
 import { ChatPagePanel } from '@/components/panels/chat-page-panel'
+import { TeamPanel } from '@/components/panels/team-panel'
+import { RuntimeKeysPanel } from '@/components/panels/runtime-keys-panel'
+import { AgentGatewayPanel } from '@/components/panels/agent-gateway-panel'
 import { ChatPanel } from '@/components/chat/chat-panel'
 import { HelpPanel } from '@/components/help/help-panel'
 import { FirstRunTour } from '@/components/help/first-run-tour'
@@ -674,6 +677,15 @@ function ContentRouter({ tab }: { tab: string }) {
       return <ChatPagePanel />
     case 'scanner':
       return <AgentScannerPanel />
+    case 'team':
+    case 'members':
+      return <TeamPanel />
+    case 'runtime-keys':
+    case 'api-keys':
+      return <RuntimeKeysPanel />
+    case 'agent-gateway':
+    case 'mcp-gateway':
+      return <AgentGatewayPanel />
     case 'default': {
       return renderPluginPanel(tab)
     }

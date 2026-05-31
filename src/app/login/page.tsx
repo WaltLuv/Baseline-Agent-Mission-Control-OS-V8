@@ -495,17 +495,18 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className={`space-y-4 ${pendingApproval ? 'opacity-50 pointer-events-none' : ''}`}>
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-foreground mb-1.5">{t('username')}</label>
+            <label htmlFor="username" className="block text-sm font-medium text-foreground mb-1.5">{t('usernameOrEmail')}</label>
             <input
               id="username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full h-10 px-3 rounded-lg bg-secondary border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-smooth"
-              placeholder={t('enterUsername')}
-              autoComplete="username"
+              placeholder={t('enterUsernameOrEmail')}
+              autoComplete="username email"
               autoFocus
               required
+              data-testid="login-username-or-email"
               aria-required="true"
             />
           </div>

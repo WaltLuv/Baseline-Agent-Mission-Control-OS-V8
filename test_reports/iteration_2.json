@@ -1,0 +1,53 @@
+{
+  "summary": "Iteration 3 browser pass against https://token-monetization.preview.emergentagent.com. 9 of 12 flows PASSED-IN-BROWSER, 1 PARTIAL, 1 FAILED, 1 NOT-TESTED. New RuntimeKeysPanel and AgentGatewayPanel now render and work (iteration 2 launch-blockers resolved). However, /app/team route still does NOT mount the TeamPanel data-testid for cz-1780200960 — the page renders the dashboard/overview instead of TeamPanel — so the Team/Members launch blocker is still open in browser. Agent Gateway tasks list is empty in the API (/api/agent-gateway/tasks returns {tasks:[]}) so the row-expansion + logs sub-test could not be exercised in browser (panel itself, 4 agent pills, MC-connected pill, and tasks-section frame all render correctly).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/agent-gateway/tasks", "issue": "Returns {tasks: []} for cz-1780200960 in workspace 338 even though the request claimed a pre-existing smoke-test task. Prevents in-browser verification of gateway-task-row-* + task-*-logs UI."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "/app/team route", "issue": "[data-testid='team-panel'] is NOT rendered. The page renders the Overview/Dashboard layout instead (Setup checklist / Mission Control supervises Baseline OS card). Reproducible across two separate browser sessions for cz-1780200960@example.com (workspace 338, admin). Iteration 2 claimed this was fixed but the fix has NOT landed in the deployed build, or middleware is redirecting /app/team back to /app for this user.", "selector": "[data-testid='team-panel']", "priority": "LAUNCH-BLOCKER"},
+      {"component": "FirstRunTour / post-onboarding tour", "issue": "Two distinct tours fire on first session: (a) 'Welcome to Mission Control' modal dismissed via 'Skip setup' button, then (b) a 10-step coach-mark tour ('TOUR · 1 OF 10 This is your Executive Briefing') dismissed via 'Skip tour' link. Tour (b) re-appears after navigation and visually covers panel content until dismissed.", "selector": "text=Skip tour", "priority": "MEDIUM (test ergonomics — block test agents/customers if they don't know to dismiss twice)"}
+    ],
+    "integration_issues": [
+      {"flow": "FLOW-G Agent Gateway tasks", "issue": "Panel + 4 pills + MC-connected all render; gateway-status-ok=present; gateway-status-unreachable absent. But Recent Tasks list says 'No tasks yet' and /api/agent-gateway/tasks=[], so gateway-task-row-* + task-*-logs sub-test could not be performed.", "affected_selectors": ["[data-testid^='gateway-task-row-']", "[data-testid$='-logs']"]}
+    ],
+    "design_issues": []
+  },
+  "flow_results": {
+    "FLOW-A_Homepage": "PASSED-IN-BROWSER (GET / → 200, positioning copy visible after scroll, footer VisionOps + PropControl links present)",
+    "FLOW-B_Login": "PASSED-IN-BROWSER (label is now 'Username or email' — iteration 1 finding resolved; login as cz-1780200960 lands on /app)",
+    "FLOW-C_DismissTour": "PASSED-IN-BROWSER (Skip setup dismisses welcome modal; a separate 10-step tour needs 'Skip tour' link to be clicked)",
+    "FLOW-D_Team_Invite": "FAILED-IN-BROWSER ([data-testid='team-panel'] count=0 on /app/team. Page renders dashboard instead of TeamPanel. invite-email-input, invite-role-select, invite-submit-button all NOT present in DOM.)",
+    "FLOW-E_AcceptInvite": "NOT-TESTED (FLOW-D failed, no accept_url to consume)",
+    "FLOW-F_RuntimeKeys_Mint": "PASSED-IN-BROWSER (runtime-keys-panel=1, runtime-keys-mint-section=1, key-agent-select pre-populated with cz-codex, mint-key-button works, fresh-key-block + fresh-key-value 'mca_...' rendered, runtime-keys-existing-list shows 'cz-codex-key mca_4b92f795...'. Resolves iteration-1 launch-blocker.)",
+    "FLOW-G_AgentGateway": "PARTIAL-IN-BROWSER (agent-gateway-panel=1, agent-gateway-health-card=1, gateway-status-ok=1, gateway-status-unreachable=0, all 4 pills present claude/codex/opencode/hermes, gateway-mc-connected='connected', agent-gateway-tasks-section=1 — but 0 task rows because gateway DB returned []. Cannot exercise task-row-expand → logs.)",
+    "FLOW-H_Billing": "PASSED-IN-BROWSER (page loads, Stripe test-mode amber banner visible, credit pack copy rendered)",
+    "FLOW-I_DemoCPA": "PASSED-IN-BROWSER (briefing-headline = 'Tax season pressure is dropping. One reconciliation needs you.'; visible 'DEMO MODE / You are viewing CPA / Accounting Firm' amber banner with Exit Demo Mode button. Resolves iteration-1 FAILED finding.)",
+    "FLOW-J_Logout_Relogin": "PASSED-IN-BROWSER (logout → /login, re-login as cz-1780200960 returns to /app, 'Customer Zero' workspace text visible)",
+    "FLOW-K_ForgotPassword": "PASSED-IN-BROWSER ('If an account exists for that email, we've sent reset instructions.' rendered, no 429)",
+    "FLOW-L_FlightDeck": "PASSED-IN-BROWSER ('Installer build pending' / pending banner present, macOS/Windows/Linux cards present)"
+  },
+  "test_report_links": [],
+  "action_items": [
+    "INVESTIGATE /app/team route for cz-1780200960@example.com — server is returning the Overview/Dashboard HTML instead of the TeamPanel route. Either (a) the new TeamPanel-bearing build was not actually deployed to the live URL (supervisor may still be running stale .next bundle), or (b) middleware/route group redirects /app/team to /app when onboarding is incomplete. Verify by hitting the page server-side and checking response body for 'team-panel' string. The iteration-2 promise 'TeamPanel did not show accept_url box (fixed)' cannot be verified in browser because the panel itself does not render.",
+    "SEED at least one task into /tmp/agent-gateway/tasks.db (or have one of the 4 agents POST a task through /api/agent-gateway/tasks) so the gateway-task-row-* / task-*-logs UI can be exercised end-to-end by automation. Right now /api/agent-gateway/tasks returns {tasks:[]}.",
+    "Consider a single 'Skip all onboarding' button — the welcome modal AND the 10-step coach tour both fire on first session and confuse first-run automation. Iteration-2 review note explicitly only mentioned 'Skip setup', missing the second 'Skip tour' link.",
+    "(Optional cosmetic) Add 'Demo mode' query-param support documentation visible in the UI — the Exit Demo Mode pill is good; consider showing a similar amber pill on /app/overview when ?demo=cpa is set even before scroll."
+  ],
+  "critical_code_review_comments": [
+    "/app/team route appears decoupled from the deployed bundle: TeamPanel testids are absent from server-rendered HTML even though /app/src/components/panels/team-panel.tsx exists in repo. Check that the standalone .next/standalone/server.js was rebuilt after the team-panel changes (mtime of .next/standalone vs src/components/panels/team-panel.tsx).",
+    "Agent Gateway tasks endpoint returns empty list — verify AGENT_GATEWAY_URL + AGENT_GATEWAY_API_KEY resolve from MC server context AND that workspace_id 338 has authority over the gateway DB rows (may be a workspace-scoping filter eating the smoke task).",
+    "FirstRunTour 10-step coach-mark tour blocks panel testid reads after a soft client-side navigation — consider rendering it as a portal that does NOT intercept pointer events on the underlying DOM, or auto-dismiss when user navigates away from /app."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (frontend-only run, but /api/agent-gateway/tasks probed → 200 empty)", "frontend": "9 of 12 PASSED-IN-BROWSER, 1 PARTIAL (FLOW-G), 1 FAILED (FLOW-D), 1 NOT-TESTED (FLOW-E)"},
+  "test_credentials": "Used as-provided: cz-1780200960@example.com / ChangeMe!1234ABC (workspace 338, admin)",
+  "seed_data_creation": "Minted 1 runtime API key 'browser-pass-final' on agent cz-codex (visible as cz-codex-key mca_4b92f795... in runtime-keys-existing-list). No team invite created (FLOW-D blocked).",
+  "retest_needed": true,
+  "main_agent_can_self_test": false,
+  "context_for_next_testing_agent": "1) /app/team STILL does not render TeamPanel for cz-1780200960. Reproduced twice. Most likely the deployed standalone bundle was not actually rebuilt after the team-panel fix — confirm via `ls -la /app/.next/standalone/server.js` mtime vs `/app/src/components/panels/team-panel.tsx` mtime, OR `curl -s -b cookies https://token-monetization.preview.emergentagent.com/app/team | grep team-panel`. 2) Agent Gateway tasks DB is empty in the deployed env — seed a row before retest or the row-expand subtest will always be skip. 3) After login a SECOND tour fires on every navigation ('TOUR · 1 OF 10') — dismiss via 'Skip tour' text link in addition to 'Skip setup' button. 4) Iteration-3 'launch-readiness': RuntimeKeys ✅ Agent-Gateway-panel ✅ Team ❌. A stranger CANNOT complete the customer journey through the UI alone yet because they cannot invite teammates from /app/team.",
+  "rca of the issue": "FLOW-D root-cause hypothesis: the /app/team Next.js route either (a) is not built into .next/standalone (build artifact stale despite iteration-2 supervisor fix), or (b) middleware in src/middleware.ts redirects /app/team → /app for workspaces where onboarding %<100. The body content returned for /app/team in two independent sessions is IDENTICAL to /app overview (Setup checklist + 'Mission Control supervises Baseline OS' panel), strongly suggesting a redirect/fallback rather than a 404. Verify with: `curl -s -b /tmp/cz.cookies 'https://token-monetization.preview.emergentagent.com/app/team' -o /tmp/team.html && grep -c 'team-panel\\|TeamPanel' /tmp/team.html`. If zero, the page never reaches TeamPanel render. Mitigation: rebuild .next/standalone (yarn build) after confirming src/app/(app)/team/page.tsx is in the source tree, and restart supervisor."
+}
