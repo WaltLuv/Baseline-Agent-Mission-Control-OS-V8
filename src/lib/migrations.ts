@@ -1924,6 +1924,110 @@ const migrations: Migration[] = [
       })()
       db.exec('PRAGMA foreign_keys = ON')
     }
+  },
+  {
+    id: '053_runtime_registry_extended',
+    up(db: Database.Database) {
+      // Mission Control consumes (does not host) the Baseline OS local
+      // runtime registry. Extend the existing `runtime_registry` table with
+      // the fields the local registry advertises so we can faithfully
+      // mirror its state for supervision.
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS runtime_registry (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL,
+          kind TEXT NOT NULL,
+          installation_id TEXT NOT NULL,
+          label TEXT NOT NULL,
+          version TEXT,
+          capabilities TEXT,
+          registered_at INTEGER NOT NULL,
+          last_seen_at INTEGER NOT NULL,
+          last_task_count INTEGER NOT NULL DEFAULT 0,
+          health TEXT NOT NULL DEFAULT 'green',
+          UNIQUE(workspace_id, kind, installation_id)
+        )
+      `)
+      const cols = db.prepare(`PRAGMA table_info(runtime_registry)`).all() as Array<{ name: string }>
+      const have = new Set(cols.map((c) => c.name))
+      const adds: Array<[string, string]> = [
+        ['host', `ALTER TABLE runtime_registry ADD COLUMN host TEXT`],
+        ['installed_tools', `ALTER TABLE runtime_registry ADD COLUMN installed_tools TEXT`],
+        ['installed_skills', `ALTER TABLE runtime_registry ADD COLUMN installed_skills TEXT`],
+        ['health_score', `ALTER TABLE runtime_registry ADD COLUMN health_score INTEGER`],
+        ['metadata', `ALTER TABLE runtime_registry ADD COLUMN metadata TEXT`],
+      ]
+      for (const [name, sql] of adds) if (!have.has(name)) db.exec(sql)
+    },
+  },
+  {
+    id: '054_tool_executions',
+    up(db: Database.Database) {
+      // Mission Control supervises CLI Anything / Connected Tools.
+      // We do NOT execute commands. We accept telemetry from the runtime,
+      // gate HIGH-risk commands behind explicit approval, and persist a
+      // tamper-evident audit ledger for proof. Schema matches the
+      // mandate's "Mission Control Requirements" field list.
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS tool_executions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL,
+          task_id INTEGER,
+          agent_id INTEGER,
+          runtime_id INTEGER,
+          cli_tool_id TEXT NOT NULL,
+          command_name TEXT NOT NULL,
+          command_args_redacted TEXT,
+          risk TEXT NOT NULL DEFAULT 'low',
+          status TEXT NOT NULL DEFAULT 'pending',
+          approval_required INTEGER NOT NULL DEFAULT 0,
+          approved_by TEXT,
+          approved_at INTEGER,
+          rejected_by TEXT,
+          rejected_at INTEGER,
+          rejection_reason TEXT,
+          requested_by TEXT NOT NULL,
+          started_at INTEGER,
+          completed_at INTEGER,
+          exit_code INTEGER,
+          stdout_summary TEXT,
+          stderr_summary TEXT,
+          proof_url TEXT,
+          proof_payload TEXT,
+          cost_estimate REAL,
+          billable_action_type TEXT,
+          audit_event_id INTEGER,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+        )
+      `)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_tool_executions_workspace_status ON tool_executions(workspace_id, status, created_at DESC)`)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_tool_executions_task ON tool_executions(task_id)`)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_tool_executions_runtime ON tool_executions(runtime_id)`)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_tool_executions_pending_approval ON tool_executions(workspace_id, approval_required, status) WHERE approval_required = 1`)
+    },
+  },
+  {
+    id: '055_task_router_projection',
+    up(db: Database.Database) {
+      // Workforce Router (Baseline OS Phase 2) decides which runtime/tool/skill
+      // a task should run with. Mission Control DISPLAYS these decisions —
+      // it does not make them. Six additive columns. No backfill, no
+      // destructive change.
+      const cols = db.prepare(`PRAGMA table_info(tasks)`).all() as Array<{ name: string }>
+      const have = new Set(cols.map((c) => c.name))
+      const adds: Array<[string, string]> = [
+        ['assigned_runtime', `ALTER TABLE tasks ADD COLUMN assigned_runtime TEXT`],
+        ['selected_tool', `ALTER TABLE tasks ADD COLUMN selected_tool TEXT`],
+        ['selected_skill', `ALTER TABLE tasks ADD COLUMN selected_skill TEXT`],
+        ['routing_reason', `ALTER TABLE tasks ADD COLUMN routing_reason TEXT`],
+        ['routing_confidence', `ALTER TABLE tasks ADD COLUMN routing_confidence REAL`],
+        ['router_approval_required', `ALTER TABLE tasks ADD COLUMN router_approval_required INTEGER NOT NULL DEFAULT 0`],
+        ['router_decided_at', `ALTER TABLE tasks ADD COLUMN router_decided_at INTEGER`],
+      ]
+      for (const [name, sql] of adds) if (!have.has(name)) db.exec(sql)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_assigned_runtime ON tasks(workspace_id, assigned_runtime) WHERE assigned_runtime IS NOT NULL`)
+    },
   }
 ]
 

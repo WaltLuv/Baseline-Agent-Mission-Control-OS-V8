@@ -4,6 +4,64 @@ Append-only log of significant deliveries. PRD.md holds the durable product spec
 
 ---
 
+## 2026-06-01 · Mission Control Supervision Layer (Tool Executions + Runtime Registry consumer)
+
+### Mandate (from Walt + Claude Code)
+- Mission Control supervises. Baseline OS routes. Runtimes execute.
+- Claude Code shipped the local Baseline OS Runtime Registry (commit `7cea85f` on `baseline-agent-os`). My job is to **consume**, not rebuild.
+
+### Shipped
+- **Migrations 053–055**: extended `runtime_registry` with `host` / `installed_tools` / `installed_skills` / `health_score` / `metadata` (additive, idempotent); new `tool_executions` table; `tasks` gains the 6 Workforce-Router projection columns (`assigned_runtime`, `selected_tool`, `selected_skill`, `routing_reason`, `routing_confidence`, `router_approval_required`, `router_decided_at`).
+- **Runtime Registry consumer**:
+  - `GET /api/runtimes` — Phase 1 projection (runtime_id, runtime_type, status: `healthy / warning / critical / offline`, health_score, capabilities, installed_tools, installed_skills, active_tasks, heartbeat_age, last_seen, host, workspace_id, metadata, internal_id).
+  - `GET /api/runtimes/[id]` — single-runtime detail.
+  - `GET /api/runtimes/[id]/tasks` — tasks the Workforce Router assigned to that runtime.
+  - `POST /api/runtime/heartbeat` — extended to persist the Phase 1 extras Claude Code sends (host / installedTools / installedSkills / healthScore / capabilities / version / metadata).
+  - Status derivation pure function `deriveStatus(health, lastSeenAt)` → healthy / warning (>120s OR amber) / critical (>300s OR red) / offline (>600s). Snapshot non-mutating.
+  - `installationId` is the canonical `runtime_id` on the wire — matches Claude Code's `mission-control-sync.ts` field mapping.
+  - **No second registry.** Existing `runtime_registry` table reused; no `/api/runtimes/sync` route added (would duplicate Claude Code's `/api/runtime/handshake` consumer).
+- **Workforce Router decision sink**: `POST /api/tasks/[id]/routing` accepts `assigned_runtime`, `selected_tool`, `selected_skill`, `routing_reason`, `routing_confidence` (0..1), `approval_required`. Audit-logged + activity-logged. Mission Control stores and displays — it never decides.
+- **Tool Executions supervisor** (`Connected Tools` per the customer-facing copy rule — never "CLI Anything" in UI):
+  - `POST /api/tool-executions` — runtime records intent. Classifies risk (`low` auto-runs, `medium` auto-runs, `high` → `awaiting_approval`, `blocked` → never runs). Audit row created + linked back via `audit_event_id`.
+  - `PATCH /api/tool-executions/[id]` — runtime advances lifecycle: status → running → completed/failed; persists exit_code, stdout/stderr summaries, proof_url, proof_payload, cost_estimate. Status transitions validated.
+  - `GET /api/tool-executions` — list with filters: `status`, `task_id`, `runtime_id`, `limit`, `offset`. Filter `status=pending_approval` returns only HIGH-risk items awaiting human OK.
+  - `GET /api/tool-executions/[id]` — full detail including proof payload (JSON-parsed).
+  - `POST /api/tool-executions/[id]/approve` — admin/owner approves; rejects if status != `awaiting_approval`.
+  - `POST /api/tool-executions/[id]/reject` — admin/owner rejects with optional reason.
+  - Risk classifier (`/app/src/lib/baseline-os/tool-executions.ts::classifyRisk`): LOW = list/cat/read/get/search/show/status/describe/view/preview/render. MEDIUM = create-draft/draft/generate/write/render-pdf/export/archive. HIGH = send-email/send/email/invite/charge/invoice/publish/deploy/apply/create-pr/merge. BLOCKED = delete-all/drop/rm-rf/destroy/reset-database/truncate. Workspace policies can override via `policy_override` on the start payload.
+- **UI surface**: `/app/tool-executions` — supervisor view. Filter chips (Needs approval / All / Running / Completed / Failed / Rejected), risk + status badges, command preview, approve/reject buttons (admin only), audit IDs, proof links, cost estimates, task back-links. Slide-over detail with stdout/stderr/proof_payload JSON. No new dashboard — single focused page.
+- **MC_API_KEY auth**: existing `requireRole` already supports `x-api-key` header via `agent_api_keys.key_hash`; no changes needed. Runtime sync does NOT depend on browser cookies.
+
+### Verified
+- 10/10 new vitest tests in `/app/src/lib/baseline-os/__tests__/supervision.test.ts` pass (runtime projection, status derivation across all 4 levels, router-decision-on-task, full LOW/MEDIUM/HIGH/BLOCKED lifecycle, approve/reject, list filters).
+- 5/5 signup + 7/7 runtime-key tests still pass (no regressions).
+- End-to-end browser proof (`/tmp/te_pending.png`, `/tmp/te_all.png`): supervisor UI renders, awaiting-approval row has working Approve/Reject buttons, completed row links to Stripe proof URL + audit #14, blocked row is non-actionable.
+- End-to-end curl proof: handshake → heartbeat (extended) → list (Phase 1 projection) → create task → POST routing decision → GET /api/runtimes/:id/tasks reflects assignment → POST tool-executions (low/high/blocked) → approve → patch running → patch completed with proof → ledger filtered by `pending_approval` is empty afterwards.
+
+### What Claude Code still needs to expose (for the closed loop)
+1. Real `installation_id` per-host (current local registry uses `kind-prod-1` placeholders). Recommend hostname + UUID.
+2. `health_score` numeric (0–100) on every heartbeat, not just `green/amber/red`.
+3. `installed_tools[]` and `installed_skills[]` on heartbeat (Phase 1 docs Claude Code spec'd them; the wire payload should include them every cycle).
+4. `metadata` object: at minimum `last_task_at`, `uptime_s`, runtime version, OS, arch.
+5. When the Workforce Router selects a runtime + tool, POST to `/api/tasks/:id/routing` BEFORE dispatching to the runtime. Mission Control needs the decision to display "Router Decision → Runtime Assigned → Execution Started → Execution Complete" on Task Detail.
+6. When the runtime executes a CLI, POST `/api/tool-executions` with `task_id`, `runtime_id` (numeric internal_id from /api/runtimes), `cli_tool_id`, `command_name`, `command_args_redacted` — then PATCH lifecycle.
+
+### Files added/modified
+- `src/lib/migrations.ts` — migrations 053, 054, 055
+- `src/lib/baseline-os/runtime-registry.ts` — extended fields, projection helper, `getRuntimeByInternalId`, `deriveStatus`
+- `src/lib/baseline-os/tool-executions.ts` (new) — full supervision module
+- `src/app/api/runtime/heartbeat/route.ts` — accepts Phase 1 extended fields
+- `src/app/api/runtimes/route.ts` (new) + `[id]/route.ts` + `[id]/tasks/route.ts`
+- `src/app/api/tasks/[id]/routing/route.ts` (new) — Workforce Router decision write-back
+- `src/app/api/tool-executions/route.ts` (new) — GET list, POST start
+- `src/app/api/tool-executions/[id]/route.ts` (new) — GET, PATCH
+- `src/app/api/tool-executions/[id]/approve/route.ts` (new)
+- `src/app/api/tool-executions/[id]/reject/route.ts` (new)
+- `src/app/app/tool-executions/page.tsx` (new) — supervisor UI
+- `src/lib/baseline-os/__tests__/supervision.test.ts` (new) — 10 regression tests
+
+
+
 ## 2026-06-01 · Activation Stabilization Pass
 
 ### Root-cause fixes (no new features, no new dashboards)

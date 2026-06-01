@@ -37,6 +37,12 @@ export interface RuntimeRecord {
   lastSeenAt: number
   lastTaskCount: number
   health: 'green' | 'amber' | 'red'
+  /** Phase 1 extended fields (additive — only present when the runtime sends them). */
+  host?: string | null
+  installedTools?: string[]
+  installedSkills?: string[]
+  healthScore?: number | null
+  metadata?: Record<string, unknown> | null
 }
 
 const VALID_KINDS = new Set<RuntimeKind>(['hermes', 'openclaw', 'opencode', 'codex', 'claude-code', 'other'])
@@ -102,6 +108,14 @@ export interface HeartbeatInput {
   installationId: string
   taskCount?: number
   health?: 'green' | 'amber' | 'red'
+  /** Phase 1 extended fields (Baseline OS sync layer). */
+  host?: string | null
+  installedTools?: string[]
+  installedSkills?: string[]
+  healthScore?: number | null
+  capabilities?: string[]
+  version?: string | null
+  metadata?: Record<string, unknown> | null
 }
 
 export function recordHeartbeat(workspaceId: number, input: HeartbeatInput): RuntimeRecord | null {
@@ -111,11 +125,44 @@ export function recordHeartbeat(workspaceId: number, input: HeartbeatInput): Run
   const now = Math.floor(Date.now() / 1000)
   const taskCount = Math.max(0, Math.floor(input.taskCount ?? 0))
   const health = input.health ?? 'green'
+
+  // Build dynamic SET clause so we only touch columns the heartbeat actually sent.
+  const sets = ['last_seen_at = ?', 'last_task_count = ?', 'health = ?']
+  const params: unknown[] = [now, taskCount, health]
+  if (input.host !== undefined) {
+    sets.push('host = ?')
+    params.push(input.host)
+  }
+  if (input.installedTools !== undefined) {
+    sets.push('installed_tools = ?')
+    params.push(JSON.stringify(input.installedTools ?? []))
+  }
+  if (input.installedSkills !== undefined) {
+    sets.push('installed_skills = ?')
+    params.push(JSON.stringify(input.installedSkills ?? []))
+  }
+  if (input.healthScore !== undefined) {
+    sets.push('health_score = ?')
+    params.push(input.healthScore)
+  }
+  if (input.capabilities !== undefined) {
+    sets.push('capabilities = ?')
+    params.push(JSON.stringify(input.capabilities ?? []))
+  }
+  if (input.version !== undefined) {
+    sets.push('version = ?')
+    params.push(input.version)
+  }
+  if (input.metadata !== undefined) {
+    sets.push('metadata = ?')
+    params.push(input.metadata === null ? null : JSON.stringify(input.metadata))
+  }
+  params.push(workspaceId, kind, input.installationId)
   db.prepare(
     `UPDATE runtime_registry
-       SET last_seen_at = ?, last_task_count = ?, health = ?
+       SET ${sets.join(', ')}
      WHERE workspace_id = ? AND kind = ? AND installation_id = ?`,
-  ).run(now, taskCount, health, workspaceId, kind, input.installationId)
+  ).run(...params)
   return getRuntime(workspaceId, kind, input.installationId)
 }
 
@@ -125,25 +172,12 @@ export function getRuntime(workspaceId: number, kind: RuntimeKind, installationI
   const row = db
     .prepare(
       `SELECT id, workspace_id, kind, installation_id, label, version, capabilities,
-              registered_at, last_seen_at, last_task_count, health
+              registered_at, last_seen_at, last_task_count, health,
+              host, installed_tools, installed_skills, health_score, metadata
        FROM runtime_registry
        WHERE workspace_id = ? AND kind = ? AND installation_id = ?`,
     )
-    .get(workspaceId, kind, installationId) as
-    | {
-        id: number
-        workspace_id: number
-        kind: RuntimeKind
-        installation_id: string
-        label: string
-        version: string | null
-        capabilities: string | null
-        registered_at: number
-        last_seen_at: number
-        last_task_count: number
-        health: 'green' | 'amber' | 'red'
-      }
-    | undefined
+    .get(workspaceId, kind, installationId) as RuntimeRow | undefined
   if (!row) return null
   return toRecord(row)
 }
@@ -160,24 +194,13 @@ export function runtimeRegistrySnapshot(workspaceId: number): RuntimeRecord[] {
   const rows = db
     .prepare(
       `SELECT id, workspace_id, kind, installation_id, label, version, capabilities,
-              registered_at, last_seen_at, last_task_count, health
+              registered_at, last_seen_at, last_task_count, health,
+              host, installed_tools, installed_skills, health_score, metadata
        FROM runtime_registry
        WHERE workspace_id = ?
        ORDER BY kind, last_seen_at DESC`,
     )
-    .all(workspaceId) as Array<{
-    id: number
-    workspace_id: number
-    kind: RuntimeKind
-    installation_id: string
-    label: string
-    version: string | null
-    capabilities: string | null
-    registered_at: number
-    last_seen_at: number
-    last_task_count: number
-    health: 'green' | 'amber' | 'red'
-  }>
+    .all(workspaceId) as RuntimeRow[]
 
   const now = Math.floor(Date.now() / 1000)
   return rows.map((r) => {
@@ -189,7 +212,7 @@ export function runtimeRegistrySnapshot(workspaceId: number): RuntimeRecord[] {
   })
 }
 
-function toRecord(row: {
+type RuntimeRow = {
   id: number
   workspace_id: number
   kind: RuntimeKind
@@ -201,13 +224,42 @@ function toRecord(row: {
   last_seen_at: number
   last_task_count: number
   health: 'green' | 'amber' | 'red'
-}): RuntimeRecord {
+  host: string | null
+  installed_tools: string | null
+  installed_skills: string | null
+  health_score: number | null
+  metadata: string | null
+}
+
+function toRecord(row: RuntimeRow): RuntimeRecord {
   let caps: string[] = []
   try {
     caps = JSON.parse(row.capabilities ?? '[]') as string[]
     if (!Array.isArray(caps)) caps = []
   } catch {
     caps = []
+  }
+  let tools: string[] = []
+  try {
+    tools = JSON.parse(row.installed_tools ?? '[]') as string[]
+    if (!Array.isArray(tools)) tools = []
+  } catch {
+    tools = []
+  }
+  let skills: string[] = []
+  try {
+    skills = JSON.parse(row.installed_skills ?? '[]') as string[]
+    if (!Array.isArray(skills)) skills = []
+  } catch {
+    skills = []
+  }
+  let meta: Record<string, unknown> | null = null
+  if (row.metadata) {
+    try {
+      meta = JSON.parse(row.metadata) as Record<string, unknown>
+    } catch {
+      meta = null
+    }
   }
   return {
     id: row.id,
@@ -221,6 +273,11 @@ function toRecord(row: {
     lastSeenAt: row.last_seen_at,
     lastTaskCount: row.last_task_count,
     health: row.health,
+    host: row.host,
+    installedTools: tools,
+    installedSkills: skills,
+    healthScore: row.health_score,
+    metadata: meta,
   }
 }
 
@@ -232,4 +289,86 @@ export const RUNTIME_LABEL: Record<RuntimeKind, string> = {
   codex: 'Codex',
   'claude-code': 'Claude Code',
   other: 'Runtime',
+}
+
+/**
+ * Phase 1 / mandate field shape — `healthy / warning / critical / offline`
+ * with a heartbeat_age in seconds. Mission Control derives these from the
+ * registry's green/amber/red + last_seen_at without writing back. This
+ * is the wire shape consumed by Mission Control UI surfaces (Runtime
+ * Registry view, Task Detail, Activity Feed).
+ */
+export type RuntimeStatus = 'healthy' | 'warning' | 'critical' | 'offline'
+
+export interface RuntimeProjection {
+  runtime_id: string
+  runtime_type: RuntimeKind
+  name: string
+  host: string | null
+  status: RuntimeStatus
+  health_score: number | null
+  version: string | null
+  capabilities: string[]
+  installed_tools: string[]
+  installed_skills: string[]
+  active_tasks: number
+  heartbeat_age: number | null
+  last_seen: number
+  registered_at: number
+  workspace_id: number
+  metadata: Record<string, unknown> | null
+  /** Numeric primary key in `runtime_registry` — needed for /api/runtimes/:id. */
+  internal_id: number
+}
+
+export function deriveStatus(
+  health: 'green' | 'amber' | 'red',
+  lastSeenAt: number,
+  now: number = Math.floor(Date.now() / 1000),
+): { status: RuntimeStatus; heartbeat_age: number } {
+  const age = now - lastSeenAt
+  if (age > 600) return { status: 'offline', heartbeat_age: age }
+  if (health === 'red' || age > 300) return { status: 'critical', heartbeat_age: age }
+  if (health === 'amber' || age > 120) return { status: 'warning', heartbeat_age: age }
+  return { status: 'healthy', heartbeat_age: age }
+}
+
+export function toProjection(rec: RuntimeRecord, now?: number): RuntimeProjection {
+  const { status, heartbeat_age } = deriveStatus(rec.health, rec.lastSeenAt, now)
+  return {
+    runtime_id: rec.installationId,
+    runtime_type: rec.kind,
+    name: rec.label,
+    host: rec.host ?? null,
+    status,
+    health_score: rec.healthScore ?? null,
+    version: rec.version,
+    capabilities: rec.capabilities,
+    installed_tools: rec.installedTools ?? [],
+    installed_skills: rec.installedSkills ?? [],
+    active_tasks: rec.lastTaskCount,
+    heartbeat_age,
+    last_seen: rec.lastSeenAt,
+    registered_at: rec.registeredAt,
+    workspace_id: rec.workspaceId,
+    metadata: rec.metadata ?? null,
+    internal_id: rec.id,
+  }
+}
+
+/** Fetch a runtime by its numeric internal id, workspace-scoped. */
+export function getRuntimeByInternalId(workspaceId: number, internalId: number): RuntimeRecord | null {
+  const db = getDatabase()
+  ensureTable(db)
+  const row = db
+    .prepare(
+      `SELECT id, workspace_id, kind, installation_id, label, version, capabilities,
+              registered_at, last_seen_at, last_task_count, health,
+              host, installed_tools, installed_skills, health_score, metadata
+       FROM runtime_registry
+       WHERE workspace_id = ? AND id = ?`,
+    )
+    .get(workspaceId, internalId) as RuntimeRow | undefined
+  if (!row) return null
+  return toRecord(row)
 }
