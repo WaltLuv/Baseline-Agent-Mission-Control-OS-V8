@@ -15,15 +15,16 @@ export PATH="/app/.node22/bin:$PATH"
 cd /app
 
 # Standalone deploy assets — ensure Next.js' standalone output has the
-# static chunks + public assets linked in. yarn build does NOT copy these
+# static chunks + public assets linked in. `next build` does NOT copy these
 # automatically. Without this, every /_next/static/chunks/*.js returns 404
 # and the entire app renders as un-hydrated HTML (silently dead React).
-# Idempotent: -f -n means "force, no-dereference, treat existing symlink
-# as the target" so re-running never duplicates or errors.
-if [ -d /app/.next/static ] && [ ! -e /app/.next/standalone/.next/static ]; then
+# Always re-link on startup so a stale dir/symlink can never strand us.
+if [ -d /app/.next/static ]; then
+  rm -rf /app/.next/standalone/.next/static
   ln -sfn /app/.next/static /app/.next/standalone/.next/static
 fi
-if [ -d /app/public ] && [ ! -e /app/.next/standalone/public ]; then
+if [ -d /app/public ]; then
+  rm -rf /app/.next/standalone/public
   ln -sfn /app/public /app/.next/standalone/public
 fi
 

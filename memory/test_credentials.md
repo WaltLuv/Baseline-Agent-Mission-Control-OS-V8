@@ -74,6 +74,27 @@ curl -b /tmp/cookies.txt -X POST http://127.0.0.1:3000/api/tokens \
        "provider":"openrouter","agentId":1,"idempotencyKey":"test-001"}'
 ```
 
+## 2026-06-01 — Activation Stabilization Pass
+
+### Customer-Zero accounts (fresh signups via /api/auth/signup)
+Pattern for new test accounts:
+```
+POST /api/auth/signup
+{
+  "email": "cz_<ts>@acme.test",
+  "password": "CustomerZeroPass42!!",
+  "full_name": "Customer Zero",
+  "company_name": "ZeroCo <ts>",
+  "business_type": "pm"   // any of pm | gc | hs | bpo | re | cpa | mkt | law
+}
+```
+The signup transaction now also seeds a default `General` project so the wizard's first `/api/tasks` call no longer 500s on a new workspace.
+
+### Notable workspaces created during testing-agent iteration 7
+- ids 5, 7, 9, 11, 13 — `cz-iter7-<ts>@example.com` / `CustomerZeroPass42!!`
+- One teammate invite per workspace: `teammate-iter7@example.com` (operator role)
+
+
 ## 2026-05-31 — Customer Zero Browser Pass (browser-proven)
 - Customer Zero (workspace 338): `cz-1780200960@example.com` / `ChangeMe!1234ABC`
 - Teammate Zero (operator, workspace 338): `teammate-cz3@example.com` / `TeammatePass!1234`

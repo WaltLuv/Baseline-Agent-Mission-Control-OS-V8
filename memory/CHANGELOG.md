@@ -4,6 +4,34 @@ Append-only log of significant deliveries. PRD.md holds the durable product spec
 
 ---
 
+## 2026-06-01 · Activation Stabilization Pass
+
+### Root-cause fixes (no new features, no new dashboards)
+- **Onboarding agent provisioning was silently 4xx-ing.** `/app/src/app/onboarding/page.tsx` POSTed `{name, status:"active", capacity:3}` to `/api/agents`. (a) `status:"active"` is not in the enum (`online|offline|busy|idle|error`). (b) `capacity` is not a column on the SQLite `agents` table. (c) `role` was missing yet the route requires it. Fixed by sending `{name, role:"AI Employee", status:"offline"}`. This is the actual code path that originated the recurring `SqliteError: table agents has no column named capacity` history (also caught by the seed-demo script's swallow-and-fallback). The runtime-key route itself was never the source — confirmed by 7 fresh regression assertions.
+- **New workspaces had no default project.** `/api/auth/signup` and `/api/workspaces` POST now seed a default `General` project inside the same transaction that creates the workspace. Without this, the onboarding wizard's first `/api/tasks` call 500'd with `No active project available in workspace` for every new customer (the migration only seeded `General` for workspaces that already existed at migration time).
+- **Standalone static asset symlink lost on every `pnpm build`.** `/app/scripts/start-with-node22.sh` now unconditionally re-creates `/app/.next/standalone/.next/static → /app/.next/static` and `/app/.next/standalone/public → /app/public` on every supervisor start (previously skipped if a stale dir was already there). Closes the recurring deploy regression flagged by testing-agent iterations 4/6/7.
+- **Login submit testid.** Added `data-testid="login-submit"` to the sign-in `<Button>` so logout/login round-trip tests don't depend on translated button text.
+
+### Verified (Customer Zero browser pass — testing-agent iteration 7)
+- 18/18 backend pytest assertions pass.
+- Browser-walked: `/signup` → `/onboarding` (3 steps) → `/app/activate` → Runtime Wizard (Claude key minted, command rendered with `MC_URL` + `MC_API_KEY` + `RUNTIME_TYPE` + `connect-runtime.mjs`) → Invite Team (invite sent + chip shown) → `/help` (9 articles · 7 categories · client-side search) → `/pricing` → `/app/billing` → logout/login round-trip.
+- 5/5 existing signup tests still pass.
+- 7/7 new regression tests in `/app/src/app/api/onboarding/runtime-key/__tests__/runtime-key.test.ts` pass (covers schema integrity, idempotency, all four runtimes, unauth 401, bad-runtime 400).
+
+### Files changed
+- `src/app/onboarding/page.tsx` — agent payload corrected.
+- `src/app/api/auth/signup/route.ts` — seed default `General` project.
+- `src/app/api/workspaces/route.ts` — seed default `General` project.
+- `src/app/login/page.tsx` — `data-testid="login-submit"` on the submit button.
+- `scripts/start-with-node22.sh` — unconditional re-symlink of standalone static/public.
+- `src/app/api/onboarding/runtime-key/__tests__/runtime-key.test.ts` (new) — 7 regression tests.
+
+### Carry-over (not blocking activation)
+- `/app/activate` overlay for legacy `admin@workspace=1` — old "Welcome to Mission Control" setup modal still occludes the new Activation Hub. New signups are unaffected. Cosmetic; not on the customer self-serve path.
+- `/login` UI submit click (`button:has-text('Sign in')`) intermittently does not navigate after a 200 from `/api/auth/login`. The added testid is a workaround for tests. Real-cause investigation deferred.
+
+
+
 ## 2026-05-31 · Customer Zero Browser Pass (browser-proven)
 
 ### Shipped — closes 3 launch-blockers

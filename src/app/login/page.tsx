@@ -537,6 +537,7 @@ export default function LoginPage() {
             disabled={loading}
             size="lg"
             className="w-full rounded-lg"
+            data-testid="login-submit"
           >
             {loading ? (
               <>
