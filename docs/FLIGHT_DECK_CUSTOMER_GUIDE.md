@@ -107,3 +107,47 @@ Email `hello@baseline-agents.com` if:
 | macOS | 13 Ventura, 14 Sonoma | Apple Silicon | 🟡 CI build pending |
 | macOS | 13 Ventura | Intel | 🟡 CI build pending |
 | Windows | 10 22H2, 11 23H2 | x86_64 | 🟡 CI build pending |
+
+## Frequently asked questions
+
+### Is Flight Deck a separate product?
+
+No. Flight Deck is a desktop wrapper around the same Mission Control web app. You get the same features, same logins, same data. The only difference is the window it lives in.
+
+### Can I use Mission Control without Flight Deck?
+
+Yes. Mission Control is fully functional in any modern browser (Chrome, Firefox, Safari, Edge). Flight Deck is purely a convenience layer for operators who want a native app feel.
+
+### Why do I see "unsigned developer build" warnings?
+
+Code-signing certificates cost $99–$200/year per platform (Apple Developer ID, Windows EV cert). v0.1 ships unsigned to keep the price at zero. Once Baseline Growth plan adoption justifies it, we'll add signing — at which point the warnings go away.
+
+You can verify the installer's integrity yourself: every release artifact has a SHA256 checksum published next to it on the `/flight-deck` page and on the GitHub Release. Compare it to the checksum of your downloaded file before installing.
+
+### Can my team share one Flight Deck installation?
+
+Each operator should have their own Flight Deck on their own device. The app stores credentials in the OS keychain — sharing a device leaks credentials.
+
+### Does Flight Deck work offline?
+
+No. Mission Control is a cloud service; Flight Deck is just a window into it. You need internet to use it. Brief network drops (< 30s) are handled gracefully — the window will show a reconnect prompt and resume when the network returns.
+
+### How do I file a Flight Deck bug?
+
+Email `hello@baseline-agents.com` with:
+1. Your OS + version (`uname -a` on Linux/macOS; `winver` on Windows).
+2. Flight Deck version (shown at the bottom-left corner of the window).
+3. Exact steps to reproduce.
+4. A screenshot of the error.
+
+We respond within 1 business day, US-Eastern.
+
+### What's coming next for Flight Deck
+
+- Auto-update on launch (v0.2).
+- Multi-deployment quick-switcher in the menu bar (v0.2).
+- Optional offline cache for the dashboard read-side (v0.3).
+- Signed production builds (v0.3 onward).
+
+No promised dates — we ship when each is reliable.
+

@@ -14,6 +14,19 @@ set -e
 export PATH="/app/.node22/bin:$PATH"
 cd /app
 
+# Standalone deploy assets — ensure Next.js' standalone output has the
+# static chunks + public assets linked in. yarn build does NOT copy these
+# automatically. Without this, every /_next/static/chunks/*.js returns 404
+# and the entire app renders as un-hydrated HTML (silently dead React).
+# Idempotent: -f -n means "force, no-dereference, treat existing symlink
+# as the target" so re-running never duplicates or errors.
+if [ -d /app/.next/static ] && [ ! -e /app/.next/standalone/.next/static ]; then
+  ln -sfn /app/.next/static /app/.next/standalone/.next/static
+fi
+if [ -d /app/public ] && [ ! -e /app/.next/standalone/public ]; then
+  ln -sfn /app/public /app/.next/standalone/public
+fi
+
 # Load /app/.env into the environment before exec'ing the standalone server.
 # Next.js' built-in dotenv only runs at build time; the standalone runtime
 # does NOT re-parse .env. Without this, env values added after `yarn build`
