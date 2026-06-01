@@ -103,6 +103,15 @@ export async function POST(request: Request) {
       ).run(slug, companyName, defaultTenantId, now, now)
       const workspaceId = Number(wsResult.lastInsertRowid)
 
+      // Every new workspace needs a default "General" project so the first task
+      // created during onboarding (POST /api/tasks) doesn't 500 with
+      // "No active project available in workspace". The migration only seeds
+      // this for workspaces that existed at migration time.
+      db.prepare(`
+        INSERT OR IGNORE INTO projects (workspace_id, name, slug, description, ticket_prefix, ticket_counter, status, created_at, updated_at)
+        VALUES (?, 'General', 'general', 'Default project for uncategorized tasks', 'TASK', 0, 'active', ?, ?)
+      `).run(workspaceId, now, now)
+
       const user = createUser(username, password, fullName, 'admin', {
         provider: 'local',
         email,

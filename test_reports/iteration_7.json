@@ -1,0 +1,44 @@
+{
+  "summary": "Customer Zero activation pass: 18/18 backend pytest assertions PASS, full browser E2E walks signup → onboarding → /app/activate → runtime wizard (Claude key minted, connect_command rendered with MC_URL/MC_API_KEY/RUNTIME_TYPE/connect-runtime.mjs) → invite team (sent confirmation with chip) → /help (9 articles, 7 categories, search) → /pricing → /app/billing → logout/login round-trip. Previously reported capacity SQLite error and 'No active project' 500 are both fixed and verified.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "LoginPage /login", "issue": "Submitting the login form via UI click (button:has-text('Sign in')) does not navigate even when POST /api/auth/login succeeds (cookie is set). Bypassed in test by calling /api/auth/login via fetch then navigating. Existing iter5/iter6 reports flag the same. Likely a client-side form submit/router push regression.", "selector": "button:has-text('Sign in')", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/app/activate (admin workspace=1)", "issues": ["Legacy 'Welcome to Mission Control' setup modal overlays the activation hub on first visit, hiding the runtime picker until 'Skip setup' is clicked. New signups go straight to the hub with no overlay."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_activation_pass.py",
+    "/app/backend/tests/test_cz_flow_iter7.py",
+    "/app/test_reports/pytest/activation_pass_iter7.xml",
+    "/app/test_reports/pytest/cz_flow_iter7.xml"
+  ],
+  "action_items": [
+    "Investigate why the /login form's UI submit handler does not navigate after a 200 response (works fine via direct fetch). Possibly a stale router.push or a swallowed promise rejection.",
+    "(Optional) For admin@workspace=1 the old 'Welcome to Mission Control' setup overlay is still served on /app/activate. Consider gating that overlay so it does not occlude the new Activation Hub.",
+    "Recurring deploy regression: the standalone .next/static and public symlinks under /app/.next/standalone/ go missing across rebuilds, causing all chunked JS to 404 and the SPA to hydrate blank. Testing agent had to re-create the symlinks again this iteration (same as iter4/iter6). Bake this into the build/restart script."
+  ],
+  "critical_code_review_comments": [
+    "Handoff doc references runtime-option-<name> and runtime-wizard-skip testids, but the actual implementation uses runtime-wizard-option-<name> and runtime-wizard-skip-picker. Update docs or align testids to avoid breaking downstream tests.",
+    "POST /api/auth/login expects 'username' (not 'email'); doc says either; clarify or add an 'email' alias.",
+    "Onboarding step-1 continue button starts disabled (needs workspace name input) — fine, but Playwright scripts that try to advance without filling the field hit 'element is not enabled'; consider showing inline 'Enter workspace name' hint."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_cz_flow_iter7.py (new)",
+    "/app/.next/standalone/.next/static (recreated symlink)",
+    "/app/.next/standalone/public (recreated symlink)"
+  ],
+  "success_rate": {"backend": "100% (18/18)", "frontend": "100% on critical flows (activation hub, runtime wizard mint, invite send, /help, /pricing, /app/billing, fresh signup → hub); 1 incidental UI-only login submit issue"},
+  "test_credentials": "Admin: username=admin password=admin12345 (workspace_id=1). Fresh Customer Zero accounts created via /api/auth/signup with cz-iter7-<ts>@example.com / CustomerZeroPass42!! / business_type=pm — confirmed seed flow.",
+  "seed_data_creation": "Created multiple TEST_/cz-iter7-* customer-zero workspaces (ids 5,7,9,11,13). One TEST_OnboardingAgent and a teammate-iter7@example.com invite were generated against each fresh workspace as part of the assertion suite. No production data modified.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Always verify /app/.next/standalone/.next/static and /app/.next/standalone/public are symlinks before testing — they vanish after every rebuild. For UI tests against admin@1 use API-based fetch('/api/auth/login') to set the session cookie, then navigate; the visible form submit path on /login is broken. Activation hub uses testids runtime-wizard-option-{claude|codex|openclaw|hermes}, runtime-wizard-generate, runtime-wizard-command, runtime-wizard-skip-picker, invite-team-step, invite-role-{operator|admin|viewer}, invite-submit, invite-team-sent.",
+  "rca of the issue": "Original capacity-column bug RCA (already fixed by main agent and re-verified): /app/src/app/onboarding/page.tsx was POSTing {capacity:3,status:'active'} to /api/agents which (a) the SQLite agents table has no capacity column and (b) 'active' is not in the status enum. Fixed by sending {name, role:'AI Employee', status:'offline'}. Latent bug: new workspaces had no default project, so /api/tasks returned 500 'No active project' — fixed by seeding a 'General' project in both /api/auth/signup and /api/workspaces. Both verified by tests TestOnboardingAgents.test_create_agent_no_capacity_error and TestOnboardingAgents.test_create_task_no_active_project_error in this iteration."
+}

@@ -76,7 +76,9 @@ export default function OnboardingWizardClient() {
         await fetch("/api/agents", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, status: "active", capacity: 3 }),
+          // /api/agents requires { name, role } and an enum status. `capacity`
+          // is not a column on the `agents` table, so don't send it.
+          body: JSON.stringify({ name, role: "AI Employee", status: "offline" }),
         });
         setProvisionedEmployees((prev) => [...prev, name])
         await new Promise((r) => setTimeout(r, 350))

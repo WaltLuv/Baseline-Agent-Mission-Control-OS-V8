@@ -72,6 +72,13 @@ export async function POST(request: NextRequest) {
       'INSERT INTO workspaces (slug, name, tenant_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
     ).run(resolvedSlug, name.trim(), tenantId, now, now)
 
+    // Every workspace needs a default "General" project so task creation does
+    // not 500 with "No active project available in workspace".
+    db.prepare(`
+      INSERT OR IGNORE INTO projects (workspace_id, name, slug, description, ticket_prefix, ticket_counter, status, created_at, updated_at)
+      VALUES (?, 'General', 'general', 'Default project for uncategorized tasks', 'TASK', 0, 'active', ?, ?)
+    `).run(Number(result.lastInsertRowid), now, now)
+
     const workspace = db.prepare('SELECT * FROM workspaces WHERE id = ?').get(result.lastInsertRowid)
 
     logAuditEvent({
