@@ -20,20 +20,19 @@ export function FirstRunTour() {
   const [index, setIndex] = useState(0)
   const navigateToPanel = useNavigateToPanel()
 
-  // Auto-open once per browser — ONLY on the dashboard overview. Customer
-  // Zero bug: if a user navigates straight to /app/team or /app/billing on
-  // first visit, the tour would still auto-open after 1.5s and yank them
-  // back to /app/overview (because step 1's panel = 'overview'). Solution:
-  // require the user to actually be on the overview before triggering.
+  // Auto-open DISABLED 2026-06-01. The first-run tour was occluding the
+  // dashboard on first visit and blocking pointer events to the nav rail.
+  // The new Activation Hub (/app/activate) is now the canonical onboarding
+  // experience. The tour remains accessible via the explicit "Replay tour"
+  // button in the Help menu, which dispatches `mc:first-run-tour:replay`
+  // (handled by the next effect).
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const seen = window.localStorage.getItem(STORAGE_KEY)
-    if (seen) return
-    // Only auto-open when the user is on the dashboard root, not any sub-panel.
-    const path = window.location.pathname
-    if (path !== '/app' && path !== '/app/') return
-    const t = setTimeout(() => setOpen(true), 1500)
-    return () => clearTimeout(t)
+    // Mark as seen so the legacy auto-open path stays dormant even if the
+    // localStorage key was never set on this browser.
+    if (!window.localStorage.getItem(STORAGE_KEY)) {
+      window.localStorage.setItem(STORAGE_KEY, '1')
+    }
   }, [])
 
   // Listen for explicit replay

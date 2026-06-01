@@ -4,6 +4,40 @@ Append-only log of significant deliveries. PRD.md holds the durable product spec
 
 ---
 
+## 2026-06-01 · Nav rail "Connected Tools" + retire legacy onboarding overlays
+
+### Approved scope (Walt):
+1. Add "Connected Tools" to nav under OBSERVE
+2. Fix lingering admin overlay on `/app`
+
+### Shipped
+- `src/components/layout/nav-rail.tsx`: added `{ id: 'tool-executions', label: 'Connected Tools', icon: <ConnectedToolsIcon /> }` under OBSERVE between Approvals and Office. Custom SVG glyph (circle + 8-spoke radiating lines) in the 16-grid stroke style of the rest of the rail. Routes via `panelHref('tool-executions')` → `/app/tool-executions`, which is served by the standalone page I shipped yesterday (not the panel dispatcher).
+- **Retired legacy onboarding auto-opens** — the new Activation Hub (`/app/activate`) is now the canonical post-signup experience:
+  - `src/lib/onboarding-state.ts::shouldShowOnboarding` now returns `false` unconditionally. Killed the full-screen "Welcome to Mission Control · 0 of 5 runtimes ready · OpenClaw / Hermes / Claude Code / Codex / OpenCode" carousel that was occluding the entire dashboard for admin@workspace=1.
+  - `src/components/help/first-run-tour.tsx::FirstRunTour` auto-open useEffect retired. Now sets the `mc:first-run-tour:v1` localStorage key on first mount so the legacy code path stays dormant.
+  - Replay capability preserved for both — the Settings panel "Replay onboarding" button and the Help menu "Replay tour" button still work via the existing `mc:first-run-tour:replay` window event and the `setShowOnboarding(true)` store action.
+- `src/lib/__tests__/onboarding-state.test.ts`: existing test rewritten to enforce "never auto-opens" contract (5 assertions covering admin / non-admin × completed / skipped / fresh).
+
+### Verified
+- 27/27 vitest pass across signup (5), runtime-key (7), supervision (10), onboarding-state (5).
+- Browser proof: `/app` for legacy `admin/admin12345` now shows the clean dashboard — setup checklist, top bar, gateway banner, all 14 nav-rail icons including the new Connected Tools one. **0 dialogs / 0 modals / 0 overlays** (verified via `document.querySelectorAll('[role=dialog], [aria-modal=true]')` returning `[]`).
+- `/app/tool-executions` reachable: testid `tool-executions-page` present, "Execution supervisor" headline + filter chips + empty state copy ("No commands waiting on you. Your workforce is autonomous within the safe-risk envelope you've set.") all render correctly.
+
+### Carry-over (per Walt's "no new features until the loop exists" rule)
+- No `/api/runtimes/:id/health` (Phase 3+).
+- No workspace-level risk-policy editor (Phase 3+).
+- Mission Control Phase 1 is complete. Waiting for Claude Code Workforce Router integration to close the full loop: **Task → Baseline OS Router → Runtime Assignment → Execution → Tool Execution Ledger → Mission Control Proof**.
+
+### Note on Claude Code's debug session (not actionable on MC side)
+Walt pasted Claude Code's `/tmp/mc-v8` session: he POSTed 4 runtimes to `http://127.0.0.1:3000/api/runtime/handshake` and got success responses, but `GET /api/runtime/handshake` returned 0 and `sqlite3 ... SELECT * FROM runtime_registry;` returned 0 rows. This is in his local clone at `/tmp/mc-v8` — NOT this MC instance. Three possible root-causes from this side of the boundary:
+1. His Vite + Next.js dev server is double-running on different ports — POSTs landing on one DB, sqlite3 inspecting another.
+2. His MC_API_KEY env var matches MC's global key resolver, which returns `workspace_id = getDefaultWorkspaceContext().workspaceId` (first workspace by id ASC). If his `/tmp/mc-v8` DB has no workspaces, the insert succeeds against `workspace_id = 1` (FK-less) but his sqlite3 query is hitting a different `.data/` directory.
+3. He's connected to a stale `next dev` instance that returned 200 from a stub before the real route attached.
+
+Field mapping on this MC instance is provably correct (10 supervision tests verify INSERT → SELECT round-trip, plus end-to-end curl through the external proxy URL). No code change needed on the supervision side.
+
+
+
 ## 2026-06-01 · Mission Control Supervision Layer (Tool Executions + Runtime Registry consumer)
 
 ### Mandate (from Walt + Claude Code)

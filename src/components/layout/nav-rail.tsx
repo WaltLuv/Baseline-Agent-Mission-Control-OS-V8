@@ -52,6 +52,7 @@ const navGroups: NavGroup[] = [
       { id: 'cost-tracker', label: 'Cost Tracker', icon: <TokensIcon />, priority: false },
       { id: 'nodes', label: 'Nodes', icon: <NodesIcon />, priority: false },
       { id: 'exec-approvals', label: 'Approvals', icon: <ApprovalsIcon />, priority: false },
+      { id: 'tool-executions', label: 'Connected Tools', icon: <ConnectedToolsIcon />, priority: false },
       { id: 'office', label: 'Office', icon: <OfficeIcon />, priority: false },
       { id: 'monitor', label: 'Monitor', icon: <MonitorIcon />, priority: false },
     ],
@@ -1462,6 +1463,19 @@ function ApprovalsIcon() {
     </svg>
   )
 }
+
+// Connected Tools — the Mission Control supervisor view for CLI Anything
+// / runtime tool executions. Glyph: a wrench feeding into a circuit hub,
+// kept in the same 16-grid stroke style as the rest of the nav-rail.
+function ConnectedToolsIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="8" cy="8" r="2" />
+      <path d="M8 2v2M8 12v2M2 8h2M12 8h2M3.8 3.8l1.4 1.4M10.8 10.8l1.4 1.4M12.2 3.8l-1.4 1.4M5.2 10.8l-1.4 1.4" />
+    </svg>
+  )
+}
+
 
 function DebugIcon() {
   return (

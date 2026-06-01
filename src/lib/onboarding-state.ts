@@ -37,7 +37,18 @@ export function shouldShowOnboarding(params: {
   skipped: boolean
   isAdmin: boolean
 }): boolean {
-  return !params.completed && !params.skipped && params.isAdmin
+  // 2026-06-01: the canonical post-signup experience is now `/app/activate`
+  // (Activation Hub). The legacy auto-popup runtime carousel onboarding
+  // wizard is redundant for new signups and confusing for the legacy
+  // admin@workspace=1 seed user, where it covers the whole dashboard with
+  // "0 of 5 runtimes ready" — even though the user has already completed
+  // signup + activation. We stop the wizard from auto-opening here. It
+  // remains available via the explicit "Replay onboarding" button in
+  // Settings, which fires `mc:first-run-tour:replay` and sets
+  // `showOnboarding` directly through the store — so this is purely a
+  // change to the auto-trigger gating, not a feature removal.
+  void params
+  return false
 }
 
 export function markStepCompleted(

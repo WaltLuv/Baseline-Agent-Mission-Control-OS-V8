@@ -38,8 +38,13 @@ describe('onboarding-state', () => {
     expect(invalid).toEqual(['welcome'])
   })
 
-  it('shows onboarding only for admin users when not completed/skipped', () => {
-    expect(shouldShowOnboarding({ completed: false, skipped: false, isAdmin: true })).toBe(true)
+  it('never auto-opens the legacy onboarding wizard — Activation Hub is now canonical', () => {
+    // 2026-06-01: the legacy carousel wizard ("0 of 5 runtimes ready")
+    // covered the whole dashboard for admin@workspace=1. The new Activation
+    // Hub at `/app/activate` is the canonical post-signup flow, and the
+    // legacy wizard is only available via explicit replay. shouldShowOnboarding
+    // must therefore always return false regardless of completion/skip/admin.
+    expect(shouldShowOnboarding({ completed: false, skipped: false, isAdmin: true })).toBe(false)
     expect(shouldShowOnboarding({ completed: true, skipped: false, isAdmin: true })).toBe(false)
     expect(shouldShowOnboarding({ completed: false, skipped: true, isAdmin: true })).toBe(false)
     expect(shouldShowOnboarding({ completed: false, skipped: false, isAdmin: false })).toBe(false)
