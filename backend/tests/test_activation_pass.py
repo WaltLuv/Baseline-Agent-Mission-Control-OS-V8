@@ -69,27 +69,39 @@ class TestRuntimeKeyApi:
         assert "runtime" in body["error"].lower()
         assert "claude" in body["error"].lower()
 
-    @pytest.mark.parametrize("runtime", ["claude", "codex", "openclaw", "hermes"])
-    def test_runtime_key_provision_happy(self, admin_session, runtime):
+    @pytest.fixture
+    def provisioned(self, admin_session, runtime):
+        """Provision a runtime key and return the parsed response body."""
         r = admin_session.post(
             f"{BASE_URL}/api/onboarding/runtime-key",
             json={"runtime": runtime},
             timeout=30,
         )
         assert r.status_code == 200, f"expected 200, got {r.status_code}: {r.text}"
-        body = r.json()
-        # api_key
-        assert "api_key" in body, body
-        assert body["api_key"].startswith("mca_"), body["api_key"]
-        assert len(body["api_key"]) >= 47, f"api_key too short: {len(body['api_key'])}"
-        # agent_id
-        assert "agent_id" in body
-        assert isinstance(body["agent_id"], int)
-        # agent_name
-        assert "agent_name" in body and runtime in body["agent_name"]
-        # connect_command
-        assert "connect_command" in body
-        cmd = body["connect_command"]
+        return r.json()
+
+    @pytest.mark.parametrize("runtime", ["claude", "codex", "openclaw", "hermes"])
+    def test_returns_api_key_with_correct_prefix(self, provisioned):
+        assert "api_key" in provisioned, provisioned
+        assert provisioned["api_key"].startswith("mca_"), provisioned["api_key"]
+
+    @pytest.mark.parametrize("runtime", ["claude", "codex", "openclaw", "hermes"])
+    def test_api_key_length_meets_minimum(self, provisioned):
+        assert len(provisioned["api_key"]) >= 47, f"api_key too short: {len(provisioned['api_key'])}"
+
+    @pytest.mark.parametrize("runtime", ["claude", "codex", "openclaw", "hermes"])
+    def test_returns_integer_agent_id(self, provisioned):
+        assert "agent_id" in provisioned
+        assert isinstance(provisioned["agent_id"], int)
+
+    @pytest.mark.parametrize("runtime", ["claude", "codex", "openclaw", "hermes"])
+    def test_agent_name_includes_runtime(self, provisioned, runtime):
+        assert "agent_name" in provisioned and runtime in provisioned["agent_name"]
+
+    @pytest.mark.parametrize("runtime", ["claude", "codex", "openclaw", "hermes"])
+    def test_connect_command_shape(self, provisioned):
+        assert "connect_command" in provisioned
+        cmd = provisioned["connect_command"]
         assert "MC_URL=" in cmd
         assert "MC_API_KEY=" in cmd
         assert "node scripts/connect-runtime.mjs" in cmd

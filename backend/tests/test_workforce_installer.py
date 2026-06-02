@@ -59,25 +59,39 @@ def anon_session():
     return s
 
 
+# ---------------- Helpers ----------------
+def _fetch_templates(session):
+    """GET /api/workforce/templates → assert 200 and return the templates list."""
+    r = session.get(f"{BASE_URL}/api/workforce/templates", timeout=30)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    templates = body.get("templates") if isinstance(body, dict) else body
+    assert isinstance(templates, list), f"unexpected shape: {body}"
+    return templates
+
+
 # ---------------- Templates GET ----------------
 class TestTemplatesList:
-    def test_get_returns_8_templates(self, admin_session):
-        r = admin_session.get(f"{BASE_URL}/api/workforce/templates", timeout=30)
-        assert r.status_code == 200, r.text
-        body = r.json()
-        # accept either { templates: [...] } or raw list
-        templates = body.get("templates") if isinstance(body, dict) else body
-        assert isinstance(templates, list), f"unexpected shape: {body}"
+    def test_returns_exactly_8_templates(self, admin_session):
+        templates = _fetch_templates(admin_session)
         assert len(templates) == 8, f"expected 8 templates, got {len(templates)}"
 
+    def test_one_ready_template_is_property_management(self, admin_session):
+        templates = _fetch_templates(admin_session)
         ready = [t for t in templates if t.get("status") == "ready"]
-        coming = [t for t in templates if t.get("status") == "coming_soon"]
         assert len(ready) == 1, f"expected 1 ready, got {len(ready)}: {[t.get('slug') for t in ready]}"
         assert ready[0].get("slug") == PM_SLUG
+
+    def test_seven_coming_soon_templates(self, admin_session):
+        templates = _fetch_templates(admin_session)
+        coming = [t for t in templates if t.get("status") == "coming_soon"]
         assert len(coming) == 7, f"expected 7 coming_soon, got {len(coming)}"
-        coming_slugs = {t.get("slug") for t in coming}
-        for s in COMING_SOON_SLUGS:
-            assert s in coming_slugs, f"missing coming-soon slug: {s}"
+
+    @pytest.mark.parametrize("expected_slug", COMING_SOON_SLUGS)
+    def test_coming_soon_slug_present(self, admin_session, expected_slug):
+        templates = _fetch_templates(admin_session)
+        coming_slugs = {t.get("slug") for t in templates if t.get("status") == "coming_soon"}
+        assert expected_slug in coming_slugs, f"missing coming-soon slug: {expected_slug}"
 
 
 # ---------------- Install Auth Gating ----------------
@@ -102,8 +116,6 @@ class TestInstallComingSoon:
         )
         assert r.status_code == 400, f"{slug}: expected 400, got {r.status_code}: {r.text}"
         body = r.json()
-        # status='unavailable' per request
-        status = body.get("status") or body.get("error", {}) if isinstance(body, dict) else None
         # accept either {status:'unavailable'} or {error:{status:'unavailable'}}
         flat_status = body.get("status") if isinstance(body, dict) else None
         nested_status = body.get("error", {}).get("status") if isinstance(body.get("error"), dict) else None
@@ -112,47 +124,67 @@ class TestInstallComingSoon:
         )
 
 
+def _install_pm(session):
+    """POST /api/workforce/install for PM and return (status_code, body)."""
+    r = session.post(
+        f"{BASE_URL}/api/workforce/install",
+        json={"template": PM_SLUG},
+        timeout=60,
+    )
+    return r.status_code, r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+
+
+def _install_counts(body):
+    """Pull (personas, workflows, tools) out of an install response body."""
+    personas = body.get("personas") or body.get("agents") or []
+    workflows = body.get("tasks") or body.get("workflows") or []
+    tools = body.get("tools") or []
+    return personas, workflows, tools
+
+
 # ---------------- Install: property-management happy + idempotency ----------------
 class TestInstallPropertyManagement:
-    def test_install_property_management(self, admin_session):
-        """First call: 201 installed OR 200 already_installed (fresh-state agnostic).
-        Second call: 200 already_installed. Counts must not duplicate.
-        """
-        r1 = admin_session.post(
-            f"{BASE_URL}/api/workforce/install",
-            json={"template": PM_SLUG},
-            timeout=60,
-        )
-        assert r1.status_code in (200, 201), f"first install: {r1.status_code} {r1.text}"
-        body1 = r1.json()
-        # capture personas / counts
-        personas = body1.get("personas") or body1.get("agents") or []
-        tasks_or_workflows = body1.get("tasks") or body1.get("workflows") or []
-        tools = body1.get("tools") or []
+    def test_first_install_returns_2xx(self, admin_session):
+        status, _ = _install_pm(admin_session)
+        assert status in (200, 201), f"first install: {status}"
+
+    def test_first_install_returns_six_personas(self, admin_session):
+        _, body = _install_pm(admin_session)
+        personas, _, _ = _install_counts(body)
         assert len(personas) == 6, f"expected 6 personas, got {len(personas)}: {personas}"
-        assert len(tasks_or_workflows) == 12, f"expected 12 workflows/tasks, got {len(tasks_or_workflows)}"
+
+    def test_first_install_returns_twelve_workflows(self, admin_session):
+        _, body = _install_pm(admin_session)
+        _, workflows, _ = _install_counts(body)
+        assert len(workflows) == 12, f"expected 12 workflows/tasks, got {len(workflows)}"
+
+    def test_first_install_returns_eleven_tools(self, admin_session):
+        _, body = _install_pm(admin_session)
+        _, _, tools = _install_counts(body)
         assert len(tools) == 11, f"expected 11 tools, got {len(tools)}"
 
-        # second call → must be 200 already_installed
-        r2 = admin_session.post(
-            f"{BASE_URL}/api/workforce/install",
-            json={"template": PM_SLUG},
-            timeout=60,
-        )
-        assert r2.status_code == 200, f"second install: {r2.status_code} {r2.text}"
-        body2 = r2.json()
-        status2 = body2.get("status") or body2.get("state")
-        assert status2 in ("already_installed", "installed", "ok"), f"unexpected status on reinstall: {body2}"
-        # counts must remain stable
-        personas2 = body2.get("personas") or body2.get("agents") or []
-        tasks2 = body2.get("tasks") or body2.get("workflows") or []
-        tools2 = body2.get("tools") or []
-        if personas2:
-            assert len(personas2) == 6
-        if tasks2:
-            assert len(tasks2) == 12
-        if tools2:
-            assert len(tools2) == 11
+    def test_reinstall_returns_200(self, admin_session):
+        # ensure installed first
+        _install_pm(admin_session)
+        status, _ = _install_pm(admin_session)
+        assert status == 200, f"second install: {status}"
+
+    def test_reinstall_status_is_already_installed(self, admin_session):
+        _install_pm(admin_session)
+        _, body = _install_pm(admin_session)
+        status_field = body.get("status") or body.get("state")
+        assert status_field in ("already_installed", "installed", "ok"), f"unexpected status on reinstall: {body}"
+
+    def test_reinstall_counts_stable(self, admin_session):
+        _install_pm(admin_session)
+        _, body = _install_pm(admin_session)
+        personas, workflows, tools = _install_counts(body)
+        if personas:
+            assert len(personas) == 6
+        if workflows:
+            assert len(workflows) == 12
+        if tools:
+            assert len(tools) == 11
 
 
 # ---------------- DB-level assertions ----------------

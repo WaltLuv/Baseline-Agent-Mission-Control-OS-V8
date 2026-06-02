@@ -87,23 +87,44 @@ class TestRuntimeKeyShape:
         assert "connect-runtime.mjs" in cmd, f"missing connect-runtime.mjs in: {cmd[:200]}"
 
 
+def _extract_workspace_id(me_body):
+    """Pull the workspace id out of /api/auth/me, tolerating three shapes."""
+    return (
+        me_body.get("workspace_id")
+        or (me_body.get("workspace") or {}).get("id")
+        or (me_body.get("user") or {}).get("workspace_id")
+    )
+
+
 # --- workspace invite ---
 class TestInviteFlow:
-    def test_invite_teammate(self, cz_session):
-        s = cz_session["session"]
-        # Need workspace id — fetch from /api/auth/me or stored from signup
-        me = s.get(f"{BASE_URL}/api/auth/me")
+    def _workspace_id(self, session):
+        me = session.get(f"{BASE_URL}/api/auth/me")
         assert me.status_code == 200
         meb = me.json()
-        wid = meb.get("workspace_id") or (meb.get("workspace") or {}).get("id") or (meb.get("user") or {}).get("workspace_id")
+        wid = _extract_workspace_id(meb)
         assert wid, f"no workspace_id in /me: {meb}"
+        return wid
+
+    def test_invite_teammate_returns_2xx(self, cz_session):
+        s = cz_session["session"]
+        wid = self._workspace_id(s)
         r = s.post(f"{BASE_URL}/api/workspaces/{wid}/invites", json={
             "email": f"teammate-iter7-{int(time.time())}@example.com",
             "role": "operator",
         })
         assert r.status_code in (200, 201), f"invite failed: {r.status_code} {r.text[:300]}"
+
+    def test_invite_teammate_returns_accept_url(self, cz_session):
+        s = cz_session["session"]
+        wid = self._workspace_id(s)
+        r = s.post(f"{BASE_URL}/api/workspaces/{wid}/invites", json={
+            "email": f"teammate-iter7-{int(time.time())}@example.com",
+            "role": "operator",
+        })
         body = r.json()
-        assert body.get("accept_url") or (body.get("invite") or {}).get("accept_url"), f"no accept_url: {body}"
+        accept_url = body.get("accept_url") or (body.get("invite") or {}).get("accept_url")
+        assert accept_url, f"no accept_url: {body}"
 
 
 # --- billing ---
