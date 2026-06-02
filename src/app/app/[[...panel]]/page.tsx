@@ -8,6 +8,8 @@ import { LiveFeed } from '@/components/layout/live-feed'
 import { DemoModeProvider } from '@/components/demo/demo-mode-provider'
 import { DemoModeBanner } from '@/components/demo/demo-mode-banner'
 import { ExecutiveBriefing } from '@/components/demo/executive-briefing'
+import { DailyBriefPanel } from '@/components/briefing/daily-brief-panel'
+import { ValueReportPanel } from '@/components/value/value-report-panel'
 import { WorkforceHealthV2 } from '@/components/baseline-os/workforce-health-v2'
 import { BaselineSystemIdentityStrip } from '@/components/baseline-os/baseline-system-identity-strip'
 import { AIEmployeeLifeRoster } from '@/components/workforce/ai-employee-life-roster'
@@ -525,7 +527,7 @@ export default function Home() {
 }
 
 const ESSENTIAL_PANELS = new Set([
-  'overview', 'agents', 'tasks', 'chat', 'activity', 'logs', 'settings', 'help',
+  'overview', 'agents', 'tasks', 'chat', 'activity', 'logs', 'settings', 'help', 'value',
 ])
 
 function ContentRouter({ tab }: { tab: string }) {
@@ -579,6 +581,7 @@ function ContentRouter({ tab }: { tab: string }) {
           <div className="p-4 space-y-4">
             <SetupChecklist />
             <BaselineSystemIdentityStrip />
+            <DailyBriefPanel />
             <ExecutiveBriefing />
             <AIEmployeeLifeRoster />
             <div className="grid gap-4 lg:grid-cols-2">
@@ -597,6 +600,9 @@ function ContentRouter({ tab }: { tab: string }) {
       )
     case 'tasks':
       return <TaskBoardPanel />
+    case 'value':
+    case 'value-report':
+      return <ValueReportPanel />
     case 'agents':
       return (
         <>

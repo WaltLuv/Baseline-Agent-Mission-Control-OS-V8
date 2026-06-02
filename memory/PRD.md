@@ -3297,3 +3297,233 @@ Mission Control itself is shippable. No more capability additions until the thre
 
 **Revenue flow is live.**
 
+
+
+---
+
+## Iteration · Phase 5 — Property Management Workforce Installer (Feb 2026)
+
+User mandate: shift from architecture to "make it sellable". Build ONE
+complete workforce template installer (Property Management) wired into
+the Activation Hub. Do NOT build other verticals (list as "coming soon")
+or the Daily Brief / ROI dashboards in this pass.
+
+### Pm.1 — Workforce Template installer (P0)
+
+- `src/lib/baseline-os/workforce-templates/catalog.ts` — 8-template
+  catalog. Property Management ships deep with **6 personas** (Tessa
+  Reyes · Marcus Doyle · Rena Patel · Owen Whitfield · Vince Cardella ·
+  Quinn Hartley), **12 workflows** (Maintenance intake · Rent collection
+  cascade · Lease renewal 60/30/14 · Move-in · Move-out · Inspection
+  scheduling · Vendor COI expiry · Owner statements · Listing refresh ·
+  After-hours emergency routing · Application processing · Vendor
+  performance), **11 tools** (mc · gh · notion-q · resend · vendor-cli ·
+  docusign-cli · calendar · listing-feed · inspection-cli · screening-cli
+  · owner-statement-cli), and a 4-tier approval matrix (low / medium /
+  high / blocked). 7 other verticals (General Contractor · Home Services ·
+  Real Estate · Mortgage · CPA · Law Firm · Agency) marked as
+  `status='coming_soon'` — they render in the grid but the installer
+  refuses (`HTTP 400 unavailable`).
+- `src/lib/baseline-os/workforce-templates/install.ts` — idempotent
+  transactional installer.
+  - Personas → `agents` rows tagged
+    `source='workforce-template:property-management'` +
+    `content_hash='property-management::<persona-slug>'` for uniqueness.
+  - Workflows → `tasks` rows with `status='inbox'`, priorities preserved
+    from the catalog (after-hours emergency = `critical`), metadata
+    carries `workforce_template`, `workforce_workflow_slug`,
+    `owner_persona`, `approval_policy`, `proof_expectation`,
+    `success_criteria`, `runtime_hint`, `tool_hint`, `skill_hint`.
+  - Tools → `settings` rows keyed
+    `ws.<workspaceId>.workforce.property-management.tool.<cli_tool_id>`
+    (settings table has no `workspace_id` column, so the workspace is
+    namespaced into the key).
+  - Install marker → `ws.<workspaceId>.workforce.installed.<slug>` JSON
+    blob with timestamp, actor, persona/workflow counts.
+  - `audit_log` (`workforce_template_installed` / `..._reinstall`) and
+    `activities` (broadcast over SSE) both written.
+  - Re-clicking install returns
+    `{ status: 'already_installed' }` and does NOT duplicate rows.
+- `POST /api/workforce/install` — admin-gated, rate-limited
+  (`mutationLimiter`). Returns 201 on fresh install, 200 on
+  already-installed, 400 on coming-soon or unknown slug, 401 unauth.
+  Latency: **24 ms** end-to-end on local SQLite (UI shows a cosmetic
+  8-second progress strip so the install *feels* like a hire).
+- `GET /api/workforce/templates` — viewer-gated. Returns the full catalog
+  + the workspace's `install_state` per template.
+- `src/components/activation/workforce-installer.tsx` —
+  catalog grid → preview (approval policy + blocked-actions) → progress
+  strip → installed roster (6 named persona cards) + 4 deep-links
+  (tasks · tool executions · approvals · agent roster). Hides the
+  catalog and re-renders the installed view on returning visits.
+- `src/components/activation/activation-hub.tsx` — mounts the
+  `WorkforceInstaller` as Step 1 of the Activation Hub
+  (`/app/activate`). Auto-detects an existing install on mount and
+  advances. Safeguard `useEffect` ensures one step is always active
+  (fixes the post-install "No active step" edge case).
+
+### Pm.2 — Verification
+
+| Gate | Result |
+|------|--------|
+| `tsc --noEmit` | ✅ 0 errors |
+| `yarn build` (Next.js standalone) | ✅ Compiled in 93s |
+| `POST /api/workforce/install` first call | ✅ 201 installed in 24ms |
+| `POST /api/workforce/install` second call | ✅ 200 already_installed, no duplicates |
+| Coming-soon refusal (`general-contractor`) | ✅ 400 status=unavailable |
+| Unauth | ✅ 401 |
+| 6 agents in DB with `source='workforce-template:property-management'` | ✅ |
+| 12 tasks in DB carrying `workforce_workflow_slug` metadata | ✅ |
+| 12 settings rows under `ws.1.workforce.property-management.*` | ✅ |
+| audit_log entry (install) + audit_log entry (reinstall) | ✅ |
+| activities entry (install) + activities entry (reinstall verify) | ✅ |
+| Testing agent (iteration_8) — backend + browser E2E | ✅ 15/15 pytest + browser E2E PASS, 0 critical, 0 minor |
+| Browser screenshot: catalog (8 cards, 1 ready, 7 coming-soon) | ✅ |
+| Browser screenshot: Activation Hub with Step 1 ✓ | ✅ |
+| Browser-driven install (admin click) → 6 agents + 12 tasks | ✅ |
+
+### Pm.3 — Customer Zero walkthrough script
+
+- `docs/CUSTOMER_ZERO_WALKTHROUGH.md` — 7-act, 9:30 narrated script
+  with screenshot storyboard (17 frames) and clean-state reset script.
+  Defines exactly what Walter says, what the prospect should notice,
+  pause points, and the 5 proof moments. Explicitly bars opening the
+  Daily Brief, ROI page, and any vertical other than Property Management
+  during the walkthrough.
+
+### Pm.4 — Files touched
+```
+new   src/lib/baseline-os/workforce-templates/catalog.ts
+new   src/lib/baseline-os/workforce-templates/install.ts
+new   src/app/api/workforce/templates/route.ts
+new   src/app/api/workforce/install/route.ts
+new   src/components/activation/workforce-installer.tsx
+new   docs/CUSTOMER_ZERO_WALKTHROUGH.md
+mod   src/components/activation/activation-hub.tsx   (mount installer + safeguard auto-advance + accurate step-1 summary)
+```
+
+### Pm.5 — Remaining backlog (NEXT, per Walt's order)
+
+- **P0** — "What did my workforce do?" Daily Brief (Day-2 operator
+  retention surface).
+- **P1** — Value / ROI Reporting page ("Show your boss" dashboard
+  with hours saved · tasks completed · cost vs value).
+- **P2** — Mobile approval polish + Day-2 operator UX cleanup.
+- **P3** — Workforce installers for the other 7 verticals (General
+  Contractor → Home Services → Real Estate → Mortgage → CPA → Law Firm →
+  Agency). Catalog scaffolding already in place — each vertical just
+  needs its personas/workflows/tools/approval matrix filled in.
+
+
+
+---
+
+## Iteration · Phase 5B + 5C — Daily Brief consumer + email preview + Value page (Feb 2026)
+
+Lane discipline reset: Claude Code owns Baseline OS (decisions/execution).
+Emergent owns Mission Control (consumer experience). Daily Brief and Value
+Report consumers were built in Mission Control consuming the contract that
+Claude is producing on the Baseline OS side.
+
+### DB.1 — Daily Brief consumer (P0 — accepted by user)
+- `src/lib/daily-brief/types.ts` — canonical `DailyBriefPayload` consumer
+  contract.
+- `src/lib/daily-brief/aggregator.ts` — thin Mission Control fallback
+  reading only from MC tables (tasks, activities, tool_executions,
+  audit_log, agents, users, settings). Returns `source: 'mission-control-fallback'`.
+- `GET /api/daily-brief?window=since-yesterday|since-last-login` —
+  proxies `BASELINE_OS_DAILY_BRIEF_URL` when set, otherwise falls
+  back. Mission Control never blocks on Baseline OS availability.
+- `src/components/briefing/daily-brief-panel.tsx` — newspaper-style
+  panel mounted at top of `/app/overview`, ABOVE the Executive
+  Briefing. Critical banner + headline + narrative + 7 number tiles +
+  Attention list with kind pills + Persona breakdown + Proofs +
+  status line. Toggle: Since yesterday / Since last visit.
+- `docs/architecture/DAILY_BRIEF_CONTRACT.md` — handoff doc with
+  field-by-field contract + reconciliation table for Claude's v1
+  Baseline OS payload (counters/* vs by_the_numbers/* — UI-layer
+  mapper will be added in the next pass; no producer change required).
+
+### DB.2 — Daily Brief email-ready rendering (P0)
+- `src/lib/daily-brief/email.ts` — pure renderer turning a
+  `DailyBriefPayload` into `{ subject, preheader, html, text }`.
+  Dark-themed HTML email (Resend-ready); plain-text mirror; escapes
+  user-supplied strings; deep-links use `NEXT_PUBLIC_APP_URL`.
+- `GET /api/daily-brief/email?window=...&format=html|text|json` —
+  three serialisations. `json` for the in-app preview modal, `html`
+  for "Open raw → ", `text` for a copy-paste fallback. NO send.
+- `<EmailPreviewButton>` inside the Daily Brief panel — opens a
+  modal that iframes the HTML email + a Plain text tab + a Copy
+  action + Open-raw link. Modal explicitly notes "Scheduled delivery
+  is not wired yet."
+
+### VR.1 — Value Reporting page (P1 — "Show your boss")
+- `src/lib/value-report/aggregator.ts` — lifetime aggregator
+  (since-install). Reads MC tables only. Computes:
+  tasks_completed · tasks_open · approvals_handled · tool_executions ·
+  proofs_delivered · failed_executions · estimated_hours_saved ·
+  estimated_labor_value_usd ($65/h default) · workforce_cost_usd
+  (from `tool_executions.cost_estimate` if available) ·
+  net_value_usd · roi_multiple. Plus per-persona breakdown and an
+  8-week trend.
+- `GET /api/value-report` — same swap-friendly proxy hook
+  (`BASELINE_OS_VALUE_REPORT_URL`).
+- `/app/value` route — hero "Your $vertical workforce has saved an
+  estimated $hours." + 3 hero tiles (Labor value · Tasks completed ·
+  ROI multiple or Proofs) + 6-tile By the numbers + Per-AI-employee
+  cards (Done · Hours · $Value, each linking to the agent profile) +
+  Weekly trend bar chart + Cost basis disclosure block. Customer-
+  facing copy, no jargon, shareable URL.
+- Added 'value' to `ESSENTIAL_PANELS` so it's reachable in essential
+  mode.
+
+### DB.3 / VR.2 — Verification
+| Gate | Result |
+|------|--------|
+| `tsc --noEmit` | ✅ 0 errors |
+| `yarn build` | ✅ Compiled, route list includes `/api/daily-brief`, `/api/daily-brief/email`, `/api/value-report`, `/app/value` |
+| `GET /api/daily-brief?window=since-yesterday` (workforce installed + seeded data) | ✅ 7 numbers populated, 3 attention items, 6 personas, critical_banner set, source='mission-control-fallback' |
+| `GET /api/daily-brief?window=since-last-login` | ✅ headline copy variant "since you were last here" |
+| Empty state (no workforce installed) | ✅ empty_state populated, CTA to `/app/activate` |
+| `GET /api/daily-brief/email?format=json` | ✅ returns {subject, preheader, html, text, source}; subject reflects critical banner when present |
+| `GET /api/daily-brief/email?format=html` | ✅ Content-Type text/html, full inline-styled email body |
+| `GET /api/daily-brief/email?format=text` | ✅ Content-Type text/plain, mirror of HTML |
+| `GET /api/value-report` | ✅ lifetime numbers + 6 persona breakdown + 8-week trend + cost basis ($65/h, formula disclosed) |
+| Browser: `/app/overview` shows Daily Brief panel ABOVE Executive Briefing | ✅ (verified earlier by testing agent, Y-coord ordering preserved) |
+| Browser: `/app/overview` Preview email button → modal with HTML iframe + Plain text tab + Copy/Open-raw | ✅ |
+| Browser: `/app/value` renders hero/tiles/personas/trend/cost-basis cleanly | ✅ |
+| Existing Executive Briefing untouched | ✅ |
+| Testing agent (iteration_9.json) — Daily Brief regression | ✅ 100% backend + 100% frontend, no regressions |
+
+### DB.4 / VR.3 — Files touched
+
+```
+new   src/lib/daily-brief/types.ts
+new   src/lib/daily-brief/aggregator.ts
+new   src/lib/daily-brief/email.ts
+new   src/components/briefing/daily-brief-panel.tsx
+new   src/app/api/daily-brief/route.ts
+new   src/app/api/daily-brief/email/route.ts
+new   src/lib/value-report/aggregator.ts
+new   src/components/value/value-report-panel.tsx
+new   src/app/api/value-report/route.ts
+new   docs/architecture/DAILY_BRIEF_CONTRACT.md
+mod   src/app/app/[[...panel]]/page.tsx              (mount DailyBriefPanel above ExecutiveBriefing, route /app/value → ValueReportPanel, value in ESSENTIAL_PANELS)
+mod   src/components/activation/activation-hub.tsx   (workforce-installer mount, accurate step-1 summary, auto-advance safeguard — from prior Phase 5)
+```
+
+### DB.5 — Lane discipline maintained
+
+- NO duplicated calculations. The MC fallback aggregator IS a fallback,
+  not a competing engine. When Claude's Baseline OS endpoint is wired
+  to `BASELINE_OS_DAILY_BRIEF_URL` / `BASELINE_OS_VALUE_REPORT_URL`,
+  the consumer ships his payload through unchanged.
+- NO sidebar entry for Daily Brief (user explicitly forbade).
+- NO auto-pop (user explicitly forbade).
+- NO scheduled email delivery (deferred — preview-only this pass).
+- Executive Briefing untouched.
+- One open item: field-name reconciliation between Claude's
+  `counters.*` and Mission Control's `by_the_numbers.*` — documented
+  in DAILY_BRIEF_CONTRACT.md, mapper to be added in the route layer
+  when `BASELINE_OS_DAILY_BRIEF_URL` is set.
+

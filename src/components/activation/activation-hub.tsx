@@ -40,28 +40,12 @@ export function ActivationHub() {
   })
   const [workspaceId, setWorkspaceId] = useState<number | null>(null)
   const [workspaceName, setWorkspaceName] = useState<string>('')
-  const [employees, setEmployees] = useState<number>(0)
-  const [skills, setSkills] = useState<number>(0)
 
   useEffect(() => {
     fetch('/api/auth/me', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.user?.workspace_id) setWorkspaceId(d.user.workspace_id as number)
-      })
-      .catch(() => {})
-    fetch('/api/agents', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        const arr = d?.agents || []
-        setEmployees(Array.isArray(arr) ? arr.length : 0)
-      })
-      .catch(() => {})
-    fetch('/api/skills', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        const arr = d?.skills || []
-        setSkills(Array.isArray(arr) ? arr.length : 0)
       })
       .catch(() => {})
     fetch('/api/workspaces', { cache: 'no-store' })
@@ -89,15 +73,29 @@ export function ActivationHub() {
   function setStepState(id: StepId, s: StepState) {
     setState((prev) => {
       const next = { ...prev, [id]: s }
-      // Auto-advance to the next pending step.
+      // Auto-advance to the next pending step IF nothing is currently active.
       const order: StepId[] = ['system', 'runtime', 'invite']
-      const upcoming = order.find((step) => next[step] === 'pending')
-      if (upcoming) next[upcoming] = 'active'
+      const hasActive = order.some((step) => next[step] === 'active')
+      if (!hasActive) {
+        const upcoming = order.find((step) => next[step] === 'pending')
+        if (upcoming) next[upcoming] = 'active'
+      }
       return next
     })
   }
 
   const allDone = completed === total
+
+  // Safeguard: if no step is active and not all done, activate the next pending.
+  // (Covers the case where async detection on mount races with onComplete callbacks.)
+  useEffect(() => {
+    const order: StepId[] = ['system', 'runtime', 'invite']
+    const hasActive = order.some((step) => state[step] === 'active')
+    if (!hasActive && !allDone) {
+      const upcoming = order.find((step) => state[step] === 'pending')
+      if (upcoming) setState((prev) => ({ ...prev, [upcoming]: 'active' }))
+    }
+  }, [state, allDone])
 
   return (
     <div className="min-h-screen bg-[#09090b] text-[#fafafa] antialiased" data-testid="activation-hub">
@@ -181,7 +179,7 @@ export function ActivationHub() {
                     <p className="text-sm text-white/55 mt-0.5">{step.subtitle}</p>
                     {step.id === 'system' && s === 'done' && (
                       <p className="text-xs text-emerald-200/70 font-mono mt-2" data-testid="step-system-summary">
-                        ✓ {employees} AI employees · {skills} skills installed · starter task queued
+                        ✓ Workforce installed · starter tasks queued
                       </p>
                     )}
                   </div>
@@ -240,7 +238,7 @@ export function ActivationHub() {
               </div>
             </div>
           )}
-          {state.runtime !== 'active' && state.invite !== 'active' && !allDone && (
+          {state.system !== 'active' && state.runtime !== 'active' && state.invite !== 'active' && !allDone && (
             <div className="text-center py-6 text-white/45 text-sm" data-testid="activation-idle">
               No active step. Skipped steps can be resumed any time from the dashboard.
             </div>
