@@ -48,6 +48,13 @@ const activityIcons: Record<string, string> = {
   standup_generated: '!',
   mention: '>',
   assignment: '=',
+  // Workforce Router + Tool Executions (Baseline OS Phase 2/3)
+  task_router_decision: '↳',
+  tool_execution_requested: '⌁',
+  tool_execution_approved: '✓',
+  tool_execution_rejected: '✕',
+  tool_execution_completed: '✓',
+  tool_execution_failed: '!',
 }
 
 const activityColors: Record<string, string> = {
@@ -60,6 +67,12 @@ const activityColors: Record<string, string> = {
   standup_generated: 'text-orange-400',
   mention: 'text-pink-400',
   assignment: 'text-indigo-400',
+  task_router_decision: 'text-violet-400',
+  tool_execution_requested: 'text-violet-300',
+  tool_execution_approved: 'text-emerald-400',
+  tool_execution_rejected: 'text-rose-400',
+  tool_execution_completed: 'text-emerald-400',
+  tool_execution_failed: 'text-red-400',
 }
 
 function formatRelativeTime(timestamp: number) {

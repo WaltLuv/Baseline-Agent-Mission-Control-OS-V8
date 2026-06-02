@@ -14,7 +14,7 @@
  * supervisor UI). Workspace-scoped at every read and write.
  */
 
-import { getDatabase, logAuditEvent } from '@/lib/db'
+import { getDatabase, logAuditEvent, db_helpers } from '@/lib/db'
 
 export type ToolExecutionRisk = 'low' | 'medium' | 'high' | 'blocked'
 export type ToolExecutionStatus =
@@ -227,6 +227,23 @@ export function startToolExecution(input: StartToolExecutionInput): StartToolExe
   if (auditId) {
     db.prepare('UPDATE tool_executions SET audit_event_id = ? WHERE id = ?').run(auditId, id)
   }
+  // Activity Feed mirror so operators see CLI requests where they already watch.
+  db_helpers.logActivity(
+    'tool_execution_requested',
+    'tool_execution',
+    id,
+    input.requested_by,
+    `Requested ${input.cli_tool_id} · ${input.command_name} (${risk})`,
+    {
+      cli_tool_id: input.cli_tool_id,
+      command_name: input.command_name,
+      risk,
+      status,
+      task_id: input.task_id ?? null,
+      runtime_id: input.runtime_id ?? null,
+    },
+    input.workspace_id,
+  )
 
   return { id, status, risk, approval_required: approvalRequired === 1 }
 }
@@ -308,6 +325,27 @@ export function patchToolExecution(input: PatchToolExecutionInput): ToolExecutio
       target_id: input.id,
       detail: { from: existing.status, to: input.status, exit_code: input.exit_code ?? null },
     })
+    // Mirror terminal-state transitions into the Activity Feed so operators
+    // see completion + failure in the place they already watch.
+    if (input.status === 'completed' || input.status === 'failed') {
+      const verb = input.status === 'completed' ? 'Completed' : 'Failed'
+      db_helpers.logActivity(
+        `tool_execution_${input.status}`,
+        'tool_execution',
+        input.id,
+        input.actor ?? 'runtime',
+        `${verb} ${existing.cli_tool_id} · ${existing.command_name}${input.exit_code != null ? ` (exit ${input.exit_code})` : ''}`,
+        {
+          cli_tool_id: existing.cli_tool_id,
+          command_name: existing.command_name,
+          exit_code: input.exit_code ?? null,
+          proof_url: input.proof_url ?? null,
+          task_id: existing.task_id,
+          runtime_id: existing.runtime_id,
+        },
+        input.workspace_id,
+      )
+    }
   }
   return getToolExecution(input.workspace_id, input.id)
 }
@@ -337,6 +375,21 @@ export function approveToolExecution(
     target_type: 'tool_execution',
     target_id: id,
   })
+  // Activity Feed mirror.
+  const row = db
+    .prepare('SELECT cli_tool_id, command_name, task_id, runtime_id FROM tool_executions WHERE id = ?')
+    .get(id) as { cli_tool_id: string; command_name: string; task_id: number | null; runtime_id: number | null } | undefined
+  if (row) {
+    db_helpers.logActivity(
+      'tool_execution_approved',
+      'tool_execution',
+      id,
+      actor,
+      `Approved ${row.cli_tool_id} · ${row.command_name}`,
+      { cli_tool_id: row.cli_tool_id, command_name: row.command_name, task_id: row.task_id, runtime_id: row.runtime_id },
+      workspace_id,
+    )
+  }
   return getToolExecution(workspace_id, id)
 }
 
@@ -367,6 +420,20 @@ export function rejectToolExecution(
     target_id: id,
     detail: { reason: reason ?? null },
   })
+  const row = db
+    .prepare('SELECT cli_tool_id, command_name, task_id, runtime_id FROM tool_executions WHERE id = ?')
+    .get(id) as { cli_tool_id: string; command_name: string; task_id: number | null; runtime_id: number | null } | undefined
+  if (row) {
+    db_helpers.logActivity(
+      'tool_execution_rejected',
+      'tool_execution',
+      id,
+      actor,
+      `Rejected ${row.cli_tool_id} · ${row.command_name}${reason ? ` — ${reason.slice(0, 80)}` : ''}`,
+      { cli_tool_id: row.cli_tool_id, command_name: row.command_name, reason: reason ?? null, task_id: row.task_id },
+      workspace_id,
+    )
+  }
   return getToolExecution(workspace_id, id)
 }
 

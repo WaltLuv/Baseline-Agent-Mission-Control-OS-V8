@@ -15,6 +15,7 @@ import { MarkdownRenderer } from '@/components/markdown-renderer'
 import { Button } from '@/components/ui/button'
 import { ProjectManagerModal } from '@/components/modals/project-manager-modal'
 import { SessionMessage, shouldShowTimestamp, type SessionTranscriptMessage } from '@/components/chat/session-message'
+import { TaskRouterDecision } from '@/components/baseline-os/task-router-decision'
 
 const log = createClientLogger('TaskBoard')
 
@@ -47,6 +48,15 @@ interface Task {
   comment_count?: number
   error_message?: string
   dispatch_attempts?: number
+  // Workforce Router projection fields (written by Baseline OS Phase 2 via
+  // POST /api/tasks/:id/routing). Mission Control displays them; never decides.
+  assigned_runtime?: string | null
+  selected_tool?: string | null
+  selected_skill?: string | null
+  routing_reason?: string | null
+  routing_confidence?: number | null
+  router_approval_required?: 0 | 1
+  router_decided_at?: number | null
 }
 
 interface Agent {
@@ -1609,6 +1619,21 @@ function TaskDetailModal({
                   </div>
                 )}
               </div>
+
+              {/* Workforce Router decision + Tool Execution ledger.
+                  Only renders once Baseline OS has touched this task. */}
+              <TaskRouterDecision
+                taskId={task.id}
+                initialDecision={{
+                  assigned_runtime: task.assigned_runtime ?? null,
+                  selected_tool: task.selected_tool ?? null,
+                  selected_skill: task.selected_skill ?? null,
+                  routing_reason: task.routing_reason ?? null,
+                  routing_confidence: task.routing_confidence ?? null,
+                  router_approval_required: (task.router_approval_required ?? 0) as 0 | 1,
+                  router_decided_at: task.router_decided_at ?? null,
+                }}
+              />
 
               {/* GitHub section */}
               {(task.github_issue_number || task.github_branch || task.github_pr_number) && (

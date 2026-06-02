@@ -4,6 +4,56 @@ Append-only log of significant deliveries. PRD.md holds the durable product spec
 
 ---
 
+## 2026-06-02 · Phase 3 prep — supervisor consumes Workforce Router output
+
+### Scope (approved by Walt — pure DISPLAY, no decision logic)
+Prepare Mission Control to consume Baseline OS Phase 3 outputs:
+`selected_tool`, `execution_id`, `tool_execution_status`, `tool_execution_logs`, `tool_execution_proof` — surfaced inside Task Detail, Activity Feed, Tool Executions, Runtime Registry. Mission Control supervises. Does NOT build execution logic / tool selection / routing.
+
+### Shipped
+- **`src/components/baseline-os/task-router-decision.tsx`** (new): self-contained, polls `/api/tasks/:id` + `/api/tool-executions?task_id=:id` every 15s. Renders the directive's mandated five-stage breadcrumb: **Task → Router (confidence %) → Runtime → Tool → Terminal state**. Below the breadcrumb: skill, confidence, approval flag, reason quote, and a clickable list of all linked tool executions with status badge / exit code / cost / proof link. Returns `null` until the Router has touched the task — never blocks the Task Detail pane.
+- **Task Detail integration**: slotted into the existing `TaskDetailModal` details tab (right after the metadata grid, before the GitHub section) in `src/components/panels/task-board-panel.tsx`. Task interface extended with all 7 router projection fields so the parent passes `initialDecision` for synchronous render.
+- **Activity Feed mirror** (`src/components/panels/activity-feed-panel.tsx`): added 6 new event types with distinct icons + Tailwind color tokens:
+  - `task_router_decision` (`↳`, violet)
+  - `tool_execution_requested` (`⌁`, violet)
+  - `tool_execution_approved` (`✓`, emerald)
+  - `tool_execution_rejected` (`✕`, rose)
+  - `tool_execution_completed` (`✓`, emerald)
+  - `tool_execution_failed` (`!`, red)
+- **Activity-log write-side** (`src/lib/baseline-os/tool-executions.ts`): every lifecycle event now writes to BOTH `audit_log` (immutable proof) AND `activities` (display feed). Covers:
+  - `startToolExecution` → `tool_execution_requested`
+  - `approveToolExecution` → `tool_execution_approved`
+  - `rejectToolExecution` → `tool_execution_rejected` (with reason)
+  - `patchToolExecution` on terminal state → `tool_execution_completed` or `tool_execution_failed`
+- **No new endpoints**. No new schema. No routing decisions on MC side. No tool-selection logic on MC side. Strict consumer-only work.
+
+### Verified
+- 28/28 vitest pass (signup 5 + runtime-key 7 + supervision 11 + onboarding-state 5). New test `lifecycle events surface into the Activity Feed (read-side mirror)` asserts all 3 expected activity rows land (`tool_execution_requested`, `tool_execution_approved`, `tool_execution_completed`) after a full HIGH-risk execution lifecycle.
+- Browser proof (`/tmp/task_detail_breadcrumb.png`): single screenshot shows the exact directive flow:
+  ```
+  Task → Router (87%) → claude-demo-1 → stripe-cli → Complete
+  SKILL: draft-pr · CONFIDENCE: 87%
+  "task title matches draft-pr skill exemplars; runtime has gh CLI installed"
+  TOOL EXECUTIONS (1)
+  [COMPLETED] stripe-cli · charge   exit 0   ~$0.029   proof ↗
+  ```
+  Every stage rendered with correct tone (emerald = done). Confidence label. Reason quote. Cost. Proof link to Stripe. Click on execution row routes to `/app/tool-executions` for the full audit detail.
+
+### Field-shape contract for Claude Code (Phase 3 integration)
+When Baseline OS's Tool Registry executes a CLI, POST to Mission Control in this exact order:
+1. `POST /api/tasks/:id/routing` — router writes its decision FIRST (before runtime dispatch).
+2. `POST /api/tool-executions` — runtime records intent. Must include `task_id`, `runtime_id` (numeric internal_id from `GET /api/runtimes`), `cli_tool_id`, `command_name`, `command_args_redacted`. Receives `execution_id` (the `id` in the response) for subsequent PATCHes.
+3. `PATCH /api/tool-executions/:id` — runtime advances lifecycle: `{ status: 'running', started_at }`, then on completion `{ status: 'completed' | 'failed', completed_at, exit_code, stdout_summary, stderr_summary, proof_url, proof_payload, cost_estimate }`.
+4. For HIGH-risk: runtime polls `/api/tool-executions/:id` for `status === 'approved'` before executing. If `awaiting_approval`, hold until human OK.
+
+Mission Control will automatically:
+- Mirror every event into Activity Feed.
+- Link audit_log entries via `audit_event_id`.
+- Render the breadcrumb on Task Detail.
+- Update the Connected Tools supervisor page in real time.
+
+
+
 ## 2026-06-01 · Nav rail "Connected Tools" + retire legacy onboarding overlays
 
 ### Approved scope (Walt):

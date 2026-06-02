@@ -388,6 +388,51 @@ describe('Mission Control supervision — tool executions (CLI supervision)', ()
     expect(j.execution.rejection_reason).toMatch(/marketing/)
   })
 
+  it('lifecycle events surface into the Activity Feed (read-side mirror)', async () => {
+    const { cookie, workspaceId } = await adminSession()
+    // Start a HIGH-risk execution → expect tool_execution_requested activity.
+    const startRes = await txStart(
+      authedReq(cookie, '/api/tool-executions', {
+        method: 'POST',
+        body: JSON.stringify({ cli_tool_id: 'resend', command_name: 'send-email' }),
+      }) as never,
+    )
+    const { id } = (await startRes.json()) as { id: number }
+    await txApprove(
+      authedReq(cookie, `/api/tool-executions/${id}/approve`, { method: 'POST' }) as never,
+      { params: Promise.resolve({ id: String(id) }) },
+    )
+    await txPatch(
+      authedReq(cookie, `/api/tool-executions/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'running', started_at: Math.floor(Date.now() / 1000) }),
+      }) as never,
+      { params: Promise.resolve({ id: String(id) }) },
+    )
+    await txPatch(
+      authedReq(cookie, `/api/tool-executions/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: 'completed',
+          completed_at: Math.floor(Date.now() / 1000),
+          exit_code: 0,
+        }),
+      }) as never,
+      { params: Promise.resolve({ id: String(id) }) },
+    )
+    const db = getDatabase()
+    const acts = db
+      .prepare(
+        `SELECT type FROM activities WHERE workspace_id = ? AND entity_type = 'tool_execution' AND entity_id = ?
+         ORDER BY id ASC`,
+      )
+      .all(workspaceId, id) as Array<{ type: string }>
+    const types = acts.map((a) => a.type)
+    expect(types).toContain('tool_execution_requested')
+    expect(types).toContain('tool_execution_approved')
+    expect(types).toContain('tool_execution_completed')
+  })
+
   it('list filters by status=pending_approval surface only items waiting on a human', async () => {
     const { cookie } = await adminSession()
     await txStart(
