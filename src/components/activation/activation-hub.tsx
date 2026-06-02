@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { RuntimeConnectWizard } from './runtime-connect-wizard'
 import { InviteTeamStep } from './invite-team-step'
+import { WorkforceInstaller } from './workforce-installer'
 
 // Activation Hub — the post-signup customer journey.
 //
@@ -28,8 +29,13 @@ const STEPS: Array<{ id: StepId; title: string; subtitle: string }> = [
 export function ActivationHub() {
   const router = useRouter()
   const [state, setState] = useState<Record<StepId, StepState>>({
-    system: 'done', // /onboarding completion is the entry point — already provisioned.
-    runtime: 'active',
+    // The "Install your first system" step is now a real, clickable
+    // workforce installer (Property Management today, others soon). We
+    // start it as 'active' so the customer sees the catalog immediately.
+    // The check in the useEffect below flips it to 'done' if the workspace
+    // already has a workforce template installed.
+    system: 'active',
+    runtime: 'pending',
     invite: 'pending',
   })
   const [workspaceId, setWorkspaceId] = useState<number | null>(null)
@@ -63,6 +69,15 @@ export function ActivationHub() {
       .then((d) => {
         const ws = d?.workspaces?.[0]
         if (ws?.name) setWorkspaceName(String(ws.name))
+      })
+      .catch(() => {})
+    // If a workforce template is already installed, advance past the
+    // install step so returning customers don't see the catalog again.
+    fetch('/api/workforce/templates', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        const installed = (d?.templates || []).some((t: { install_state?: { installed?: boolean } }) => t.install_state?.installed)
+        if (installed) setStepState('system', 'done')
       })
       .catch(() => {})
   }, [])
@@ -178,6 +193,12 @@ export function ActivationHub() {
 
         {/* Active step body */}
         <section className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-6" data-testid="activation-active-step">
+          {state.system === 'active' && (
+            <WorkforceInstaller
+              onComplete={() => setStepState('system', 'done')}
+              onSkip={() => setStepState('system', 'skipped')}
+            />
+          )}
           {state.runtime === 'active' && (
             <RuntimeConnectWizard
               onComplete={() => setStepState('runtime', 'done')}
