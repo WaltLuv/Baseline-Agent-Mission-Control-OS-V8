@@ -4,6 +4,52 @@ Append-only log of significant deliveries. PRD.md holds the durable product spec
 
 ---
 
+## 2026-06-02 · Phase 4 prep — Approval Supervision (Claude Code owns decisioning)
+
+### Scope (approved by Walt — pure DISPLAY, zero approval logic)
+Surface 7 approval fields inside Task Detail, Approval Queue, Activity Feed, Tool Executions:
+`approval_status`, `approval_reason`, `approval_requested_by`, `approval_requested_at`, `approved_by`, `approved_at`, `approval_audit_id`. Claude Code's Baseline OS owns the Approval Engine. Mission Control SUPERVISES.
+
+### Shipped
+- **Migration 056**: 4 new additive columns on `tool_executions` — `approval_requested_by`, `approval_requested_at`, `approval_reason`, `approval_audit_id`. New partial index `idx_tool_executions_approval_queue` for fast "awaiting approval" reads. No backfill, no destructive changes.
+- **`src/lib/baseline-os/tool-executions.ts`** updates:
+  - `startToolExecution()` now sets `approval_requested_by` (falls back to `requested_by` if not supplied) and `approval_requested_at` when status = `awaiting_approval`. NULL for auto-approved (low/medium) and blocked — Mission Control reads these as "supervised by human" markers.
+  - `approveToolExecution()` now accepts an optional `reason` (≤500 chars), writes the audit row FIRST, captures the audit_log id into `approval_audit_id`, and persists `approval_reason`. Activity feed mirror includes the reason in the description.
+  - `rejectToolExecution()` already captured rejection_reason; now also captures `approval_audit_id` for symmetry.
+- **API surface** (additive only — no new endpoints):
+  - `POST /api/tool-executions` accepts `approval_requested_by` so the router can identify itself separately from the task requestor.
+  - `POST /api/tool-executions/:id/approve` accepts `{ reason?: string }`.
+  - All GET routes already returned full row — the new columns flow through automatically.
+- **`<TaskRouterDecision>` (Task Detail)** — added two new inline rows per execution:
+  - Approved/Rejected footer (emerald/rose tone) with `approved_by` / `rejected_by`, time-ago, `audit #N` link, and the verbatim approval/rejection reason rendered as an italic quote.
+  - Awaiting-approval banner (amber tone) showing `approval_requested_by` and `approval_requested_at`.
+- **`/app/tool-executions` slide-over detail panel** — added 4 new metadata rows: Approval requested by · Approval audit · Approved-at timestamp · Rejection metadata. Added a dedicated "Approval reason" section above the command block with emerald-on-emerald styling so it visually anchors as a positive decision (the rejection_reason section already existed in the data; the visual treatment now distinguishes them).
+- **`ExecApprovalPanel` (Approval Queue)** — new `<ToolExecutionApprovalsSection>` mounted at the top of the approvals view. Polls `/api/tool-executions?status=pending_approval` every 12s. Renders a compact row per pending CLI execution with risk pill, command, optional `task #N` deep-link, requester + relative time, and **Approve / Reject** buttons that POST to the existing endpoints. Hides completely when nothing pending — never adds clutter for operators with empty queues.
+- **Activity Feed** — descriptions now include the approval reason inline (e.g. `Approved resend · send-email — customer expects this email today and the PR has...`). Icons + colors for `tool_execution_approved` / `tool_execution_rejected` already shipped in the previous changelog entry.
+
+### Verified
+- 30/30 vitest pass (5 signup + 7 runtime-key + 13 supervision + 5 onboarding-state).
+- 2 new Phase 4 regression tests:
+  - HIGH-risk execution sets `approval_requested_by` + `approval_requested_at`, then approve captures `approval_audit_id` + `approval_reason`.
+  - LOW-risk auto-approved executions explicitly do NOT set `approval_requested_at/by` (those fields are only meaningful when supervised).
+- End-to-end curl proof: HIGH-risk request → GET detail returns the 4 new fields populated → approve with reason → all 7 directive fields present + verbatim reason in response → pending_approval filter returns only remaining queue → activity feed lists both events with reason in description.
+- Browser proof (`/tmp/p4_task_detail.png`): single screenshot shows Task Detail with both states visible — one execution in `AWAITING APPROVAL` (with `⏳ awaiting approval · requested by workforce-router-claude-p4-1 · 4s ago`) and one `COMPLETED` (with `✓ approved by p4ui_xxx · 4s ago · audit #9` and the italicized approval reason quote underneath).
+
+### Field-shape contract handed to Claude Code (Phase 4 integration)
+1. When the Baseline OS Approval Engine sends a request for human approval, set `approval_requested_by` to the engine's own identity (e.g. `workforce-router-<runtime>` or `approval-engine-v1`). Mission Control will display it verbatim — operators will know exactly which subsystem requested the gate.
+2. The Approval Engine MAY auto-approve LOW/MEDIUM by setting `policy_override` on the start call. HIGH continues to gate by default; this is workspace-configurable in Phase 4+.
+3. The Approval Engine MAY approve or reject through the same `/approve` and `/reject` endpoints with `actor` derived from its session token. Reasons up to 500 chars are persisted verbatim and shown to operators.
+4. Mission Control never makes a decision. It writes the decision the engine sent.
+
+### Boundaries honored
+- No approval logic in Mission Control.
+- No new endpoints.
+- No second approval queue.
+- No tool selection / routing decisions.
+- Pure read-side display.
+
+
+
 ## 2026-06-02 · Phase 3 prep — supervisor consumes Workforce Router output
 
 ### Scope (approved by Walt — pure DISPLAY, no decision logic)

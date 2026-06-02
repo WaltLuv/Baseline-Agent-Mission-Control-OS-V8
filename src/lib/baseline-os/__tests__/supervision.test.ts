@@ -388,6 +388,83 @@ describe('Mission Control supervision — tool executions (CLI supervision)', ()
     expect(j.execution.rejection_reason).toMatch(/marketing/)
   })
 
+  it('Phase 4 approval supervision: approval_requested_at/by set when HIGH, approval_audit_id + approval_reason captured on approve', async () => {
+    const { cookie } = await adminSession()
+    // HIGH-risk request — should set approval_requested_at + approval_requested_by.
+    const start = await txStart(
+      authedReq(cookie, '/api/tool-executions', {
+        method: 'POST',
+        body: JSON.stringify({
+          cli_tool_id: 'resend',
+          command_name: 'send-email',
+          approval_requested_by: 'workforce-router',
+        }),
+      }) as never,
+    )
+    const { id } = (await start.json()) as { id: number }
+    const initial = await txDetail(
+      authedReq(cookie, `/api/tool-executions/${id}`) as never,
+      { params: Promise.resolve({ id: String(id) }) },
+    )
+    const ij = (await initial.json()) as {
+      execution: {
+        status: string
+        approval_requested_by: string | null
+        approval_requested_at: number | null
+        approval_audit_id: number | null
+        approval_reason: string | null
+      }
+    }
+    expect(ij.execution.status).toBe('awaiting_approval')
+    expect(ij.execution.approval_requested_by).toBe('workforce-router')
+    expect(ij.execution.approval_requested_at).toBeTruthy()
+    expect(ij.execution.approval_audit_id).toBeNull()
+    expect(ij.execution.approval_reason).toBeNull()
+
+    // Approve with a reason — captures approval_audit_id + approval_reason.
+    const ap = await txApprove(
+      authedReq(cookie, `/api/tool-executions/${id}/approve`, {
+        method: 'POST',
+        body: JSON.stringify({ reason: 'PR is ready and the customer expects email today' }),
+      }) as never,
+      { params: Promise.resolve({ id: String(id) }) },
+    )
+    const apj = (await ap.json()) as {
+      execution: {
+        status: string
+        approved_by: string | null
+        approved_at: number | null
+        approval_reason: string | null
+        approval_audit_id: number | null
+      }
+    }
+    expect(apj.execution.status).toBe('approved')
+    expect(apj.execution.approved_by).toBeTruthy()
+    expect(apj.execution.approved_at).toBeTruthy()
+    expect(apj.execution.approval_reason).toMatch(/PR is ready/)
+    expect(apj.execution.approval_audit_id).toBeTruthy()
+  })
+
+  it('Phase 4: LOW/MEDIUM auto-approved executions do NOT set approval_requested_at/by', async () => {
+    const { cookie } = await adminSession()
+    const start = await txStart(
+      authedReq(cookie, '/api/tool-executions', {
+        method: 'POST',
+        body: JSON.stringify({ cli_tool_id: 'gh', command_name: 'list' }), // low
+      }) as never,
+    )
+    const { id, status, risk } = (await start.json()) as { id: number; status: string; risk: string }
+    expect(risk).toBe('low')
+    expect(status).toBe('approved')
+    const det = await txDetail(
+      authedReq(cookie, `/api/tool-executions/${id}`) as never,
+      { params: Promise.resolve({ id: String(id) }) },
+    )
+    const dj = (await det.json()) as { execution: { approval_requested_by: string | null; approval_requested_at: number | null } }
+    expect(dj.execution.approval_requested_by).toBeNull()
+    expect(dj.execution.approval_requested_at).toBeNull()
+  })
+
   it('lifecycle events surface into the Activity Feed (read-side mirror)', async () => {
     const { cookie, workspaceId } = await adminSession()
     // Start a HIGH-risk execution → expect tool_execution_requested activity.

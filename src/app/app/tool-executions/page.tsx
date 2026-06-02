@@ -43,6 +43,11 @@ interface ToolExecution {
   rejected_at: number | null
   rejection_reason: string | null
   requested_by: string
+  // Phase 4 approval supervision fields.
+  approval_requested_by: string | null
+  approval_requested_at: number | null
+  approval_reason: string | null
+  approval_audit_id: number | null
   started_at: number | null
   completed_at: number | null
   exit_code: number | null
@@ -357,13 +362,35 @@ export default function ToolExecutionsPage() {
               {selected.approved_by && (
                 <>
                   <dt className="text-white/45 text-xs uppercase tracking-wider font-mono">Approved by</dt>
-                  <dd className="text-white/85">{selected.approved_by}</dd>
+                  <dd className="text-white/85">
+                    {selected.approved_by}
+                    {selected.approved_at != null && (
+                      <span className="text-white/45 ml-1.5">· {fmtAge(now, selected.approved_at)}</span>
+                    )}
+                  </dd>
                 </>
               )}
               {selected.rejected_by && (
                 <>
                   <dt className="text-white/45 text-xs uppercase tracking-wider font-mono">Rejected by</dt>
                   <dd className="text-white/85">{selected.rejected_by} — {selected.rejection_reason ?? '(no reason)'}</dd>
+                </>
+              )}
+              {selected.approval_requested_by && (
+                <>
+                  <dt className="text-white/45 text-xs uppercase tracking-wider font-mono">Approval requested by</dt>
+                  <dd className="text-white/85 font-mono">
+                    {selected.approval_requested_by}
+                    {selected.approval_requested_at != null && (
+                      <span className="text-white/45 ml-1.5">· {fmtAge(now, selected.approval_requested_at)}</span>
+                    )}
+                  </dd>
+                </>
+              )}
+              {selected.approval_audit_id != null && (
+                <>
+                  <dt className="text-white/45 text-xs uppercase tracking-wider font-mono">Approval audit</dt>
+                  <dd className="text-white/85 font-mono">#{selected.approval_audit_id}</dd>
                 </>
               )}
               <dt className="text-white/45 text-xs uppercase tracking-wider font-mono">Audit</dt>
@@ -376,6 +403,14 @@ export default function ToolExecutionsPage() {
               )}
             </dl>
 
+            {selected.approval_reason && (
+              <section className="mt-5" data-testid="te-approval-reason">
+                <h3 className="text-xs uppercase tracking-wider text-emerald-300/80 font-mono mb-1.5">Approval reason</h3>
+                <p className="rounded-md bg-emerald-500/[0.06] border border-emerald-500/20 px-3 py-2 text-xs text-emerald-100 italic">
+                  &ldquo;{selected.approval_reason}&rdquo;
+                </p>
+              </section>
+            )}
             {selected.command_args_redacted && (
               <section className="mt-5">
                 <h3 className="text-xs uppercase tracking-wider text-white/45 font-mono mb-1.5">Command</h3>

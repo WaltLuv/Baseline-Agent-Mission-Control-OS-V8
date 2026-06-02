@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
     cost_estimate?: number
     billable_action_type?: string
     policy_override?: 'low' | 'medium' | 'high' | 'blocked'
+    approval_requested_by?: string
   }
   try {
     body = await request.json()
@@ -75,6 +76,7 @@ export async function POST(request: NextRequest) {
     cost_estimate: body.cost_estimate ?? null,
     billable_action_type: body.billable_action_type ?? null,
     policy_override: body.policy_override,
+    approval_requested_by: body.approval_requested_by,
   })
   return NextResponse.json(result, { status: 201 })
 }

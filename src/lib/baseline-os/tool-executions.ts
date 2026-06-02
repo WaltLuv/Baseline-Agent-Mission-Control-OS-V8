@@ -45,6 +45,11 @@ export interface ToolExecutionRow {
   rejected_at: number | null
   rejection_reason: string | null
   requested_by: string
+  /** Phase 4 approval supervision fields. */
+  approval_requested_by: string | null
+  approval_requested_at: number | null
+  approval_reason: string | null
+  approval_audit_id: number | null
   started_at: number | null
   completed_at: number | null
   exit_code: number | null
@@ -141,6 +146,9 @@ export interface StartToolExecutionInput {
   cost_estimate?: number | null
   billable_action_type?: string | null
   policy_override?: ToolExecutionRisk
+  /** Phase 4: who/what is requesting the approval (typically the router
+   * or runtime). Falls back to `requested_by` if not provided. */
+  approval_requested_by?: string
 }
 
 export interface StartToolExecutionResult {
@@ -180,8 +188,9 @@ export function startToolExecution(input: StartToolExecutionInput): StartToolExe
         cli_tool_id, command_name, command_args_redacted,
         risk, status, approval_required,
         requested_by, cost_estimate, billable_action_type,
+        approval_requested_by, approval_requested_at,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       input.workspace_id,
@@ -197,6 +206,11 @@ export function startToolExecution(input: StartToolExecutionInput): StartToolExe
       input.requested_by,
       input.cost_estimate ?? null,
       input.billable_action_type ?? null,
+      // Phase 4: only set if approval is actually required. For auto-approved
+      // (low/medium) and blocked, leave null — Mission Control reads these
+      // fields as "approval supervised by humans" markers.
+      approvalRequired ? (input.approval_requested_by ?? input.requested_by) : null,
+      approvalRequired ? now : null,
       now,
       now,
     )
@@ -354,6 +368,7 @@ export function approveToolExecution(
   workspace_id: number,
   id: number,
   actor: string,
+  reason?: string,
 ): ToolExecutionView | null {
   const db = getDatabase()
   const existing = db
@@ -364,17 +379,20 @@ export function approveToolExecution(
     throw new Error(`cannot approve: current status is ${existing.status}`)
   }
   const now = Math.floor(Date.now() / 1000)
+  // Audit the approval decision first so we can link the row id back into
+  // tool_executions.approval_audit_id (Phase 4 directive field).
+  const auditRes = db
+    .prepare(
+      `INSERT INTO audit_log (action, actor, target_type, target_id, detail) VALUES (?, ?, ?, ?, ?)`,
+    )
+    .run('tool_execution_approved', actor, 'tool_execution', id, reason ? JSON.stringify({ reason }) : null)
+  const approvalAuditId = Number(auditRes.lastInsertRowid)
   db.prepare(
     `UPDATE tool_executions
-       SET status = 'approved', approved_by = ?, approved_at = ?, updated_at = ?
+       SET status = 'approved', approved_by = ?, approved_at = ?,
+           approval_reason = ?, approval_audit_id = ?, updated_at = ?
      WHERE id = ? AND workspace_id = ?`,
-  ).run(actor, now, now, id, workspace_id)
-  logAuditEvent({
-    action: 'tool_execution_approved',
-    actor,
-    target_type: 'tool_execution',
-    target_id: id,
-  })
+  ).run(actor, now, reason ?? null, approvalAuditId, now, id, workspace_id)
   // Activity Feed mirror.
   const row = db
     .prepare('SELECT cli_tool_id, command_name, task_id, runtime_id FROM tool_executions WHERE id = ?')
@@ -385,8 +403,15 @@ export function approveToolExecution(
       'tool_execution',
       id,
       actor,
-      `Approved ${row.cli_tool_id} · ${row.command_name}`,
-      { cli_tool_id: row.cli_tool_id, command_name: row.command_name, task_id: row.task_id, runtime_id: row.runtime_id },
+      `Approved ${row.cli_tool_id} · ${row.command_name}${reason ? ` — ${reason.slice(0, 80)}` : ''}`,
+      {
+        cli_tool_id: row.cli_tool_id,
+        command_name: row.command_name,
+        reason: reason ?? null,
+        approval_audit_id: approvalAuditId,
+        task_id: row.task_id,
+        runtime_id: row.runtime_id,
+      },
       workspace_id,
     )
   }
@@ -408,18 +433,18 @@ export function rejectToolExecution(
     throw new Error(`cannot reject: current status is ${existing.status}`)
   }
   const now = Math.floor(Date.now() / 1000)
+  const auditRes = db
+    .prepare(
+      `INSERT INTO audit_log (action, actor, target_type, target_id, detail) VALUES (?, ?, ?, ?, ?)`,
+    )
+    .run('tool_execution_rejected', actor, 'tool_execution', id, reason ? JSON.stringify({ reason }) : null)
+  const approvalAuditId = Number(auditRes.lastInsertRowid)
   db.prepare(
     `UPDATE tool_executions
-       SET status = 'rejected', rejected_by = ?, rejected_at = ?, rejection_reason = ?, updated_at = ?
+       SET status = 'rejected', rejected_by = ?, rejected_at = ?,
+           rejection_reason = ?, approval_audit_id = ?, updated_at = ?
      WHERE id = ? AND workspace_id = ?`,
-  ).run(actor, now, reason ?? null, now, id, workspace_id)
-  logAuditEvent({
-    action: 'tool_execution_rejected',
-    actor,
-    target_type: 'tool_execution',
-    target_id: id,
-    detail: { reason: reason ?? null },
-  })
+  ).run(actor, now, reason ?? null, approvalAuditId, now, id, workspace_id)
   const row = db
     .prepare('SELECT cli_tool_id, command_name, task_id, runtime_id FROM tool_executions WHERE id = ?')
     .get(id) as { cli_tool_id: string; command_name: string; task_id: number | null; runtime_id: number | null } | undefined
@@ -430,7 +455,13 @@ export function rejectToolExecution(
       id,
       actor,
       `Rejected ${row.cli_tool_id} · ${row.command_name}${reason ? ` — ${reason.slice(0, 80)}` : ''}`,
-      { cli_tool_id: row.cli_tool_id, command_name: row.command_name, reason: reason ?? null, task_id: row.task_id },
+      {
+        cli_tool_id: row.cli_tool_id,
+        command_name: row.command_name,
+        reason: reason ?? null,
+        approval_audit_id: approvalAuditId,
+        task_id: row.task_id,
+      },
       workspace_id,
     )
   }

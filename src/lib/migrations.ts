@@ -2028,6 +2028,31 @@ const migrations: Migration[] = [
       for (const [name, sql] of adds) if (!have.has(name)) db.exec(sql)
       db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_assigned_runtime ON tasks(workspace_id, assigned_runtime) WHERE assigned_runtime IS NOT NULL`)
     },
+  },
+  {
+    id: '056_tool_execution_approval_supervision',
+    up(db: Database.Database) {
+      // Phase 4 (Approval Engine): Mission Control DISPLAYS approval
+      // state — Claude Code's Baseline OS owns the decisioning. Additive
+      // columns to `tool_executions` to surface the seven directive fields.
+      // No FK changes, no data backfill (existing executions remain valid).
+      const cols = db.prepare(`PRAGMA table_info(tool_executions)`).all() as Array<{ name: string }>
+      const have = new Set(cols.map((c) => c.name))
+      const adds: Array<[string, string]> = [
+        // who/what asked for the approval (often the router or runtime —
+        // distinct from `requested_by` which is the original task requestor)
+        ['approval_requested_by', `ALTER TABLE tool_executions ADD COLUMN approval_requested_by TEXT`],
+        ['approval_requested_at', `ALTER TABLE tool_executions ADD COLUMN approval_requested_at INTEGER`],
+        // free-text rationale from the human approver (we already have
+        // rejection_reason; this is the symmetric field for approvals).
+        ['approval_reason', `ALTER TABLE tool_executions ADD COLUMN approval_reason TEXT`],
+        // audit_log row id for the approve/reject decision specifically
+        // (distinct from `audit_event_id` which links the initial request).
+        ['approval_audit_id', `ALTER TABLE tool_executions ADD COLUMN approval_audit_id INTEGER`],
+      ]
+      for (const [name, sql] of adds) if (!have.has(name)) db.exec(sql)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_tool_executions_approval_queue ON tool_executions(workspace_id, approval_requested_at DESC) WHERE status = 'awaiting_approval'`)
+    },
   }
 ]
 

@@ -133,6 +133,13 @@ export function ExecApprovalPanel() {
 
       {view === 'approvals' ? (
         <>
+          {/* Phase 4 Approval Engine supervision: surface tool_executions
+              awaiting human approval here. This is the directive's mandated
+              "Approval Queue" surface. Decisions are stored on the
+              tool_executions row; Mission Control displays — Claude Code's
+              Baseline OS owns decisioning. */}
+          <ToolExecutionApprovalsSection />
+
           {/* Filter tabs */}
           <div className="flex gap-1 mb-4">
             {(['all', 'pending', 'resolved'] as const).map((tab) => (
@@ -545,3 +552,171 @@ function ApprovalCard({
     </div>
   )
 }
+
+/**
+ * Phase 4 — Approval Queue supervision for tool executions.
+ *
+ * Reads `/api/tool-executions?status=pending_approval` and renders a
+ * compact row per pending CLI execution. Mission Control SUPERVISES;
+ * Claude Code's Baseline OS Approval Engine owns the actual decisioning
+ * once it ships. The Approve / Reject buttons here simply POST to the
+ * existing approve/reject endpoints, which atomically transition the
+ * row + audit + activity feed. When Baseline OS publishes its own
+ * approval decision through the API, the row updates automatically via
+ * the 12-second poll.
+ */
+function ToolExecutionApprovalsSection() {
+  const [items, setItems] = useState<Array<{
+    id: number
+    cli_tool_id: string
+    command_name: string
+    command_args_redacted: string | null
+    risk: 'low' | 'medium' | 'high' | 'blocked'
+    approval_requested_by: string | null
+    approval_requested_at: number | null
+    requested_by: string
+    task_id: number | null
+    cost_estimate: number | null
+    created_at: number
+  }>>([])
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState<Set<number>>(new Set())
+  const [error, setError] = useState<string | null>(null)
+  const [tick, setTick] = useState(0)
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch('/api/tool-executions?status=pending_approval', { cache: 'no-store' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = (await res.json()) as { items: typeof items }
+      setItems(data.items)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'failed to load')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 12_000)
+    const tick = setInterval(() => setTick((x) => x + 1), 30_000)
+    return () => {
+      clearInterval(t)
+      clearInterval(tick)
+    }
+  }, [load])
+
+  async function act(id: number, kind: 'approve' | 'reject') {
+    setBusy((p) => new Set(p).add(id))
+    try {
+      let body: string = '{}'
+      if (kind === 'reject') {
+        const reason = window.prompt('Reason for rejection (optional):') || ''
+        if (reason) body = JSON.stringify({ reason })
+      }
+      const res = await fetch(`/api/tool-executions/${id}/${kind}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : `${kind} failed`)
+    } finally {
+      setBusy((p) => {
+        const next = new Set(p)
+        next.delete(id)
+        return next
+      })
+    }
+  }
+
+  // Hide the section entirely when there's nothing pending — keeps the
+  // existing operator workflow uncluttered.
+  if (loading) return null
+  if (items.length === 0) return null
+
+  void tick // re-render for relative-time refresh
+
+  const riskTone: Record<string, string> = {
+    high: 'bg-rose-500/15 text-rose-200 border-rose-500/30',
+    medium: 'bg-amber-500/15 text-amber-200 border-amber-500/30',
+    low: 'bg-emerald-500/15 text-emerald-200 border-emerald-500/30',
+    blocked: 'bg-red-700/30 text-red-200 border-red-500/40',
+  }
+
+  return (
+    <div
+      data-testid="tool-execution-approvals-section"
+      className="mb-4 rounded-lg border border-violet-500/20 bg-violet-500/[0.04] p-3"
+    >
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          Connected Tools — pending approval
+          <span className="inline-flex items-center rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] font-medium text-rose-300">
+            {items.length}
+          </span>
+        </h3>
+        <a
+          href="/app/tool-executions"
+          className="text-[11px] text-violet-300/85 hover:text-violet-200"
+          data-testid="approval-queue-open-supervisor"
+        >
+          Open supervisor →
+        </a>
+      </div>
+      {error && (
+        <div className="mb-2 text-[11px] text-rose-300/85">{error}</div>
+      )}
+      <ul className="space-y-1.5">
+        {items.map((e) => (
+          <li
+            key={e.id}
+            data-testid={`approval-row-${e.id}`}
+            className="rounded-md bg-background/60 border border-border/50 px-2.5 py-1.5 flex items-center gap-2 text-xs"
+          >
+            <span className={`text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded border font-mono ${riskTone[e.risk] || riskTone.medium}`}>
+              {e.risk}
+            </span>
+            <span className="font-mono text-foreground/85 truncate flex-1">
+              {e.cli_tool_id} · {e.command_name}
+            </span>
+            {e.task_id && (
+              <a
+                href={`/app/tasks/${e.task_id}`}
+                className="text-[11px] text-violet-300/80 hover:text-violet-200 font-mono"
+                onClick={(ev) => ev.stopPropagation()}
+              >
+                task #{e.task_id}
+              </a>
+            )}
+            <span className="text-[11px] text-muted-foreground/75 font-mono whitespace-nowrap">
+              {e.approval_requested_by ?? e.requested_by} · {timeAgo((e.approval_requested_at ?? e.created_at) * 1000)}
+            </span>
+            <button
+              type="button"
+              data-testid={`approval-row-${e.id}-approve`}
+              disabled={busy.has(e.id)}
+              onClick={() => act(e.id, 'approve')}
+              className="h-7 px-2.5 rounded-md bg-emerald-500/20 text-emerald-100 text-[11px] font-semibold border border-emerald-400/30 hover:bg-emerald-500/30 disabled:opacity-50"
+            >
+              Approve
+            </button>
+            <button
+              type="button"
+              data-testid={`approval-row-${e.id}-reject`}
+              disabled={busy.has(e.id)}
+              onClick={() => act(e.id, 'reject')}
+              className="h-7 px-2.5 rounded-md bg-rose-500/15 text-rose-100 text-[11px] font-semibold border border-rose-400/30 hover:bg-rose-500/25 disabled:opacity-50"
+            >
+              Reject
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+

@@ -17,8 +17,20 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
   const id = Number(params.id)
   if (!Number.isFinite(id) || id <= 0) return NextResponse.json({ error: 'invalid id' }, { status: 400 })
   const workspaceId = auth.user.workspace_id ?? 1
+
+  let body: { reason?: string } = {}
   try {
-    const updated = approveToolExecution(workspaceId, id, auth.user.username || `user:${auth.user.id}`)
+    body = await request.json()
+  } catch {
+    // empty body is fine — reason is optional on approve
+  }
+  try {
+    const updated = approveToolExecution(
+      workspaceId,
+      id,
+      auth.user.username || `user:${auth.user.id}`,
+      body.reason?.toString().slice(0, 500),
+    )
     if (!updated) return NextResponse.json({ error: 'not found' }, { status: 404 })
     return NextResponse.json({ execution: updated })
   } catch (e) {

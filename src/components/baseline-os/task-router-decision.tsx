@@ -53,6 +53,16 @@ interface ToolExecution {
   started_at: number | null
   completed_at: number | null
   audit_event_id: number | null
+  // Phase 4 approval supervision fields.
+  approval_requested_by: string | null
+  approval_requested_at: number | null
+  approval_reason: string | null
+  approval_audit_id: number | null
+  approved_by: string | null
+  approved_at: number | null
+  rejected_by: string | null
+  rejected_at: number | null
+  rejection_reason: string | null
 }
 
 interface Props {
@@ -206,40 +216,91 @@ export function TaskRouterDecision({ taskId, initialDecision }: Props) {
             Tool Executions ({executions.length})
           </p>
           {executions.slice(0, 5).map((e) => (
-            <Link
+            <div
               key={e.id}
-              href={`/app/tool-executions`}
               data-testid={`task-execution-${e.id}`}
-              className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.16] text-xs transition-colors"
+              className="rounded-md bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.16] text-xs transition-colors"
             >
-              <span
-                className={`text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded border font-mono ${STATUS_BADGE[e.status]}`}
+              <Link
+                href={`/app/tool-executions`}
+                className="flex items-center gap-2 px-2.5 py-1.5"
               >
-                {e.status.replace('_', ' ')}
-              </span>
-              <span className="font-mono text-white/80 truncate flex-1">
-                {e.cli_tool_id} · {e.command_name}
-              </span>
-              {e.exit_code != null && (
-                <span className={e.exit_code === 0 ? 'text-emerald-300/80 font-mono' : 'text-rose-300/80 font-mono'}>
-                  exit {e.exit_code}
-                </span>
-              )}
-              {e.cost_estimate != null && (
-                <span className="text-white/45 font-mono">~${e.cost_estimate.toFixed(3)}</span>
-              )}
-              {e.proof_url && (
-                <a
-                  href={e.proof_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-violet-300/80 hover:text-violet-200 font-mono"
-                  onClick={(ev) => ev.stopPropagation()}
+                <span
+                  className={`text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded border font-mono ${STATUS_BADGE[e.status]}`}
                 >
-                  proof ↗
-                </a>
+                  {e.status.replace('_', ' ')}
+                </span>
+                <span className="font-mono text-white/80 truncate flex-1">
+                  {e.cli_tool_id} · {e.command_name}
+                </span>
+                {e.exit_code != null && (
+                  <span className={e.exit_code === 0 ? 'text-emerald-300/80 font-mono' : 'text-rose-300/80 font-mono'}>
+                    exit {e.exit_code}
+                  </span>
+                )}
+                {e.cost_estimate != null && (
+                  <span className="text-white/45 font-mono">~${e.cost_estimate.toFixed(3)}</span>
+                )}
+                {e.proof_url && (
+                  <a
+                    href={e.proof_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-violet-300/80 hover:text-violet-200 font-mono"
+                    onClick={(ev) => ev.stopPropagation()}
+                  >
+                    proof ↗
+                  </a>
+                )}
+              </Link>
+              {/* Phase 4: Approval supervision footer. Only renders when an
+                  approval was actually required + decided. */}
+              {(e.approved_by || e.rejected_by) && (
+                <div
+                  data-testid={`task-execution-${e.id}-approval`}
+                  className="px-2.5 py-1.5 border-t border-white/[0.04] text-[11px] flex flex-wrap items-center gap-x-2 gap-y-0.5"
+                >
+                  {e.approved_by && (
+                    <span className="text-emerald-300/85 font-mono">
+                      ✓ approved by {e.approved_by}
+                      {e.approved_at != null && <span className="text-white/45"> · {timeAgo(e.approved_at)}</span>}
+                    </span>
+                  )}
+                  {e.rejected_by && (
+                    <span className="text-rose-300/85 font-mono">
+                      ✕ rejected by {e.rejected_by}
+                      {e.rejected_at != null && <span className="text-white/45"> · {timeAgo(e.rejected_at)}</span>}
+                    </span>
+                  )}
+                  {e.approval_audit_id != null && (
+                    <span className="text-white/35 font-mono">audit #{e.approval_audit_id}</span>
+                  )}
+                  {(e.approval_reason || e.rejection_reason) && (
+                    <span className="text-white/65 italic w-full mt-0.5">
+                      &ldquo;{(e.approval_reason ?? e.rejection_reason)!.slice(0, 160)}&rdquo;
+                    </span>
+                  )}
+                </div>
               )}
-            </Link>
+              {/* Awaiting approval — show the request metadata so operators
+                  know who/when is being blocked. */}
+              {e.status === 'awaiting_approval' && (
+                <div
+                  data-testid={`task-execution-${e.id}-awaiting`}
+                  className="px-2.5 py-1.5 border-t border-amber-500/[0.15] text-[11px] flex items-center gap-2 text-amber-200/85"
+                >
+                  <span>⏳ awaiting approval</span>
+                  {e.approval_requested_by && (
+                    <span className="font-mono text-amber-300/75">
+                      requested by {e.approval_requested_by}
+                    </span>
+                  )}
+                  {e.approval_requested_at != null && (
+                    <span className="text-white/45 font-mono">· {timeAgo(e.approval_requested_at)}</span>
+                  )}
+                </div>
+              )}
+            </div>
           ))}
           {executions.length > 5 && (
             <Link
