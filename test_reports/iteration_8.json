@@ -1,0 +1,48 @@
+{
+  "summary": "Phase 5 verification of Property Management Workforce one-click installer completed end-to-end. Backend (15/15 pytest) + Browser E2E both PASS. All spec requirements met: 8-template catalog (1 ready + 7 coming_soon), idempotent install (201 fresh / 200 already_installed), coming-soon refusal (400 unavailable), 401 unauth, 6 personas + 12 workflows + 11 tools persisted across agents/tasks/settings/audit_log/activities tables, no duplicates on re-install. Browser flow drove fresh signup → /app/activate → install click → 8s progress strip → installed roster with all 6 named personas + 4 deep-links → activation-step-system data-state=done. /api/tasks confirms 12 workforce tasks visible in workspace; /api/agents confirms 6 personas with source='workforce-template:property-management'. NO installer logic was modified per directive.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Activation Hub Step 1 inline summary (step-system-summary)",
+        "issues": [
+          "After WorkforceInstaller completes, the Step 1 collapsed summary text reads 'X AI employees · 1 skills installed · starter task queued' where X is the COUNT FROM A DIFFERENT TABLE (admin/ws=1 shows '7 AI employees', fresh signup shows '0 AI employees') — it does NOT reflect the 6 personas just installed by the workforce template. This is cosmetic mis-labeling in activation-hub.tsx, not in the WorkforceInstaller component itself. Recommend reading from the workforce template install result instead.",
+          "After install completes & auto-advances (800ms after onComplete), the active-step body shows 'No active step. Skipped steps can be resumed any time from the dashboard.' instead of automatically advancing to Step 2 (runtime). The runtime/invite steps remain non-active until the user re-clicks. Worth verifying intended state-machine behaviour — spec said 'activation-hub step transitions system=done', which IS satisfied, but the next-step auto-advance feels off."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_workforce_installer.py",
+    "/app/test_reports/pytest/workforce_iter8.xml"
+  ],
+  "action_items": [
+    "(LOW) Consider replacing the 'step-system-summary' counts in activation-hub.tsx with workforce-template install result (e.g. '6 AI employees provisioned · 12 starter workflows queued') for consistency with the installed view shown by WorkforceInstaller.",
+    "(LOW) Confirm whether 'No active step' is the intended state immediately after system→done while runtime is still pending. If runtime should auto-activate, fix the state transition in setStepState in activation-hub.tsx."
+  ],
+  "critical_code_review_comments": [
+    "WorkforceInstaller.tsx: minDuration of 8000ms is a hard-coded cosmetic delay — confirmed intentional per spec, no action needed.",
+    "install.ts: settings key namespace 'ws.<workspaceId>.workforce.<...>' verified via direct DB inspection — 11 tool keys + 1 'ws.1.workforce.installed.property-management' marker = 12 total per spec.",
+    "Idempotency confirmed at DB level: 3 consecutive POSTs produced 6 agents + 12 tasks (no duplicates) and audit_log got 3 'workforce_template_reinstall' rows (one per call).",
+    "All workforce templates correctly typed: status='ready' or 'coming_soon'. Install endpoint correctly rejects coming-soon slugs with 400 + status='unavailable'.",
+    "Browser flow: WorkforceInstaller renders 'workforce-installed' inner DOM correctly with all expected data-testids: workforce-installed, workforce-personas, workforce-persona-<slug> (×6), workforce-deep-links."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_workforce_installer.py (new)"
+  ],
+  "success_rate": {
+    "backend": "100% (15/15 pytest)",
+    "frontend": "100% (catalog + install + progress strip + installed roster + deep links + step transition all verified)"
+  },
+  "test_credentials": "admin / admin12345 (workspace_id=1). Fresh signups created during E2E used pattern cz-iter8*-<ts>@example.com / CustomerZeroPass42!! (workspace_id=2+). Login via POST /api/auth/login with {username,password}. Signup via POST /api/auth/signup with {email,password,full_name,company_name,business_type}.",
+  "seed_data_creation": "3 fresh tenants created via /api/auth/signup during browser E2E to exercise the pre-install state (cz-iter8-<ts>, cz-iter8b-<ts>, cz-iter8c-<ts>). Each got 6 PM personas + 12 PM tasks + 11 PM tool settings in their respective workspaces. Admin workspace (ws=1) accumulated 9 'workforce_template_reinstall' audit_log entries from idempotency tests.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "WorkforceInstaller is ONLY visible inside activation-hub when state.system==='active'. After install completes, onComplete fires (800ms after the 8s cosmetic strip ends) and the hub swaps WorkforceInstaller for RuntimeConnectWizard. To verify the installed view (6 personas + deep links), either (a) use a FRESH signup so the install hasn't happened, click install, then capture at ~8.1s before the 800ms auto-advance, or (b) temporarily comment out the onComplete call. Backend DB lives at /app/.next/standalone/.data/mission-control.db. Schema: audit_log.detail (singular), activities.data (not metadata), settings keys use 'ws.<wsId>.workforce.installed.<slug>' for marker and 'ws.<wsId>.workforce.<slug>.tool.<name>' for tools. Re-running the workforce_installer.py suite is safe — it's idempotent and only adds reinstall audit rows.",
+  "rca_of_the_issue": "N/A — no functional bugs in the installer. The two design notes flagged are cosmetic and live outside the WorkforceInstaller component (in activation-hub state machine + step summary text)."
+}

@@ -37,8 +37,13 @@ export interface InstallResult {
   }
 }
 
-const TOOL_SETTING_PREFIX = (templateSlug: string) => `workforce.${templateSlug}.tool.`
-const INSTALL_SETTING = (templateSlug: string) => `workforce.installed.${templateSlug}`
+// settings table has no workspace_id column → namespace the workspace into the key.
+const TOOL_SETTING_PREFIX = (workspaceId: number, templateSlug: string) =>
+  `ws.${workspaceId}.workforce.${templateSlug}.tool.`
+const INSTALL_SETTING = (workspaceId: number, templateSlug: string) =>
+  `ws.${workspaceId}.workforce.installed.${templateSlug}`
+const INSTALL_SETTING_LIKE = (workspaceId: number) =>
+  `ws.${workspaceId}.workforce.installed.%`
 
 export function installWorkforceTemplate(
   workspaceId: number,
@@ -75,8 +80,8 @@ export function installWorkforceTemplate(
 
   // Idempotency check — settings row written on first install.
   const existing = db
-    .prepare(`SELECT value FROM settings WHERE workspace_id = ? AND key = ?`)
-    .get(workspaceId, INSTALL_SETTING(tmpl.slug)) as { value: string } | undefined
+    .prepare(`SELECT value FROM settings WHERE key = ?`)
+    .get(INSTALL_SETTING(workspaceId, tmpl.slug)) as { value: string } | undefined
   const wasInstalled = !!existing
 
   // Wrap inserts in a transaction so a partial install can't leave the
@@ -213,14 +218,13 @@ export function installWorkforceTemplate(
 
     // ─── Tool hints → settings rows (display-only catalog state) ───
     const insertSetting = db.prepare(
-      `INSERT INTO settings (workspace_id, key, value, updated_at)
-       VALUES (?, ?, ?, ?)
-       ON CONFLICT(workspace_id, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+      `INSERT INTO settings (key, value, category, updated_by, updated_at)
+       VALUES (?, ?, 'workforce', ?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
     )
     for (const t of tmpl.tools) {
       insertSetting.run(
-        workspaceId,
-        `${TOOL_SETTING_PREFIX(tmpl.slug)}${t.cli_tool_id}`,
+        `${TOOL_SETTING_PREFIX(workspaceId, tmpl.slug)}${t.cli_tool_id}`,
         JSON.stringify({
           cli_tool_id: t.cli_tool_id,
           label: t.label,
@@ -228,27 +232,28 @@ export function installWorkforceTemplate(
           state: t.state,
           default_risk: t.default_risk,
         }),
+        actor,
         now,
       )
     }
 
     // ─── Mark template as installed ───
     insertSetting.run(
-      workspaceId,
-      INSTALL_SETTING(tmpl.slug),
+      INSTALL_SETTING(workspaceId, tmpl.slug),
       JSON.stringify({
         installed_at: now,
         installed_by: actor,
         persona_count: personasInstalled.length,
         workflow_count: workflowsInstalled.length,
       }),
+      actor,
       now,
     )
 
     // ─── Audit + activity events ───
     db.prepare(
-      `INSERT INTO audit_log (action, actor, target_type, target_id, detail)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO audit_log (action, actor, target_type, target_id, detail, workspace_id)
+       VALUES (?, ?, ?, ?, ?, ?)`,
     ).run(
       wasInstalled ? 'workforce_template_reinstall' : 'workforce_template_installed',
       actor,
@@ -260,6 +265,7 @@ export function installWorkforceTemplate(
         personas: personasInstalled.length,
         workflows: workflowsInstalled.length,
       }),
+      workspaceId,
     )
     db_helpers.logActivity(
       wasInstalled ? 'workforce_template_reinstall' : 'workforce_template_installed',
@@ -292,8 +298,8 @@ export function getInstallStatus(
 ): { installed: boolean; meta: Record<string, unknown> | null } {
   const db = getDatabase()
   const row = db
-    .prepare(`SELECT value FROM settings WHERE workspace_id = ? AND key = ?`)
-    .get(workspaceId, INSTALL_SETTING(templateSlug)) as { value: string } | undefined
+    .prepare(`SELECT value FROM settings WHERE key = ?`)
+    .get(INSTALL_SETTING(workspaceId, templateSlug)) as { value: string } | undefined
   if (!row) return { installed: false, meta: null }
   try {
     return { installed: true, meta: JSON.parse(row.value) as Record<string, unknown> }
@@ -315,9 +321,8 @@ function deepLinks(): InstallResult['deep_links'] {
 export function listInstalledTemplates(workspaceId: number): string[] {
   const db = getDatabase()
   const rows = db
-    .prepare(
-      `SELECT key FROM settings WHERE workspace_id = ? AND key LIKE 'workforce.installed.%'`,
-    )
-    .all(workspaceId) as Array<{ key: string }>
-  return rows.map((r) => r.key.replace('workforce.installed.', ''))
+    .prepare(`SELECT key FROM settings WHERE key LIKE ?`)
+    .all(INSTALL_SETTING_LIKE(workspaceId)) as Array<{ key: string }>
+  const prefix = `ws.${workspaceId}.workforce.installed.`
+  return rows.map((r) => r.key.replace(prefix, ''))
 }
