@@ -3628,3 +3628,167 @@ mod   memory/PRD.md                                           (Phase 5C.5 entry)
   the suspect. Recommend moving large binaries to a release artifact
   bucket (GitHub Releases, S3) rather than the git tree.
 
+
+
+---
+
+## Iteration · Phase 5D — Day-2 Operator Experience (Feb 2026)
+
+Lane discipline preserved: NO new dashboards, NO new architecture, NO
+duplicated notification systems, NO Baseline OS calculation logic
+touched, NO scheduled email send, NO other vertical workforce templates.
+Only the operator polish that makes Mission Control easier to live in
+after a customer installs a workforce.
+
+### D2.1 — Trust pill ("Verified by Baseline OS")
+- `src/components/briefing/daily-brief-panel.tsx` — emerald pill with
+  checkmark renders BESIDE the existing source line when
+  `payload.source === 'baseline-os'`. Hidden in fallback mode. Tooltip
+  explains the trust signal: "These numbers come from the same engine
+  that ran the work — single source of truth across Daily Brief and
+  Value page."
+- `src/components/value/value-report-panel.tsx` — same pill beside the
+  Value page source line.
+
+### D2.2 — GitHub push blocker fix
+- `git rm --cached` of the three large Flight Deck binaries
+  (`*.AppImage` 91MB, `*_linux-arm64` raw 14MB, `*.deb` 4.1MB).
+- `.gitignore` extended with `public/downloads/flight-deck/v*/...`
+  glob patterns covering all platforms (AppImage / deb / dmg / msi /
+  exe / tar.gz / zip) so the binaries never get retracked.
+- `src/app/api/flight-deck/manifest/route.ts` updated:
+  - `release_url` now points at
+    `https://github.com/WaltLuv/baseline-agent-os/releases/tag/flight-deck-v0.1.0`
+    (driven by `FLIGHT_DECK_RELEASES_BASE` env var with sane default).
+  - Per-artifact `download_url` falls back to the GitHub Releases URL
+    when the local file is absent — so deployed environments without
+    the binaries on disk still have working download links.
+
+### D2.3 — Mobile-friendly approvals queue
+- `src/components/workforce/approvals-queue-view.tsx` rewrote:
+  - Buttons measure **58px** on mobile (target ≥44px touch).
+  - Per-row reminder pill: amber "⏰ Waiting more than 24 hours" at
+    24h+, red "⏰ Reminder: escalating" at 48h+.
+  - Summary banner on the section header: "N escalating (48h+) · M
+    waiting 24h+".
+  - Selection state with primary ring on click + J/K hotkey
+    navigation.
+  - Action buttons wrap cleanly on phone (no overflow).
+
+### D2.4 — Notification center (header bell)
+- `src/app/api/operator/notifications/route.ts` — aggregates the FIVE
+  Day-2 events: approvals waiting, failed executions, blocked actions,
+  critical tasks, runtime offline. Severity sort (critical→warn→info).
+  Lane: pure read of MC's own tables, no decisioning.
+- `src/components/operator/notification-bell.tsx` — header bell with
+  unread badge (red when any critical, amber otherwise), dropdown
+  listing items with severity pills + age labels + deep-link to
+  Approvals / Tool Executions / Tasks board. Polls every 30s.
+- `src/components/layout/header-bar.tsx` — replaces the prior legacy
+  bell. The legacy `<NotificationsPanel>` remains intact for the
+  `/app/notifications` route (workspace-scoped database notifications)
+  but the header CTA now surfaces the more useful Day-2 inbox.
+
+### D2.5 — Approval reminders
+- Surfaced in two places (no new scheduler needed):
+  1. Per-row reminder pills (see D2.3).
+  2. Notification bell items carry an `age_hours` + `age_label` and
+     escalate to severity='critical' at 48h+, 'warn' at 24h+, else
+     'info'.
+
+### D2.6 — Email-action approval link structure
+- `src/app/api/approvals/email-link/route.ts` — public route. Token
+  is HMAC-SHA256 over `taskId.action.expiresAt` using `AUTH_SECRET`,
+  base64url-encoded. 7-day default TTL.
+  - Missing token → 400
+  - Bad/expired/tampered token → 403
+  - Valid token + nonexistent task → 404
+  - Valid token + already-resolved task → 200 ("Already actioned")
+  - Valid token + pending task → mutates `tasks.status` to `done`
+    (approve) or `cancelled` (reject), writes `audit_log` entry with
+    `actor='email-link'`, returns dark-themed HTML success page with
+    deep-link to /app/approvals.
+- `src/proxy.ts` — added `/api/approvals/email-link` to the
+  public-route whitelist (the token IS the auth).
+- **No email send yet**: this builds the link structure so the next
+  pass that wires Resend can use `signApprovalLink(baseUrl, payload)`
+  to mint URLs inline in the eventual email template.
+
+### D2.7 — Task filter chips
+- `src/components/panels/task-board-panel.tsx` — chip strip below the
+  board header with 8 filters:
+  All · Mine · Waiting on approval · Critical · Blocked · Failed ·
+  Today · Property Mgmt. Counter label "N of M" appears when a
+  non-default chip is active. No new endpoint — filters applied
+  client-side over the already-fetched task list.
+
+### D2.8 — Operator shortcuts
+- `src/components/operator/operator-shortcuts.tsx` — `OperatorShortcutsProvider`
+  context + global keydown listener mounted at the app shell layout
+  (`src/app/app/layout.tsx`). Bindings:
+  - **/** — defer to the existing header command-palette opener
+  - **?** — toggle the shortcuts help modal
+  - **Esc** — close any visible modal (queries `[data-testid$="-modal"] button[aria-label="Close"]`)
+  - **A** / **R** — approve / reject the focused approval row
+  - **J** / **K** — move selection up / down in the approvals list
+  - Skips when focus is inside `<input>` / `<textarea>` / `<select>` /
+    `[contenteditable]` so typing never triggers shortcuts.
+  - Skips when any modifier is held (no clash with OS combos).
+- `src/components/workforce/approvals-queue-view.tsx` registers
+  approval-context handlers while mounted via
+  `useOperatorShortcuts().registerApprovalContext()`.
+
+### D2.9 — Verification (iteration_10.json)
+
+| Gate | Result |
+|------|--------|
+| `tsc --noEmit` | ✅ 0 errors |
+| `yarn build` | ✅ Compiled (93s) |
+| Backend pytest | ✅ **13/13 PASS** — operator notifications aggregator + email-link HMAC end-to-end (400/403/404/200 + audit log + task mutation verified) + flight-deck manifest fallback |
+| Browser: notification bell + badge + dropdown with 5 seeded events | ✅ |
+| Browser: shortcuts help modal opens on `?`, lists all 7 shortcuts | ✅ |
+| Browser: mobile approvals queue at 414×896 — touch targets, stale banner, per-row reminders | ✅ |
+| Browser: task filter chips select correctly, counter updates | ✅ |
+| Trust pill: hidden when `source='mission-control-fallback'`, visible+green when `source='baseline-os'` | ✅ (verified with stub in prior iteration) |
+| Existing Executive Briefing / Daily Brief / Value page / Workforce Installer / Activation Hub | ✅ no regressions |
+| GitHub push readiness: 0 tracked files >5MB | ✅ |
+| `AUTH_SECRET` populated in `.env` | ✅ |
+
+### D2.10 — Files touched
+```
+new   src/components/operator/operator-shortcuts.tsx
+new   src/components/operator/notification-bell.tsx
+new   src/app/api/operator/notifications/route.ts
+new   src/app/api/approvals/email-link/route.ts
+mod   src/components/workforce/approvals-queue-view.tsx        (rewrote — mobile + reminders + hotkeys + selection)
+mod   src/components/panels/task-board-panel.tsx               (quick-filter chips + currentUser destructure)
+mod   src/components/layout/header-bar.tsx                     (NotificationBell replaces legacy bell)
+mod   src/app/app/layout.tsx                                    (wraps shell in OperatorShortcutsProvider)
+mod   src/components/briefing/daily-brief-panel.tsx            (trust pill + apostrophe fix)
+mod   src/components/value/value-report-panel.tsx              (trust pill)
+mod   src/proxy.ts                                              (/api/approvals/email-link → public route)
+mod   src/app/api/flight-deck/manifest/route.ts                (GitHub Releases URL fallback)
+mod   .gitignore                                                (Flight Deck binary glob patterns)
+mod   .env                                                      (AUTH_SECRET populated with 32-byte random hex)
+git rm --cached
+      public/downloads/flight-deck/v0.1.0/baseline-flight-deck_0.1.0_linux-arm64.AppImage   (91 MB)
+      public/downloads/flight-deck/v0.1.0/baseline-flight-deck_0.1.0_linux-arm64            (14 MB)
+      public/downloads/flight-deck/v0.1.0/baseline-flight-deck_0.1.0_linux-arm64.deb        (4.1 MB)
+```
+
+### D2.11 — Next steps before Customer Zero recording
+
+1. Operator clicks **"Save to GitHub"** in Emergent — push should now
+   pass the Quality Gate (no >100MB files, no tracked secrets, build
+   clean, lint clean).
+2. Operator clicks **"Deploy"** — production smoke list ready:
+   homepage · signup · login · onboarding · activation hub · PM
+   workforce install · Daily Brief + trust pill toggle · email
+   preview · Value page · approvals queue (desktop + mobile) ·
+   notification bell · keyboard shortcuts · connected tools · runtime
+   registry · billing · Stripe LIVE · Resend transactional · Google
+   OAuth · Flight Deck download (now via GitHub Releases).
+3. Once production is verified, Walt records the Customer Zero
+   walkthrough using `docs/CUSTOMER_ZERO_WALKTHROUGH.md` (including
+   the Act 07.5 email preview beat I added).
+

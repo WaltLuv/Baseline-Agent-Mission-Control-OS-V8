@@ -143,7 +143,7 @@ export function ApprovalsQueueView() {
         </p>
         {summary && (summary.stale > 0 || summary.escalating > 0) && (
           <p
-            data-testid="approvals-summary-stale"
+            data-testid="stale-banner"
             className="mt-2 inline-flex items-center gap-2 text-[11px] font-mono px-2 py-1 rounded border border-amber-500/30 bg-amber-500/[0.06] text-amber-200"
           >
             {summary.escalating > 0 && (
@@ -261,11 +261,11 @@ export function ApprovalsQueueView() {
                   {item.reason}
                 </p>
               )}
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap gap-2" data-testid={`approval-actions-${item.taskId}`}>
                 <button
                   onClick={(e) => { e.stopPropagation(); act(item.taskId, 'approve') }}
                   disabled={busy === item.taskId}
-                  data-testid={`approval-approve-${item.taskId}`}
+                  data-testid={`approve-btn-${item.taskId}`}
                   className="min-h-11 sm:min-h-9 flex-1 sm:flex-none rounded-md border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm sm:text-[11px] font-medium text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-50 active:scale-[0.98]"
                 >
                   Approve
@@ -273,7 +273,7 @@ export function ApprovalsQueueView() {
                 <button
                   onClick={(e) => { e.stopPropagation(); act(item.taskId, 'request-changes') }}
                   disabled={busy === item.taskId}
-                  data-testid={`approval-changes-${item.taskId}`}
+                  data-testid={`changes-btn-${item.taskId}`}
                   className="min-h-11 sm:min-h-9 flex-1 sm:flex-none rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm sm:text-[11px] font-medium text-amber-200 hover:bg-amber-500/20 disabled:opacity-50 active:scale-[0.98]"
                 >
                   Request changes
@@ -281,7 +281,7 @@ export function ApprovalsQueueView() {
                 <button
                   onClick={(e) => { e.stopPropagation(); act(item.taskId, 'reject') }}
                   disabled={busy === item.taskId}
-                  data-testid={`approval-reject-${item.taskId}`}
+                  data-testid={`reject-btn-${item.taskId}`}
                   className="min-h-11 sm:min-h-9 flex-1 sm:flex-none rounded-md border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm sm:text-[11px] font-medium text-red-300 hover:bg-red-500/20 disabled:opacity-50 active:scale-[0.98]"
                 >
                   Reject

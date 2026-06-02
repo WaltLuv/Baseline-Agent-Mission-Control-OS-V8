@@ -914,7 +914,7 @@ export function TaskBoardPanel() {
             key={chip.id}
             type="button"
             onClick={() => setQuickFilter(chip.id)}
-            data-testid={`task-filter-${chip.id}`}
+            data-testid={`task-filter-chip-${chip.id}`}
             aria-pressed={quickFilter === chip.id}
             className={`shrink-0 h-7 px-3 rounded-full text-xs font-medium transition-colors ${
               quickFilter === chip.id

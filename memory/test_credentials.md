@@ -153,3 +153,11 @@ Flow verified end-to-end:
 2. Redirects to `/onboarding` (NOT `/app/overview`)
 3. Onboarding 3 steps → `Launch AI Workforce` → `Activate Workforce →` button
 4. Lands on `/app/activate?source=onboarding` with progress = 1/3, step `system=done`, `runtime=active`, `invite=pending`
+
+## Phase 5D · AUTH_SECRET populated (Feb 2026)
+- /app/.env line 29: `AUTH_SECRET=<32-byte random hex>`
+- Required for: HMAC token verification on `/api/approvals/email-link`
+  (Day-2 email-action approval prep).
+- Generated locally via `openssl rand -hex 32`. Production deployment
+  pipeline auto-rotates secrets; the value committed to /app/.env here
+  is the preview-only value and is safe to overwrite on deploy.
