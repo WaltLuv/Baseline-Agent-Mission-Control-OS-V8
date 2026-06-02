@@ -4,7 +4,7 @@
   "private": true,
   "description": "Production launcher for the Mission Control Next.js standalone server. The actual Next.js source lives at /app (single-package Next.js 16 fullstack). This shim exists so the standard Emergent supervisor template (which runs `yarn start` from /app/frontend on PORT=3000) can boot the prebuilt standalone server at /app/.next/standalone/server.js.",
   "scripts": {
-    "start": "bash /app/frontend/launch.sh",
+    "start": "node /app/.next/standalone/server.js",
     "build": "echo 'frontend shim: build is performed at /app (parent) via `pnpm/yarn build` — nothing to do here' && exit 0",
     "test": "echo 'no tests in frontend shim' && exit 0"
   }
