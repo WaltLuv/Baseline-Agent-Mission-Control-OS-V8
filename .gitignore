@@ -33,6 +33,11 @@ node-v*/
 *.tar.gz
 *.tar.xz
 
+# Python bytecode caches (untracked tooling scripts)
+__pycache__/
+*.pyc
+
+
 # Local SQLite databases / build artifacts that would be huge in git
 *.db
 *.db-journal

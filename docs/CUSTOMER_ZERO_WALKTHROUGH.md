@@ -107,6 +107,19 @@
 **Walter says (during the strip):**
 > "Six AI employees getting their roles, twelve starter workflows getting queued, eleven tools wired up, approval rules locked in. All in your workspace. Nothing shared, nothing copied from a demo tenant."
 
+### Screen 07.5 · Daily Brief Email Preview (the inbox beat)
+
+**Action:** From `/app/overview`, scroll to the Daily Brief panel → click **Preview email** in the footer. The modal opens with the rendered HTML email inside an iframe.
+
+**Walter says (while hovering the email):**
+> "And every morning — 7 AM, your timezone — this lands in your inbox. Subject line tells you the headline. Critical stuff at the top in red. Then the numbers. Then what needs your eye. You can reply from your phone."
+
+**What the prospect should notice:**
+- It's a real email, not a screenshot of an email.
+- The "Status: clean." / "Status: 2 items need your eye." line at the bottom feels like a daily standup summary.
+
+**Why this beat matters:** Converts the abstract "we have a daily brief" claim into a concrete artifact the prospect can mentally forward to their boss. Costs 8 seconds of demo time, removes a major sales objection ("do I have to log in every morning?").
+
 ### Screen 08 · Installed state — **the persona roster**
 
 **What the prospect should notice:**

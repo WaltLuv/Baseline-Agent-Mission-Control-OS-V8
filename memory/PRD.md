@@ -3527,3 +3527,104 @@ mod   src/components/activation/activation-hub.tsx   (workforce-installer mount,
   in DAILY_BRIEF_CONTRACT.md, mapper to be added in the route layer
   when `BASELINE_OS_DAILY_BRIEF_URL` is set.
 
+
+
+---
+
+## Iteration · Phase 5C.5 — Contract reconciliation (Baseline OS → Mission Control) · Feb 2026
+
+User directive: Claude Code has shipped `GET /api/daily-brief` and
+`GET /api/roi` on Baseline OS with the v1 contract. Emergent must
+become a *consumer* — not a second calculator. Wire the env vars,
+add a thin UI-layer mapper, fall back gracefully when Baseline OS is
+unreachable.
+
+### CR.1 — Adapters (P0)
+- `src/lib/daily-brief/baseline-os-adapter.ts` — translates Claude's
+  v1 Daily Brief payload (`counters.*` + flat `hours_saved`) into the
+  Mission Control consumer shape (`by_the_numbers.*` +
+  `estimated_hours_saved`). Surfaces extra `approvals_denied` and
+  `blocked_refusals` counters as `attention[]` pills with
+  `kind='blocked_task'`; dedupes against any pill Claude already
+  emitted. Pure mapping — NO recomputation.
+- `src/lib/value-report/baseline-os-adapter.ts` — translates Claude's
+  v1 ROI payload (`roi.{hours_saved,labor_value_usd,workforce_cost_usd,
+  net_value_usd,roi_multiple,labor_rate_usd_per_hour,formula,notes}`
+  + `counters.*` + `personas[]` + `weekly_trend[]`) into the Mission
+  Control `ValueReport` consumer shape. Uses Claude's labor rate when
+  present (falls back to $65/h disclosed in cost_basis).
+- Both adapters are defensive (every field optional, sensible
+  defaults), so partial Baseline OS payloads still render.
+
+### CR.2 — Route wiring (P0)
+- `src/app/api/daily-brief/route.ts` — when
+  `BASELINE_OS_DAILY_BRIEF_URL` is set, fetches with a 5-second
+  `AbortSignal.timeout`, detects shape (`by_the_numbers` →
+  passthrough; `counters` → adapt), ships as `source: 'baseline-os'`.
+  Falls through to local aggregator on timeout / non-2xx /
+  unparseable response.
+- `src/app/api/value-report/route.ts` — same pattern with
+  `BASELINE_OS_VALUE_REPORT_URL`.
+- `.env.production.example` — documented both vars under a new
+  "Baseline OS proxy" section, pointing at Claude's local
+  `http://127.0.0.1:8081`.
+
+### CR.3 — Verification
+
+Used a local stub on port 8765 returning Claude's exact v1 shape
+(17 tasks, 31 tool executions, 15 proofs, 7 BLOCKED refusals,
+6.8h saved on the brief; 124 / 217 / 96 / 47.8h / $3,107 / $412 /
+$2,695 / 7.5× on ROI). Restarted nextjs with env vars pointing
+at the stub.
+
+| Gate | Result |
+|------|--------|
+| `tsc --noEmit` | ✅ 0 errors |
+| `yarn build` | ✅ |
+| `GET /api/daily-brief` (env var → stub) | ✅ `source: 'baseline-os'`, all 7 counter fields mapped (`tasks_completed→tasks_handled`, `failures→failed_executions`), `hours_saved` passed through, headline + narrative verbatim, attention list (4 → 3 after dedupe), personas + proofs passthrough |
+| `GET /api/value-report` (env var → stub) | ✅ `source: 'baseline-os'`, $3,107 labor value + 7.5× ROI + $412 cost + Claude's "Imported from Daily Brief" formula label all carried through; personas + weekly trend rendered |
+| Browser `/app/overview` with env var | ✅ Daily Brief shows `Source: Baseline OS · generated 06:43 PM` + Claude's headline + 17 tasks + 6.8h saved + 3 attention pills + 2 personas + proof link |
+| Browser `/app/value` with env var | ✅ Hero "saved an estimated 47.8h" + $3,107 labor value + 7.5× ROI hero tile + 6 By-the-numbers tiles + 2 persona cards (Tessa 38/$1,027, Marcus 27/$735) + weekly trend bars |
+| Resilience: stub OFFLINE + env var still set | ✅ Both routes timeout in 5s and emit `source: 'mission-control-fallback'`; UI never breaks |
+| Final state (env vars unset, supervisor config restored) | ✅ Returns to `mission-control-fallback` mode cleanly |
+
+### CR.4 — Files touched
+```
+new   src/lib/daily-brief/baseline-os-adapter.ts
+new   src/lib/value-report/baseline-os-adapter.ts
+mod   src/app/api/daily-brief/route.ts                       (Baseline OS proxy + shape detection + adapter call)
+mod   src/app/api/value-report/route.ts                      (same pattern)
+mod   .env.production.example                                (BASELINE_OS_*_URL documented)
+mod   .gitignore                                              (+__pycache__/, *.pyc)
+mod   docs/CUSTOMER_ZERO_WALKTHROUGH.md                       (+Act 7.5: email preview beat)
+mod   memory/PRD.md                                           (Phase 5C.5 entry)
+```
+
+### CR.5 — Lane discipline preserved
+
+- Mission Control consumer never recomputes. The fallback aggregator
+  stays a *fallback*, only triggered when Claude's endpoint is
+  unreachable or unconfigured.
+- Single source of truth: when Baseline OS is wired, Daily Brief and
+  Value page numbers come from the same Claude formula and CANNOT
+  drift (the trust problem Walt called out).
+- Mission Control owns: route proxy, UI-layer naming, defensive
+  defaults, deep-link URL construction, customer-facing copy, the
+  "Source: Baseline OS" attribution pill.
+- Baseline OS owns: every formula, every counter, every classification
+  rule, the `proofs[]` list, the `attention[]` list, the
+  `hours_saved` number.
+
+### CR.6 — Next Action Items
+
+- ⚙ Walt (operator): set the two env vars on the production server
+  pointing at the Baseline OS endpoint exposed at
+  `http://127.0.0.1:8081`. No restart needed beyond
+  `sudo supervisorctl restart nextjs`.
+- 📦 GitHub push blocker note: `public/downloads/flight-deck/v0.1.0/
+  baseline-flight-deck_0.1.0_linux-arm64.AppImage` is 91 MB and
+  already tracked from a prior commit. Right at GitHub's 100 MB hard
+  limit — if pushes start hitting "file too large" later, this is
+  the suspect. Recommend moving large binaries to a release artifact
+  bucket (GitHub Releases, S3) rather than the git tree.
+
