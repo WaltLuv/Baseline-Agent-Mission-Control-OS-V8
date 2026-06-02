@@ -268,7 +268,7 @@ export default function HelpCenterPage() {
         <section className="space-y-3" data-testid="help-articles">
           {filtered.length === 0 && (
             <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 text-center text-white/55">
-              Nothing matches "{query}". Email <a className="text-violet-300 hover:text-violet-200" href="mailto:hello@baseline-agents.com">hello@baseline-agents.com</a> and we'll write the article.
+              Nothing matches &ldquo;{query}&rdquo;. Email <a className="text-violet-300 hover:text-violet-200" href="mailto:hello@baseline-agents.com">hello@baseline-agents.com</a> and we&apos;ll write the article.
             </div>
           )}
           {filtered.map((a) => {

@@ -208,7 +208,7 @@ export function AgentGatewayPanel() {
           <div className="p-4 text-sm text-muted-foreground">Loading tasks…</div>
         ) : tasks.length === 0 ? (
           <div className="p-4 text-sm text-muted-foreground" data-testid="agent-gateway-no-tasks">
-            No tasks yet. As Claude / Codex / OpenCode / Hermes route work through the gateway, it'll appear here with logs and cost.
+            No tasks yet. As Claude / Codex / OpenCode / Hermes route work through the gateway, it&apos;ll appear here with logs and cost.
           </div>
         ) : (
           <ul className="divide-y divide-border">

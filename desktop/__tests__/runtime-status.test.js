@@ -11,8 +11,15 @@ import { isAllowedUrl, activeUrl, MODES } from '../src/allowlist.js'
 
 describe('Flight Deck — runtime status surface', () => {
   beforeEach(() => {
-    // jsdom localStorage may carry between tests
-    if (typeof localStorage !== 'undefined') localStorage.clear()
+    // jsdom-style localStorage isn't guaranteed in every vitest env —
+    // guard for both "undefined identifier" AND "object without .clear".
+    if (
+      typeof localStorage !== 'undefined' &&
+      localStorage &&
+      typeof localStorage.clear === 'function'
+    ) {
+      localStorage.clear()
+    }
   })
 
   it('exposes the four runtime IDs we surface in the panel', () => {

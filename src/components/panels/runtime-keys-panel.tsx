@@ -260,7 +260,7 @@ export function RuntimeKeysPanel() {
               Copy key
             </Button>
             <Button type="button" variant="outline" onClick={() => setFreshKey(null)} data-testid="dismiss-fresh-key-button">
-              I've copied it
+              I&apos;ve copied it
             </Button>
           </div>
           <pre className="text-xs text-amber-100 bg-black/40 rounded p-2 overflow-x-auto">

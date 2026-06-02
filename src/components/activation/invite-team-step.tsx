@@ -62,7 +62,7 @@ export function InviteTeamStep({
         <p className="text-xs uppercase tracking-wider text-violet-300/80 font-mono mb-1.5">Step 3 of 3</p>
         <h2 className="text-2xl font-semibold tracking-tight">Invite your team</h2>
         <p className="mt-2 text-sm text-white/55 leading-relaxed">
-          Mission Control becomes much more valuable when your operators and admins each have their own login. They'll get an email with a one-click join link.
+          Mission Control becomes much more valuable when your operators and admins each have their own login. They&apos;ll get an email with a one-click join link.
         </p>
       </header>
 
@@ -153,7 +153,7 @@ export function InviteTeamStep({
           onClick={onSkip}
           className="text-sm text-white/50 hover:text-white/80"
         >
-          I'll invite later
+          I&apos;ll invite later
         </button>
         <button
           type="button"

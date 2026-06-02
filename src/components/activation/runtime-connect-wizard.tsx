@@ -126,7 +126,7 @@ export function RuntimeConnectWizard({
           <p className="mt-2 text-sm text-white/55 leading-relaxed">
             We just created an agent record + a one-time runtime API key for{' '}
             <span className="font-mono text-white/80">{provisioned.agent_name}</span>. Paste the command on
-            the box where {meta.title} runs. We'll detect it as soon as it heartbeats.
+            the box where {meta.title} runs. We&apos;ll detect it as soon as it heartbeats.
           </p>
         </header>
 
@@ -185,7 +185,7 @@ export function RuntimeConnectWizard({
             onClick={onSkip}
             className="text-sm text-white/50 hover:text-white/80"
           >
-            I'll connect later
+            I&apos;ll connect later
           </button>
           <button
             type="button"
@@ -253,7 +253,7 @@ export function RuntimeConnectWizard({
           onClick={onSkip}
           className="text-sm text-white/50 hover:text-white/80"
         >
-          I'll connect later
+          I&apos;ll connect later
         </button>
         <button
           type="button"

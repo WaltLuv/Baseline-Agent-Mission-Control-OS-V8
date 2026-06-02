@@ -120,7 +120,7 @@ export function ActivationHub() {
             {workspaceName ? <>Three steps to activate <span className="text-violet-300">{workspaceName}</span>.</> : <>Three steps to activate your workspace.</>}
           </h1>
           <p className="mt-3 text-white/55 leading-relaxed">
-            We pre-configured your AI workforce when you signed up. Finish these three quick steps and you'll be running real work in under 10 minutes.
+            We pre-configured your AI workforce when you signed up. Finish these three quick steps and you&apos;ll be running real work in under 10 minutes.
           </p>
         </section>
 
