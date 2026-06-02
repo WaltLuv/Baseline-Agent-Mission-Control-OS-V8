@@ -116,9 +116,20 @@ export function DailyBriefPanel() {
           <p className="text-xs uppercase tracking-wider text-violet-300/80 font-mono">
             Daily Brief · {payload.date_range.label}
           </p>
-          <p className="mt-0.5 text-[11px] text-white/35 font-mono">
-            Source: {payload.source === 'baseline-os' ? 'Baseline OS' : 'Mission Control'} ·
-            {' '}generated {formatTime(payload.generated_at)}
+          <p className="mt-0.5 text-[11px] text-white/35 font-mono flex items-center gap-1.5">
+            <span>Source: {payload.source === 'baseline-os' ? 'Baseline OS' : 'Mission Control'} · generated {formatTime(payload.generated_at)}</span>
+            {payload.source === 'baseline-os' && (
+              <span
+                data-testid="trust-pill"
+                title="These numbers come from the same engine that ran the work — single source of truth across Daily Brief and Value page."
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-emerald-400/30 bg-emerald-500/[0.08] text-emerald-200 text-[10px] uppercase tracking-wider font-mono"
+              >
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Verified by Baseline OS
+              </span>
+            )}
           </p>
         </div>
         <WindowToggle value={windowChoice} onChange={setWindowChoice} />
@@ -421,7 +432,7 @@ function EmailPreviewButton({ windowChoice }: { windowChoice: DailyBriefWindow }
               )}
             </div>
             <footer className="px-5 py-3 border-t border-white/[0.06] text-[11px] text-white/45">
-              Scheduled delivery is not wired yet. Copy this for now; we'll add Resend in the next pass.
+              Scheduled delivery is not wired yet. Copy this for now; we&apos;ll add Resend in the next pass.
             </footer>
           </div>
         </div>

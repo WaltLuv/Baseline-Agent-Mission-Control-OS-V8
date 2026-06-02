@@ -97,7 +97,21 @@ export function ValueReportPanel() {
             </span>
             .
           </h1>
-          <p className="mt-2 text-white/65 leading-relaxed">{report.date_range.label} · Source: {report.source === 'baseline-os' ? 'Baseline OS' : 'Mission Control'}</p>
+          <p className="mt-2 text-white/65 leading-relaxed flex items-center gap-2 flex-wrap">
+            <span>{report.date_range.label} · Source: {report.source === 'baseline-os' ? 'Baseline OS' : 'Mission Control'}</span>
+            {report.source === 'baseline-os' && (
+              <span
+                data-testid="trust-pill"
+                title="These numbers come from the same engine that ran the work — same formula across Daily Brief and this page."
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-emerald-400/30 bg-emerald-500/[0.08] text-emerald-200 text-[10px] uppercase tracking-wider font-mono"
+              >
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Verified by Baseline OS
+              </span>
+            )}
+          </p>
         </div>
       </header>
 

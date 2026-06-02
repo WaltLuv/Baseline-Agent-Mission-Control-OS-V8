@@ -7,6 +7,7 @@ import { useMissionControl, type ConnectionStatus } from '@/store'
 import { extractWsHost } from '@/lib/agent-card-helpers'
 import { DemoModeSwitcher } from '@/components/demo/demo-mode-switcher'
 import { RefreshControl } from '@/components/layout/refresh-control'
+import { NotificationBell } from '@/components/operator/notification-bell'
 import { HelpButton } from '@/components/help/help-button'
 import { OperationalPulse } from '@/components/operational/operational-pulse'
 import { useWebSocket } from '@/lib/websocket'
@@ -374,21 +375,7 @@ export function HeaderBar() {
             <SearchIcon />
           </Button>
 
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => navigateToPanel('notifications')}
-            onMouseEnter={() => prefetchPanel('notifications')}
-            onFocus={() => prefetchPanel('notifications')}
-            className="relative"
-          >
-            <BellIcon />
-            {unreadNotificationCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary text-primary-foreground text-2xs flex items-center justify-center font-medium">
-                {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
-              </span>
-            )}
-          </Button>
+          <NotificationBell />
 
           <LanguageSwitcher />
           <ThemeSelector />

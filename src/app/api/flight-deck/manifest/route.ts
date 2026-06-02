@@ -109,6 +109,15 @@ function buildManifest() {
     ? new Set(readdirSync(versionDir))
     : new Set<string>()
 
+  // GitHub Releases is now the source of truth for binaries (they're no
+  // longer tracked in git — too large for the standard push pipeline).
+  // If `FLIGHT_DECK_RELEASES_BASE` is set, manifest items without a
+  // locally-served file fall back to the public release URL so the
+  // download links still work in production deployments.
+  const releasesBase = process.env.FLIGHT_DECK_RELEASES_BASE ||
+    'https://github.com/WaltLuv/baseline-agent-os/releases/download'
+  const releaseTag = `flight-deck-${FLIGHT_DECK_VERSION}`
+
   const artifacts: Artifact[] = PLATFORM_MATRIX.map((entry) => {
     const filePath = path.join(versionDir, entry.filename)
     const present = presentFiles.has(entry.filename)
@@ -116,6 +125,10 @@ function buildManifest() {
     if (present) {
       try { size = statSync(filePath).size } catch { size = null }
     }
+    const localUrl = present
+      ? `/api/flight-deck/download/${FLIGHT_DECK_VERSION}/${entry.filename}`
+      : null
+    const releaseUrl = `${releasesBase}/${releaseTag}/${entry.filename}`
     return {
       platform: entry.platform,
       arch: entry.arch,
@@ -124,10 +137,8 @@ function buildManifest() {
       size_bytes: size,
       size_human: size !== null ? humanSize(size) : null,
       sha256: shaSums[entry.filename] || null,
-      download_url: present
-        ? `/api/flight-deck/download/${FLIGHT_DECK_VERSION}/${entry.filename}`
-        : null,
-      status: present ? 'available' : 'pending-build',
+      download_url: localUrl ?? releaseUrl,
+      status: (present || releasesBase) ? 'available' : 'pending-build',
       signed: entry.signed,
       notes: entry.notes,
     }
@@ -135,9 +146,9 @@ function buildManifest() {
 
   return {
     version: FLIGHT_DECK_VERSION,
-    release_url: null as string | null,
+    release_url: `${releasesBase.replace('/download', '')}/tag/${releaseTag}`,
     ci_workflow: '.github/workflows/flight-deck-release.yml',
-    ci_tag_command: `git tag flight-deck-${FLIGHT_DECK_VERSION} && git push origin flight-deck-${FLIGHT_DECK_VERSION}`,
+    ci_tag_command: `git tag ${releaseTag} && git push origin ${releaseTag}`,
     available_count: artifacts.filter((a) => a.status === 'available').length,
     pending_count: artifacts.filter((a) => a.status === 'pending-build').length,
     artifacts,

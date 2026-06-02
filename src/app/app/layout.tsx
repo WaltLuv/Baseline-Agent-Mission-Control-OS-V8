@@ -1,3 +1,5 @@
+import { OperatorShortcutsProvider } from '@/components/operator/operator-shortcuts'
+
 /**
  * Layout scope: authenticated Mission Control dashboard (`/app/*`).
  *
@@ -6,10 +8,13 @@
  * own scrolling. Marketing pages (`/`, `/login`, `/signup`, `/pricing`, etc.)
  * are NOT under this layout and therefore scroll normally.
  *
- * The previous design applied `h-screen overflow-hidden` at the root layout,
- * which trapped scroll for every public route. Moving it here at the
- * `/app/*` segment is the root-cause fix.
+ * `<OperatorShortcutsProvider>` wraps the shell so global keyboard
+ * shortcuts (?, /, A, R, J, K, Esc) work on every authenticated route.
  */
 export default function AppShellLayout({ children }: { children: React.ReactNode }) {
-  return <div className="h-screen overflow-hidden">{children}</div>
+  return (
+    <OperatorShortcutsProvider>
+      <div className="h-screen overflow-hidden">{children}</div>
+    </OperatorShortcutsProvider>
+  )
 }

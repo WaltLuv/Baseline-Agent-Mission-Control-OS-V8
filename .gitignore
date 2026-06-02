@@ -44,6 +44,19 @@ __pycache__/
 *.db-wal
 *.db-shm
 
+# Flight Deck release binaries — distribute via GitHub Releases, not git tree.
+# Keep them on disk for local serving but never push to remote.
+public/downloads/flight-deck/v*/baseline-flight-deck_*.AppImage
+public/downloads/flight-deck/v*/baseline-flight-deck_*.deb
+public/downloads/flight-deck/v*/baseline-flight-deck_*_linux-arm64
+public/downloads/flight-deck/v*/baseline-flight-deck_*_linux-x86_64
+public/downloads/flight-deck/v*/baseline-flight-deck_*_macos
+public/downloads/flight-deck/v*/baseline-flight-deck_*.dmg
+public/downloads/flight-deck/v*/baseline-flight-deck_*.exe
+public/downloads/flight-deck/v*/baseline-flight-deck_*.msi
+public/downloads/flight-deck/v*/baseline-flight-deck_*.zip
+public/downloads/flight-deck/v*/baseline-flight-deck_*.tar.gz
+
 # Browser binaries (Playwright caches large Chromium installs)
 .cache/
 .local-chromium/

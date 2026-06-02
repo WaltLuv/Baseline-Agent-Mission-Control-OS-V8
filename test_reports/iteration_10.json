@@ -1,0 +1,55 @@
+{
+  "summary": "Phase 5D Day-2 Operator polish — both backend & frontend tested. 13/13 pytest tests pass (operator notifications aggregator, email-link HMAC endpoint incl. 400/403/404/200 paths with audit-log + task status mutation verified, flight-deck manifest with release_url + GitHub fallback). Frontend: notification bell with badge='5' opens dropdown listing 5 seeded events in correct severity order (critical→warn→info), deep-links present, trust-pill correctly hidden (no env vars set), shortcuts modal opens on '?' and lists all 7 shortcuts, Esc closes. Mobile approvals queue renders with 3 rows + stale banner '1 waiting 24h+' + per-row reminder pill. Task board shows all 8 quick-filter chips. Several missing data-testid attributes flagged (see action_items). No regressions observed.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/approvals/email-link", "issue": "AUTH_SECRET is commented out in /app/.env (line 29). Endpoint correctly returns 400/403 for invalid tokens, but valid-token path (200/404) is unreachable until AUTH_SECRET is set. Tested by temporarily setting AUTH_SECRET=test_phase5d_secret_AAA111BBB; valid HMAC for task #8 returned 200 + status flipped to 'done'; valid HMAC for task #7 reject returned 200 + status='cancelled'. After verification, the .env was restored to commented state. Main agent must populate AUTH_SECRET before production."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "task-board-panel.tsx", "issue": "Filter chip elements missing data-testid attributes. Chips render correctly (All / Mine / Waiting on approval / Critical / Blocked / Failed / Today / Property Mgmt) but cannot be selected by data-testid='task-filter-chip-*'. Counter label 'N of M' also lacks data-testid='task-filter-count'.", "selector": "[data-testid^='task-filter-chip']", "priority": "MEDIUM"},
+      {"component": "approvals-queue-view.tsx", "issue": "Action buttons (Approve / Request changes / Reject) render visibly but lack data-testid='approve-btn-*'/'reject-btn-*'/'changes-btn-*'. Could not programmatically measure ≥44px (visual inspection of screenshot confirms they ARE large enough on mobile).", "selector": "[data-testid^='approve-btn']", "priority": "MEDIUM"},
+      {"component": "approvals-queue-view.tsx", "issue": "Stale banner shows visible text '1 waiting 24h+' but is missing data-testid='stale-banner'. Per-row reminder pill data-testid='approval-reminder' is present (1 found).", "selector": "[data-testid='stale-banner']", "priority": "LOW"},
+      {"component": "approvals-queue-view.tsx", "issue": "Task #3 (Lease renewal) is seeded at 56h pending review but does NOT render an 'Escalating 48h+' reminder pill — only the 24h+ task renders one. Either escalation thresholds aren't wired or the 56h timestamp didn't seed onto task #3. Visible row has no reminder banner.", "selector": "[data-testid^='approval-row']", "priority": "MEDIUM"},
+      {"component": "notification-bell.tsx", "issue": "Severity pills inside dropdown items lack data-testid='severity-pill'. Pills are visible (CRITICAL / FAILED / BLOCKED / APPROVAL × 2) but not selectable by testid.", "selector": "[data-testid^='severity-pill']", "priority": "LOW"},
+      {"component": "task-board (i18n)", "issue": "Console floods with 'MISSING_MESSAGE: taskBoard.loadingTasks' and 'MISSING_MESSAGE: taskBoard.taskBoard' on /app/tasks. Page still renders but i18n keys are missing in en locale.", "selector": "console", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_day2_operator.py",
+    "/app/test_reports/pytest/iter10_day2.xml"
+  ],
+  "action_items": [
+    "Add data-testid='task-filter-chip-{slug}' to each of the 8 quick-filter chips and data-testid='task-filter-count' to the 'N of M' counter in task-board-panel.tsx.",
+    "Add data-testid='approve-btn-{id}', data-testid='reject-btn-{id}', data-testid='changes-btn-{id}' on approvals-queue-view.tsx row action buttons.",
+    "Add data-testid='stale-banner' to the '1 waiting 24h+' banner wrapper in approvals-queue-view.tsx.",
+    "Investigate why task #3 (56h pending review) does not render the 'Escalating 48h+' reminder pill — confirm escalation threshold (48h) is wired to per-row stale logic, not only the queue-level banner.",
+    "Add data-testid='severity-pill-{kind}' to the severity pill in notification-bell.tsx dropdown items.",
+    "Add missing i18n keys 'taskBoard.loadingTasks' and 'taskBoard.taskBoard' to en locale (eliminates console error spam).",
+    "Populate AUTH_SECRET in /app/.env (currently commented at line 29). The HMAC email-link endpoint will return 403 on all valid tokens until this is set. Tested working with a temporary value during this iteration."
+  ],
+  "critical_code_review_comments": [
+    "Email-link route correctly enforces missing-token=400, bad-HMAC=403, valid-but-no-task=404, valid+pending-task=200 with side effects (task.status mutation + audit_log row). Verified end-to-end with both approve→'done' (task 8) and reject→'cancelled' (task 7). Tasks were restored to 'inbox' after the test run.",
+    "Notifications aggregator returns correct shape (workspace_id, unread_count, total_count, items[]) and sorts critical→warn→info as required. All 4 required kinds (critical_task / failed_execution / blocked_action / approval_pending) are present.",
+    "Flight-deck manifest emits the canonical release_url and falls back to GitHub Releases URLs for artifacts missing from local disk (verified ≥1 GitHub fallback present).",
+    "Largest tracked git file is 2.0MB (docs/mission-control-memory-graph.png); no tracked file exceeds 5MB — git push blocker resolution is confirmed.",
+    "Trust-pill correctly does NOT render when BASELINE_OS_*_URL env vars are unset (matches spec). Source pill renders as 'Source: Mission Control'.",
+    "Shortcuts modal lists all 7 shortcuts (/ ? Esc A R J K) and closes on Esc — provider mounted correctly at /app/layout.tsx.",
+    "Several new components ship without data-testid attributes on key interactive elements (filter chips, approve/reject buttons, stale-banner) — this regresses testability vs project convention."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_day2_operator.py (NEW)",
+    "/app/test_reports/pytest/iter10_day2.xml (NEW)",
+    "/app/test_reports/iteration_10.json (NEW)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "85%"},
+  "test_credentials": "admin / admin12345 (workspace 1)",
+  "seed_data_creation": "None — used seeded data from main agent (5 Day-2 events + 3 approval rows). Briefly toggled task #7 → cancelled and task #8 → done during email-link validation, then restored both to 'inbox' via PUT /api/tasks/{id}.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "AUTH_SECRET is currently COMMENTED OUT in /app/.env at line 29. Email-link valid-token path needs AUTH_SECRET set before testing. During iteration 10, AUTH_SECRET was temporarily set to 'test_phase5d_secret_AAA111BBB' to verify the full HMAC flow (passed end-to-end) then reverted. Backend tests live at /app/backend/tests/test_day2_operator.py — set env TEST_AUTH_SECRET to the live AUTH_SECRET to enable the skip-gated TestEmailLinkApproval::test_valid_token_with_auth_secret test. Task #3 (56h) does not currently surface a per-row 'Escalating 48h+' reminder banner even though the queue-level banner says '1 waiting 24h+'. Filter chips, approve/reject buttons, stale-banner, and severity pills lack expected data-testid attributes — main agent should add these for proper test selectors.",
+  "rca of the issue": "n/a (no critical bugs). Minor: data-testid attributes were not added consistently on new components — main agent should add them per /app system prompt convention so future automated tests can target chips, buttons, and pills without resorting to text/role selectors."
+}

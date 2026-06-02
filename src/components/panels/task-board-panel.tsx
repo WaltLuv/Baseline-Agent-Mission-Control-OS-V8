@@ -401,7 +401,7 @@ interface SpawnFormData {
 export function TaskBoardPanel() {
   const t = useTranslations('taskBoard')
   const statusColumns = STATUS_COLUMN_KEYS.map(col => ({ ...col, title: t(col.titleKey as any) }))
-  const { tasks: storeTasks, setTasks: storeSetTasks, selectedTask, setSelectedTask, activeProject, availableModels, spawnRequests, addSpawnRequest, updateSpawnRequest, dashboardMode } = useMissionControl()
+  const { tasks: storeTasks, setTasks: storeSetTasks, selectedTask, setSelectedTask, activeProject, availableModels, spawnRequests, addSpawnRequest, updateSpawnRequest, dashboardMode, currentUser } = useMissionControl()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -565,9 +565,57 @@ export function TaskBoardPanel() {
   // Poll as SSE fallback — pauses when SSE is delivering events
   useSmartPoll(fetchData, 30000, { pauseWhenSseConnected: true })
 
+  // ─── Day-2 quick filters ───────────────────────────────────────────
+  // Filter chips applied AFTER project filter, BEFORE status grouping.
+  // None = show all (current behaviour); selected chip narrows the set.
+  const [quickFilter, setQuickFilter] = useState<
+    | 'all'
+    | 'mine'
+    | 'my-approvals'
+    | 'blocked'
+    | 'critical'
+    | 'awaiting-approval'
+    | 'failed'
+    | 'today'
+    | 'property-management'
+  >('all')
+
+  const filteredTasks = (() => {
+    if (quickFilter === 'all') return tasks
+    const me = currentUser?.username?.toLowerCase()
+    const dayStart = Math.floor(new Date().setHours(0, 0, 0, 0) / 1000)
+    return tasks.filter((task) => {
+      const meta = (() => {
+        if (typeof task.metadata === 'string') {
+          try { return JSON.parse(task.metadata) } catch { return {} }
+        }
+        return task.metadata || {}
+      })() as Record<string, unknown>
+      switch (quickFilter) {
+        case 'mine':
+          return me && String(task.assigned_to || '').toLowerCase() === me
+        case 'my-approvals':
+        case 'awaiting-approval':
+          return task.status === 'awaiting_owner' || task.status === 'review' || detectAwaitingOwner(task)
+        case 'blocked':
+          return String(task.status) === 'blocked' || String(meta.last_execution_status || '') === 'blocked'
+        case 'critical':
+          return task.priority === 'critical'
+        case 'failed':
+          return task.status === 'failed' || String(meta.last_execution_status || '') === 'failed'
+        case 'today':
+          return (task.updated_at ?? task.created_at ?? 0) >= dayStart
+        case 'property-management':
+          return String(meta.workforce_template || '') === 'property-management'
+        default:
+          return true
+      }
+    })
+  })()
+
   // Group tasks by status, overriding for awaiting_owner detection
   const tasksByStatus = statusColumns.reduce((acc, column) => {
-    acc[column.key] = tasks.filter(task => {
+    acc[column.key] = filteredTasks.filter(task => {
       const effectiveStatus = detectAwaitingOwner(task) ? 'awaiting_owner' : task.status
       return effectiveStatus === column.key
     })
@@ -845,6 +893,43 @@ export function TaskBoardPanel() {
             </svg>
           </Button>
         </div>
+      </div>
+
+      {/* Day-2 Quick Filters */}
+      <div
+        data-testid="task-quick-filters"
+        className="flex items-center gap-1.5 px-4 py-2 border-b border-border flex-shrink-0 overflow-x-auto scrollbar-thin"
+      >
+        {([
+          { id: 'all', label: 'All' },
+          { id: 'mine', label: 'Mine' },
+          { id: 'awaiting-approval', label: 'Waiting on approval' },
+          { id: 'critical', label: 'Critical' },
+          { id: 'blocked', label: 'Blocked' },
+          { id: 'failed', label: 'Failed' },
+          { id: 'today', label: 'Today' },
+          { id: 'property-management', label: 'Property Mgmt' },
+        ] as const).map((chip) => (
+          <button
+            key={chip.id}
+            type="button"
+            onClick={() => setQuickFilter(chip.id)}
+            data-testid={`task-filter-${chip.id}`}
+            aria-pressed={quickFilter === chip.id}
+            className={`shrink-0 h-7 px-3 rounded-full text-xs font-medium transition-colors ${
+              quickFilter === chip.id
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-surface-1 text-muted-foreground hover:bg-surface-2 hover:text-foreground border border-border'
+            }`}
+          >
+            {chip.label}
+          </button>
+        ))}
+        {quickFilter !== 'all' && (
+          <span className="text-[10px] text-muted-foreground/60 ml-2 whitespace-nowrap" data-testid="task-filter-count">
+            {filteredTasks.length} of {tasks.length}
+          </span>
+        )}
       </div>
 
       {/* Spawn Form (collapsible) */}
