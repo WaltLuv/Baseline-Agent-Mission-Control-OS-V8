@@ -1,0 +1,12 @@
+# Mission Control backend shim — minimal deps.
+#
+# The shim is a FastAPI app that (a) answers health probes on port 8001
+# and (b) reverse-proxies all other traffic to the in-process Next.js
+# server on port 3000. It is the LAYER that satisfies the Emergent
+# deployment supervisor template — nothing more.
+#
+# These pins match what the standard Emergent runtime already provides;
+# they're listed here so the deployment runner reinstalls them if needed.
+fastapi==0.119.0
+uvicorn[standard]==0.32.0
+httpx==0.28.1
