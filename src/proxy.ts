@@ -109,6 +109,17 @@ function getImplicitAllowedHosts(): string[] {
     '127.0.0.1',
     '::1',
     normalizeHostname(os.hostname()),
+    // Emergent platform-managed hosts — preview + production.
+    // These are owned by the deployment runtime and routed through
+    // Cloudflare → Emergent ingress, so they must always be reachable
+    // even if `MC_ALLOWED_HOSTS` has drifted out of sync with the
+    // platform's host scheme. Without these the production health
+    // probe (and the public Mission Control URL) returns 403 from the
+    // host-allowlist guard.
+    '*.emergent.host',
+    'emergent.host',
+    '*.preview.emergentagent.com',
+    '*.emergentagent.com',
   ].filter(Boolean)
 
   return [...new Set(candidates)]
