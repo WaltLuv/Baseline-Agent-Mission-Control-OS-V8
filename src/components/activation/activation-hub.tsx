@@ -141,55 +141,54 @@ export function ActivationHub() {
           </div>
         </section>
 
-        {/* Step list */}
-        <section className="space-y-3 mb-10">
-          {STEPS.map((step, idx) => {
-            const s = state[step.id]
-            return (
-              <div
-                key={step.id}
-                data-testid={`activation-step-${step.id}`}
-                data-state={s}
-                className={`rounded-xl border p-5 transition-colors ${
-                  s === 'active'
-                    ? 'border-violet-400/40 bg-violet-500/[0.04]'
-                    : s === 'done'
-                    ? 'border-emerald-500/30 bg-emerald-500/[0.03]'
-                    : s === 'skipped'
-                    ? 'border-white/[0.06] bg-white/[0.01] opacity-70'
-                    : 'border-white/[0.06] bg-white/[0.02]'
-                }`}
-              >
-                <div className="flex items-start gap-4">
+        {/* Step list — compact horizontal strip; active step body lives BELOW
+            so the catalog/wizard is the first interactive element in view. */}
+        <section className="mb-6" data-testid="activation-step-strip">
+          <div className="grid grid-cols-3 gap-2">
+            {STEPS.map((step, idx) => {
+              const s = state[step.id]
+              return (
+                <div
+                  key={step.id}
+                  data-testid={`activation-step-${step.id}`}
+                  data-state={s}
+                  className={`rounded-lg border px-3 py-2.5 transition-colors flex items-center gap-2.5 ${
+                    s === 'active'
+                      ? 'border-violet-400/40 bg-violet-500/[0.06]'
+                      : s === 'done'
+                      ? 'border-emerald-500/30 bg-emerald-500/[0.04]'
+                      : s === 'skipped'
+                      ? 'border-white/[0.06] bg-white/[0.01] opacity-70'
+                      : 'border-white/[0.06] bg-white/[0.02]'
+                  }`}
+                >
                   <div
-                    className={`shrink-0 mt-0.5 w-7 h-7 rounded-full grid place-items-center text-xs font-semibold border ${
+                    className={`shrink-0 w-6 h-6 rounded-full grid place-items-center text-[11px] font-semibold border ${
                       s === 'done'
                         ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-200'
                         : s === 'active'
                         ? 'bg-violet-500/20 border-violet-400/40 text-violet-100'
-                        : s === 'skipped'
-                        ? 'bg-white/[0.04] border-white/[0.08] text-white/40'
-                        : 'bg-white/[0.04] border-white/[0.08] text-white/50'
+                        : 'bg-white/[0.04] border-white/[0.08] text-white/55'
                     }`}
                   >
                     {s === 'done' ? '✓' : s === 'skipped' ? '–' : idx + 1}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-base font-semibold text-white">{step.title}</h3>
-                    <p className="text-sm text-white/55 mt-0.5">{step.subtitle}</p>
+                    <h3 className="text-[13px] font-semibold text-white truncate">{step.title}</h3>
                     {step.id === 'system' && s === 'done' && (
-                      <p className="text-xs text-emerald-200/70 font-mono mt-2" data-testid="step-system-summary">
-                        ✓ Workforce installed · starter tasks queued
+                      <p className="text-[10px] text-emerald-200/75 font-mono mt-0.5" data-testid="step-system-summary">
+                        ✓ Workforce installed
                       </p>
                     )}
                   </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </section>
 
-        {/* Active step body */}
+        {/* Active step body — promoted to first interactive section so the
+            template picker / wizard / invite step are immediately visible. */}
         <section className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-6" data-testid="activation-active-step">
           {state.system === 'active' && (
             <WorkforceInstaller
