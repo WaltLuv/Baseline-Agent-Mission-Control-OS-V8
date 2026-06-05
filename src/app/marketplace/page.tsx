@@ -1,10 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { MarketplaceInstallModal } from '@/components/marketplace/install-modal'
+import { ItemStateBadge, buttonLabelFor, deriveItemState, type ItemState } from '@/components/marketplace/item-state-badge'
+import { usdToCredits } from '@/lib/credits-config'
 import {
   SKILLS,
   EMPLOYEES,
@@ -16,6 +18,11 @@ import {
   type EmployeeProduct,
   type Bundle,
 } from '@/lib/marketplace-catalog'
+
+interface MarketplaceState {
+  balance: { credits: number }
+  purchased: { skills: string[]; workflows: string[]; employees: string[]; bundles: string[] }
+}
 
 /**
  * Mission Control Marketplace — App Store for AI Employees & Skills.
@@ -61,6 +68,62 @@ export default function MarketplacePage() {
     window.setTimeout(() => {
       setShimmerSlug(null)
     }, 750)
+  }
+
+  // ── Credit-aware state context ─────────────────────────────────────
+  // Loads balance + purchased-slugs so cards can render the right state
+  // (Free / Included / X credits / Purchased / Insufficient credits).
+  // When unauthenticated or unreachable, falls back to a fresh-workspace
+  // assumption (balance=0, nothing purchased) so the price badge still
+  // shows and the install modal will prompt for login when needed.
+  const [marketState, setMarketState] = useState<MarketplaceState | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/marketplace/state', { cache: 'no-store', credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: MarketplaceState | null) => {
+        if (!cancelled && data) setMarketState(data)
+      })
+      .catch(() => { /* silent — unauth or offline */ })
+    return () => { cancelled = true }
+  }, [])
+
+  function stateForSkill(s: SkillProduct): ItemState {
+    const purchased = marketState?.purchased.skills.includes(s.slug) ?? false
+    return deriveItemState({
+      priceCredits: usdToCredits(s.priceUsd),
+      pricingType: s.priceUsd > 0 ? 'credits' : 'free',
+      purchased,
+      balance: marketState?.balance.credits ?? 0,
+    })
+  }
+  function stateForEmployee(e: EmployeeProduct): ItemState {
+    const purchased = marketState?.purchased.employees.includes(e.slug) ?? false
+    return deriveItemState({
+      priceCredits: usdToCredits(e.monthlyUsd),
+      pricingType: e.monthlyUsd > 0 ? 'credits' : 'free',
+      purchased,
+      balance: marketState?.balance.credits ?? 0,
+    })
+  }
+  function stateForBundle(b: Bundle): ItemState {
+    // Bundle price = sum of child item credits (employees + paid skills).
+    let total = 0
+    for (const slug of b.employeeSlugs) {
+      const e = EMPLOYEES.find((x) => x.slug === slug)
+      if (e) total += usdToCredits(e.monthlyUsd)
+    }
+    for (const slug of b.skillSlugs) {
+      const sk = SKILLS.find((x) => x.slug === slug)
+      if (sk) total += usdToCredits(sk.priceUsd)
+    }
+    const purchased = marketState?.purchased.bundles.includes(b.slug) ?? false
+    return deriveItemState({
+      priceCredits: total,
+      pricingType: total > 0 ? 'credits' : 'free',
+      purchased,
+      balance: marketState?.balance.credits ?? 0,
+    })
   }
 
   // ---------- AI EMPLOYEES ----------
@@ -216,10 +279,15 @@ export default function MarketplacePage() {
         {/* AI EMPLOYEES */}
         {tab === 'employees' && (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-testid="employees-grid">
-            {filteredEmployees.map((e) => (
+            {filteredEmployees.map((e) => {
+              const state = stateForEmployee(e)
+              const label = buttonLabelFor(state, 'employee')
+              const disabled = state.kind === 'included' || state.kind === 'purchased' || state.kind === 'locked'
+              return (
               <article
                 key={e.slug}
                 data-testid={`product-employee-${e.slug}`}
+                data-state={state.kind}
                 className={cn(
                   'flex flex-col rounded-2xl border border-border/50 bg-card/30 p-5 transition-all hover:border-primary/40 hover:bg-card/50 hover:-translate-y-0.5',
                   shimmerSlug === e.slug && 'hire-shimmer border-primary/60',
@@ -231,21 +299,28 @@ export default function MarketplacePage() {
                     <h3 className="text-lg font-semibold">{e.name}</h3>
                     <p className="text-xs text-muted-foreground">{e.role}</p>
                   </div>
-                  <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-                    monthly
-                  </span>
+                  <ItemStateBadge state={state} testId={`badge-employee-${e.slug}`} />
                 </div>
                 <p className="mt-3 text-sm text-foreground/90 flex-1">{e.outcome}</p>
                 <p className="mt-2 text-xs text-muted-foreground">For: {e.forWhom}</p>
-                <div className="mt-4 flex items-end justify-between">
-                  <div>
-                    <span className="text-2xl font-bold text-primary">${e.monthlyUsd}</span>
-                    <span className="text-xs text-muted-foreground">/mo</span>
-                  </div>
-                  <Button size="sm" data-testid={`hire-${e.slug}`} onClick={() => beginInstall({ kind: 'employee', product: e })}>Hire AI Employee</Button>
+                <div className="mt-4 flex items-end justify-end">
+                  {state.kind === 'insufficient_credits' ? (
+                    <Link href="/app?billing=buy&pkg=2" className="text-xs font-semibold text-amber-300 hover:text-amber-200">
+                      {label}
+                    </Link>
+                  ) : (
+                    <Button
+                      size="sm"
+                      data-testid={`hire-${e.slug}`}
+                      disabled={disabled}
+                      onClick={() => beginInstall({ kind: 'employee', product: e })}
+                    >
+                      {label}
+                    </Button>
+                  )}
                 </div>
               </article>
-            ))}
+            )})}
             {filteredEmployees.length === 0 && <EmptyState />}
           </div>
         )}
@@ -253,10 +328,15 @@ export default function MarketplacePage() {
         {/* SKILLS */}
         {tab === 'skills' && (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-testid="skills-grid">
-            {filteredSkills.map((s) => (
+            {filteredSkills.map((s) => {
+              const state = stateForSkill(s)
+              const label = buttonLabelFor(state, 'skill')
+              const disabled = state.kind === 'included' || state.kind === 'purchased' || state.kind === 'locked'
+              return (
               <article
                 key={s.slug}
                 data-testid={`product-skill-${s.slug}`}
+                data-state={state.kind}
                 className={cn(
                   'flex flex-col rounded-2xl border border-border/50 bg-card/30 p-5 transition-all hover:border-primary/40 hover:bg-card/50 hover:-translate-y-0.5',
                   shimmerSlug === s.slug && 'hire-shimmer border-primary/60',
@@ -267,9 +347,7 @@ export default function MarketplacePage() {
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{s.category}</p>
                     <h3 className="text-base font-semibold">{s.name}</h3>
                   </div>
-                  <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-400">
-                    one-time
-                  </span>
+                  <ItemStateBadge state={state} testId={`badge-skill-${s.slug}`} />
                 </div>
                 <p className="mt-3 text-sm text-foreground/90 flex-1">{s.outcome}</p>
                 <div className="mt-3 flex flex-wrap gap-1">
@@ -280,12 +358,25 @@ export default function MarketplacePage() {
                     Saves {s.timeSaved}
                   </span>
                 </div>
-                <div className="mt-4 flex items-end justify-between">
-                  <span className="text-2xl font-bold text-primary">${s.priceUsd}</span>
-                  <Button size="sm" variant="outline" data-testid={`install-${s.slug}`} onClick={() => beginInstall({ kind: 'skill', product: s })}>Install Skill</Button>
+                <div className="mt-4 flex items-end justify-end">
+                  {state.kind === 'insufficient_credits' ? (
+                    <Link href="/app?billing=buy&pkg=2" className="text-xs font-semibold text-amber-300 hover:text-amber-200">
+                      {label}
+                    </Link>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      data-testid={`install-${s.slug}`}
+                      disabled={disabled}
+                      onClick={() => beginInstall({ kind: 'skill', product: s })}
+                    >
+                      {label}
+                    </Button>
+                  )}
                 </div>
               </article>
-            ))}
+            )})}
             {filteredSkills.length === 0 && <EmptyState />}
           </div>
         )}
@@ -293,10 +384,15 @@ export default function MarketplacePage() {
         {/* BUNDLES */}
         {tab === 'bundles' && (
           <div className="grid gap-4 md:grid-cols-2" data-testid="bundles-grid">
-            {filteredBundles.map((b) => (
+            {filteredBundles.map((b) => {
+              const state = stateForBundle(b)
+              const label = buttonLabelFor(state, 'bundle')
+              const disabled = state.kind === 'included' || state.kind === 'purchased' || state.kind === 'locked'
+              return (
               <article
                 key={b.slug}
                 data-testid={`product-bundle-${b.slug}`}
+                data-state={state.kind}
                 className={cn(
                   'flex flex-col rounded-2xl border border-border/50 bg-card/30 p-5 transition-all hover:border-primary/40 hover:bg-card/50',
                   shimmerSlug === b.slug && 'hire-shimmer border-primary/60',
@@ -309,15 +405,12 @@ export default function MarketplacePage() {
                     <h3 className="text-lg font-semibold">{b.name}</h3>
                     <p className="mt-1 text-sm text-foreground/90">{b.tagline}</p>
                   </div>
+                  <ItemStateBadge state={state} testId={`badge-bundle-${b.slug}`} />
                 </div>
                 <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
                   <Stat label="AI employees" value={b.employeeSlugs.length} />
                   <Stat label="Skills" value={b.skillSlugs.length} />
                   <Stat label="Hours / mo" value={b.estimatedHoursSavedPerMonth} />
-                </div>
-                <div className="mt-3 text-xs text-muted-foreground">
-                  <span className="text-foreground">${b.monthlyUsd.toLocaleString()}/mo</span> +
-                  one-time <span className="text-foreground">${b.oneTimeUsd}</span>
                 </div>
                 <div className="mt-4 flex gap-2">
                   {b.linkedDemoTemplate ? (
@@ -327,12 +420,25 @@ export default function MarketplacePage() {
                       </Button>
                     </Link>
                   ) : null}
-                  <Button className="flex-1" data-testid={`deploy-${b.slug}`} onClick={() => beginInstall({ kind: 'bundle', product: b })}>
-                    Deploy Team →
-                  </Button>
+                  {state.kind === 'insufficient_credits' ? (
+                    <Link href="/app?billing=buy&pkg=2" className="flex-1">
+                      <Button variant="outline" className="w-full" data-testid={`deploy-${b.slug}`}>
+                        {label}
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Button
+                      className="flex-1"
+                      data-testid={`deploy-${b.slug}`}
+                      disabled={disabled}
+                      onClick={() => beginInstall({ kind: 'bundle', product: b })}
+                    >
+                      {label}
+                    </Button>
+                  )}
                 </div>
               </article>
-            ))}
+            )})}
             {filteredBundles.length === 0 && <EmptyState />}
           </div>
         )}

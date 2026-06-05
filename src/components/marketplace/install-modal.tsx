@@ -96,15 +96,33 @@ export function MarketplaceInstallModal({
       // Let the stages finish playing before flipping to done
       await new Promise((res) => setTimeout(res, Math.max(0, STEPS.length * stepDuration - 200)))
       clearInterval(interval)
+
+      // ── Insufficient credits (HTTP 402) — show explicit Buy-Credits CTA ──
+      if (r.status === 402 && data.code === 'INSUFFICIENT_CREDITS') {
+        const need = data.required ?? 0
+        const have = data.balance ?? 0
+        const short = data.shortfall ?? Math.max(0, need - have)
+        setState({
+          status: 'error',
+          step: STEPS.length - 1,
+          message: `Need ${need} credits to unlock this — you have ${have}. ${short} credit${short === 1 ? '' : 's'} short. Open Billing → Buy Credits to top up.`,
+        })
+        return
+      }
       if (!r.ok) {
         setState({ status: 'error', step: STEPS.length - 1, message: data.error || 'Install failed.' })
         return
       }
-      if (data.mode === 'stripe' && data.checkoutUrl) {
+      // ── Legacy Stripe per-item checkout (compatibility branch only) ──
+      if ((data.mode === 'stripe' || data.mode === 'stripe-legacy') && data.checkoutUrl) {
         setState({ status: 'redirecting', step: STEPS.length, redirectUrl: data.checkoutUrl })
         window.location.href = data.checkoutUrl
         return
       }
+      // ── Credit-debit success (default path under the unified model) ──
+      //   data.mode === 'credits' → chargedCredits, balanceAfter
+      //   data.mode === 'free'    → no debit
+      //   data.mode === 'included'→ no purchase needed
       setState({ status: 'done', step: STEPS.length })
       onComplete?.(target.slug)
     } catch (e) {
