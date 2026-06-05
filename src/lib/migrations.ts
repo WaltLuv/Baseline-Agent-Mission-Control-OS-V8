@@ -2053,6 +2053,214 @@ const migrations: Migration[] = [
       for (const [name, sql] of adds) if (!have.has(name)) db.exec(sql)
       db.exec(`CREATE INDEX IF NOT EXISTS idx_tool_executions_approval_queue ON tool_executions(workspace_id, approval_requested_at DESC) WHERE status = 'awaiting_approval'`)
     },
+  },
+  {
+    // Marketplace purchase ledger — every paid marketplace item (skill,
+    // workflow, employee, bundle, credit_pack) gets a row here so the Stripe
+    // webhook can fulfill the unlock idempotently. Status flips
+    // pending → fulfilled only when the signed webhook lands.
+    id: '057_marketplace_purchases',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS marketplace_purchases (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL,
+          purchaser_user_id INTEGER,
+          item_type TEXT NOT NULL CHECK (item_type IN ('skill','workflow','employee','bundle','credit_pack')),
+          item_id TEXT NOT NULL,
+          item_name TEXT NOT NULL,
+          price_cents INTEGER NOT NULL DEFAULT 0,
+          currency TEXT NOT NULL DEFAULT 'usd',
+          stripe_checkout_session_id TEXT NOT NULL UNIQUE,
+          stripe_payment_status TEXT,
+          stripe_event_id TEXT,
+          status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','fulfilled','failed','refunded')),
+          idempotency_key TEXT,
+          metadata_json TEXT,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          fulfilled_at INTEGER,
+          FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_marketplace_purchases_workspace ON marketplace_purchases(workspace_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_marketplace_purchases_status ON marketplace_purchases(status, created_at);
+        CREATE INDEX IF NOT EXISTS idx_marketplace_purchases_item ON marketplace_purchases(workspace_id, item_type, item_id);
+      `)
+    },
+  },
+  {
+    // Goals — operator-managed objectives. Baseline OS local stores them
+    // in the Obsidian vault; Mission Control cloud stores them here.
+    // Same parity surface, different backing store.
+    id: '058_goals',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS goals (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL,
+          author_user_id INTEGER,
+          title TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','in_progress','done','archived')),
+          due_date TEXT,
+          notes TEXT,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          completed_at INTEGER,
+          FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_goals_workspace ON goals(workspace_id, status, updated_at DESC);
+      `)
+    },
+  },
+  {
+    // Notebook — long-form notes per workspace, including operator notes
+    // and AI-generated journal entries. Baseline OS local writes these to
+    // the Obsidian vault; the cloud stores them here so the operator can
+    // browse and search from any device.
+    id: '059_notebook',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS notebook_entries (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL,
+          author_user_id INTEGER,
+          title TEXT NOT NULL,
+          body_md TEXT NOT NULL DEFAULT '',
+          source TEXT NOT NULL DEFAULT 'operator' CHECK (source IN ('operator','agent','daily_brief','import')),
+          tags_json TEXT,
+          archived INTEGER NOT NULL DEFAULT 0,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_notebook_entries_workspace ON notebook_entries(workspace_id, archived, updated_at DESC);
+      `)
+    },
+  },
+  {
+    // Triad Council — operator decisions resolved by 3-model voting.
+    // Records the decision prompt + the votes cast by each participating
+    // model. The cloud surface is a *recording* layer; models are called
+    // by upstream agent runtimes that POST vote rows here.
+    id: '060_triad_council',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS triad_decisions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL,
+          author_user_id INTEGER,
+          prompt TEXT NOT NULL,
+          summary TEXT,
+          context_md TEXT,
+          status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','voting','resolved','vetoed','archived')),
+          resolved_outcome TEXT,
+          resolved_at INTEGER,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+        );
+        CREATE TABLE IF NOT EXISTS triad_votes (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          decision_id INTEGER NOT NULL,
+          model_id TEXT NOT NULL,
+          model_label TEXT,
+          vote TEXT NOT NULL CHECK (vote IN ('approve','reject','abstain','veto')),
+          rationale TEXT,
+          confidence INTEGER,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          UNIQUE(decision_id, model_id),
+          FOREIGN KEY (decision_id) REFERENCES triad_decisions(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_triad_decisions_workspace ON triad_decisions(workspace_id, status, updated_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_triad_votes_decision ON triad_votes(decision_id);
+      `)
+    },
+  },
+  {
+    // SEO targets — operator-managed list of keyword → URL pairs the
+    // workspace is trying to rank for. Cloud-native parity with the
+    // Baseline OS `/seo` surface; storage is here, not the Obsidian vault.
+    id: '061_seo_targets',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS seo_targets (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL,
+          author_user_id INTEGER,
+          target_keyword TEXT NOT NULL,
+          target_url TEXT,
+          page_title TEXT,
+          status TEXT NOT NULL DEFAULT 'planned' CHECK (status IN ('planned','drafting','published','ranking','archived')),
+          current_rank INTEGER,
+          target_rank INTEGER,
+          notes TEXT,
+          last_checked_at INTEGER,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_seo_targets_workspace ON seo_targets(workspace_id, status, updated_at DESC);
+      `)
+    },
+  },
+  {
+    // Understand — durable decision context. Captures the "why" behind a
+    // choice: question, conclusion, evidence, confidence. Survives so
+    // future operators (and agents) can reconstruct the reasoning rather
+    // than re-deriving it. Workspace-scoped.
+    id: '062_understand',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS understand_entries (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL,
+          author_user_id INTEGER,
+          topic TEXT NOT NULL,
+          question TEXT NOT NULL,
+          conclusion TEXT NOT NULL,
+          evidence_md TEXT,
+          confidence INTEGER NOT NULL DEFAULT 50,
+          tags_json TEXT,
+          status TEXT NOT NULL DEFAULT 'live' CHECK (status IN ('live','superseded','archived')),
+          superseded_by INTEGER,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+          FOREIGN KEY (superseded_by) REFERENCES understand_entries(id) ON DELETE SET NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_understand_workspace ON understand_entries(workspace_id, status, updated_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_understand_topic ON understand_entries(workspace_id, topic, status);
+      `)
+    },
+  },
+  {
+    // Documents — operator-uploaded files per workspace. Metadata lives
+    // here; content lives on disk at
+    // `<dataDir>/documents/<workspace_id>/<sha256>` (content-addressed,
+    // dedupes identical uploads within a workspace). Soft-deletes flip
+    // `status='archived'`; blobs stay on disk to be GC'd by a future job.
+    id: '063_documents',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS documents (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL,
+          author_user_id INTEGER,
+          filename TEXT NOT NULL,
+          mime_type TEXT NOT NULL DEFAULT 'application/octet-stream',
+          size_bytes INTEGER NOT NULL,
+          sha256 TEXT NOT NULL,
+          storage_key TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'live' CHECK (status IN ('live','archived')),
+          tags_json TEXT,
+          notes TEXT,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_documents_workspace ON documents(workspace_id, status, updated_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_documents_sha ON documents(workspace_id, sha256);
+      `)
+    },
   }
 ]
 
