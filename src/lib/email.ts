@@ -28,8 +28,19 @@ export type EmailProviderStatus =
   | 'smtp'
   | 'setup_required'
 
+/**
+ * Canonical Resend API key resolver.
+ * Prefers MC_RESEND_API_KEY (the documented Mission Control variable).
+ * Falls back to the legacy RESEND_API_KEY name so older deployments and
+ * scripts that have not migrated yet keep working without silent breakage.
+ * If you are setting this up fresh, use MC_RESEND_API_KEY.
+ */
+export function resolveResendKey(): string | null {
+  return process.env.MC_RESEND_API_KEY || process.env.RESEND_API_KEY || null
+}
+
 export function getEmailProvider(): EmailProviderStatus {
-  if (process.env.MC_RESEND_API_KEY) return 'resend'
+  if (resolveResendKey()) return 'resend'
   if (process.env.MC_SMTP_HOST && process.env.MC_SMTP_USER && process.env.MC_SMTP_PASS) return 'smtp'
   return 'setup_required'
 }
@@ -44,7 +55,8 @@ function getFromAddress(): string {
 }
 
 async function sendViaResend(msg: EmailMessage): Promise<void> {
-  const key = process.env.MC_RESEND_API_KEY!
+  const key = resolveResendKey()
+  if (!key) throw new Error('Resend send called without an API key — set MC_RESEND_API_KEY')
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {

@@ -134,7 +134,10 @@ export async function POST(request: NextRequest) {
 
   // ---------- EMAIL ----------
   if (body.channel === 'email') {
-    const resendKey = process.env.RESEND_API_KEY
+    // Canonical resolver — prefers MC_RESEND_API_KEY, falls back to RESEND_API_KEY.
+    // Keeps SendGrid + SMTP for advanced deployments that have already set them up.
+    const { resolveResendKey } = await import('@/lib/email')
+    const resendKey = resolveResendKey()
     const sendgridKey = process.env.SENDGRID_API_KEY
     const smtpHost = process.env.SMTP_HOST
     const provider = resendKey || sendgridKey || smtpHost
@@ -142,7 +145,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         ok: false,
         requiresSetup: 'email',
-        message: 'No email provider configured. Set RESEND_API_KEY, SENDGRID_API_KEY, or SMTP_HOST.',
+        message: 'No email provider configured. Set MC_RESEND_API_KEY (preferred) or SENDGRID_API_KEY or SMTP_HOST.',
         shareUrl,
         summary: buildSummaryText(body.briefing, shareUrl),
       })
@@ -267,7 +270,7 @@ export async function POST(request: NextRequest) {
       summary: text,
       note:
         providerName === 'none'
-          ? 'No email provider configured. Set RESEND_API_KEY, SENDGRID_API_KEY, or SMTP_HOST. Summary returned for manual paste.'
+          ? 'No email provider configured. Set MC_RESEND_API_KEY (preferred) or SENDGRID_API_KEY or SMTP_HOST. Summary returned for manual paste.'
           : `Email provider ${providerName} rejected the request. Summary returned for fallback copy.`,
     })
   }

@@ -319,3 +319,51 @@
 5. **It's their workspace.** Not a sandbox tour.
 
 — end —
+
+---
+
+## Insurance vertical · companion mini-script (3 min)
+
+For prospects in claims/policy/renewals. Slot this after the Property Management
+walkthrough OR run it standalone. Same Mission Control surface, same 5 proof points.
+
+### What to say (verbatim)
+
+> "Same surface, different vertical. This time I'll install the Insurance
+> Operations Workforce. Same 60-second install, same six AI employees, same
+> approval matrix — just tuned for claims and renewals instead of tenants
+> and maintenance."
+
+### Screen sequence
+
+| Screen | Action | What to say |
+|---|---|---|
+| /app/activate catalog | Click **Insurance Operations Workforce** card (status: READY) | "Six AI employees · 12 workflows · 27 skills · 3-minute install." |
+| Install progress | Watch the progress strip | "Same install path as Property Management. Same Mission Control wiring." |
+| Roster reveal | Show the 6 employees | "Iris on claims intake. Malcolm on adjuster coordination. Nina on policyholder follow-up. Grant on compliance review. Sofia on renewal prep. Theo on document collection." |
+| /app/tasks | Show the 12 seeded tasks | "Two open auto/HO claims, two document chases, an adjuster schedule batch, two renewal prep cascades, two compliance exceptions, an escalated complaint, a COI request, a loss-run request." |
+| /app/approvals | Show the 3 pending approvals | "Claim email needs sign-off. Renewal pricing draft needs sign-off. Escalation page needs sign-off. Nothing customer-facing ships without an operator approving." |
+| Activity feed | Show the 6 proof entries | "Every action has a proof receipt — audit_id, started_at, finished_at, hash of stdout. That's the audit trail your compliance team will ask about." |
+
+### The proof moment (the line that sells)
+
+> "Watch this — every claim email, every renewal pricing comm, every
+> escalation lands in the approval queue *before* it goes out. You decide
+> what ships. We just prep it. Demo data only — no real carrier sync —
+> but the workflow is exactly what your team would use day one."
+
+### Do NOT do
+
+- Don't claim live carrier integration. The demo is honest about this:
+  "Demo data only. No carrier integrations and no claims-management sync."
+- Don't conflate this with Property Management — same surface, different
+  employees + workflows + tone. Show them separately.
+- Don't say "agent" — say "AI employee".
+
+### Time
+
+- Insurance section: 3 minutes max
+- Full walkthrough with both verticals: 11–12 minutes (Property Management
+  10 + Insurance 3 — overlapping bits cut).
+
+— end —
