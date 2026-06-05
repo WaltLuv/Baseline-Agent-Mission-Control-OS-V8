@@ -477,7 +477,9 @@ export function OfficePanel() {
   const [orgSegmentMode, setOrgSegmentMode] = useState<OrgSegmentMode>('category')
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [showFlightDeckModal, setShowFlightDeckModal] = useState(false)
-  const [flightDeckDownloadUrl, setFlightDeckDownloadUrl] = useState('https://flightdeck.example.com/download')
+  // Defaults to the in-app /flight-deck page; the server's GET response will
+  // overwrite this with FLIGHT_DECK_DOWNLOAD_URL if the operator configured one.
+  const [flightDeckDownloadUrl, setFlightDeckDownloadUrl] = useState('/flight-deck')
   const [flightDeckLaunching, setFlightDeckLaunching] = useState(false)
   const [launchToast, setLaunchToast] = useState<LaunchToast | null>(null)
   const [selectedHotspot, setSelectedHotspot] = useState<OfficeHotspot | null>(null)

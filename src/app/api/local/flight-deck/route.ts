@@ -3,10 +3,20 @@ import { existsSync, statSync } from 'node:fs'
 import { requireRole } from '@/lib/auth'
 import { runCommand } from '@/lib/command'
 
-const DEFAULT_DOWNLOAD_URL = 'https://flightdeck.example.com/download'
+// Default: send users to the in-app /flight-deck page (manifest-driven
+// downloads, build-from-source recipe, honest per-artifact status).
+// An operator can point this elsewhere via FLIGHT_DECK_DOWNLOAD_URL,
+// e.g. a private mirror or a tag-locked GitHub release page.
+const DEFAULT_DOWNLOAD_URL = '/flight-deck'
+function getFlightDeckDownloadUrl(): string {
+  const fromEnv = String(process.env.FLIGHT_DECK_DOWNLOAD_URL || '').trim()
+  return fromEnv || DEFAULT_DOWNLOAD_URL
+}
+
 const DEFAULT_INSTALL_PATHS = [
   '/Applications/Flight Deck.app',
   '/Applications/Flight Desk.app',
+  '/Applications/Baseline Flight Deck.app',
 ]
 
 function getConfiguredFlightDeckPath(): string | null {
@@ -58,7 +68,7 @@ export async function GET(request: NextRequest) {
     installed,
     installPath: installPath || null,
     appUrl: getFlightDeckBaseUrl(),
-    downloadUrl: DEFAULT_DOWNLOAD_URL,
+    downloadUrl: getFlightDeckDownloadUrl(),
   })
 }
 
@@ -77,7 +87,7 @@ export async function POST(request: NextRequest) {
       installed: false,
       error: 'Flight Deck is not installed locally.',
       installPath: installPath || null,
-      downloadUrl: DEFAULT_DOWNLOAD_URL,
+      downloadUrl: getFlightDeckDownloadUrl(),
     }, { status: 404 })
   }
 
@@ -108,7 +118,7 @@ export async function POST(request: NextRequest) {
         launched: false,
         error: fallbackError?.message || error?.message || 'Failed to launch Flight Deck app.',
         fallbackUrl: webUrl.toString(),
-        downloadUrl: DEFAULT_DOWNLOAD_URL,
+        downloadUrl: getFlightDeckDownloadUrl(),
       }, { status: 500 })
     }
   }

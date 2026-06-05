@@ -102,6 +102,23 @@ function parseShaSums(versionDir: string): Record<string, string> {
   return out
 }
 
+// Default releases base. Used only when the operator explicitly opts in via
+// `FLIGHT_DECK_RELEASE_PUBLISHED=true` (or sets a custom `FLIGHT_DECK_RELEASES_BASE`).
+const DEFAULT_RELEASES_BASE = 'https://github.com/WaltLuv/baseline-agent-os/releases/download'
+
+function releaseTagPageUrl(releasesBase: string, releaseTag: string): string {
+  // Convert the GitHub "download" URL to the human-readable release page URL,
+  // without doing a substring-replace (which would mangle URLs that contain
+  // 'download' elsewhere in the path, e.g. self-hosted Gitea).
+  // Pattern: <host>/<owner>/<repo>/releases/download → <host>/<owner>/<repo>/releases/tag
+  const trimmed = releasesBase.replace(/\/+$/, '')
+  if (trimmed.endsWith('/releases/download')) {
+    return `${trimmed.slice(0, -'/download'.length)}/tag/${releaseTag}`
+  }
+  // Custom mirror — assume the convention `<base>/<tag>/<file>` and don't fabricate a page URL.
+  return `${trimmed}/${releaseTag}`
+}
+
 function buildManifest() {
   const versionDir = path.join(ARTIFACT_ROOT, FLIGHT_DECK_VERSION)
   const shaSums = parseShaSums(versionDir)
@@ -109,14 +126,16 @@ function buildManifest() {
     ? new Set(readdirSync(versionDir))
     : new Set<string>()
 
-  // GitHub Releases is now the source of truth for binaries (they're no
-  // longer tracked in git — too large for the standard push pipeline).
-  // If `FLIGHT_DECK_RELEASES_BASE` is set, manifest items without a
-  // locally-served file fall back to the public release URL so the
-  // download links still work in production deployments.
-  const releasesBase = process.env.FLIGHT_DECK_RELEASES_BASE ||
-    'https://github.com/WaltLuv/baseline-agent-os/releases/download'
+  // Honest source of truth: an artifact is `available` ONLY if the operator
+  // can actually pull a binary right now. That means either:
+  //   (a) the file is sitting in `public/downloads/flight-deck/<version>/`, OR
+  //   (b) the operator has opted in via FLIGHT_DECK_RELEASE_PUBLISHED=true,
+  //       asserting that the corresponding GitHub Release exists.
+  // Without either signal, status stays `pending-build` and `download_url`
+  // stays `null` — the UI surfaces the build-from-source recipe instead.
+  const releasesBase = (process.env.FLIGHT_DECK_RELEASES_BASE || DEFAULT_RELEASES_BASE).replace(/\/+$/, '')
   const releaseTag = `flight-deck-${FLIGHT_DECK_VERSION}`
+  const releasePublished = String(process.env.FLIGHT_DECK_RELEASE_PUBLISHED || '').trim().toLowerCase() === 'true'
 
   const artifacts: Artifact[] = PLATFORM_MATRIX.map((entry) => {
     const filePath = path.join(versionDir, entry.filename)
@@ -128,7 +147,10 @@ function buildManifest() {
     const localUrl = present
       ? `/api/flight-deck/download/${FLIGHT_DECK_VERSION}/${entry.filename}`
       : null
-    const releaseUrl = `${releasesBase}/${releaseTag}/${entry.filename}`
+    const releaseUrl = releasePublished
+      ? `${releasesBase}/${releaseTag}/${entry.filename}`
+      : null
+    const downloadUrl = localUrl ?? releaseUrl
     return {
       platform: entry.platform,
       arch: entry.arch,
@@ -137,8 +159,8 @@ function buildManifest() {
       size_bytes: size,
       size_human: size !== null ? humanSize(size) : null,
       sha256: shaSums[entry.filename] || null,
-      download_url: localUrl ?? releaseUrl,
-      status: (present || releasesBase) ? 'available' : 'pending-build',
+      download_url: downloadUrl,
+      status: downloadUrl ? 'available' : 'pending-build',
       signed: entry.signed,
       notes: entry.notes,
     }
@@ -146,7 +168,8 @@ function buildManifest() {
 
   return {
     version: FLIGHT_DECK_VERSION,
-    release_url: `${releasesBase.replace('/download', '')}/tag/${releaseTag}`,
+    release_url: releasePublished ? releaseTagPageUrl(releasesBase, releaseTag) : null,
+    release_published: releasePublished,
     ci_workflow: '.github/workflows/flight-deck-release.yml',
     ci_tag_command: `git tag ${releaseTag} && git push origin ${releaseTag}`,
     available_count: artifacts.filter((a) => a.status === 'available').length,

@@ -124,6 +124,28 @@ export function ActivationHub() {
           </p>
         </section>
 
+        {/* Optional desktop terminal — non-blocking pointer to /flight-deck.
+            Kept out of the 3-step sequence (Walt: "3 steps to activate")
+            but surfaced so customers know the desktop wrapper exists. */}
+        <section className="mb-6" data-testid="activation-flight-deck-pointer">
+          <Link
+            href="/flight-deck"
+            className="block rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 hover:bg-white/[0.04] transition-colors"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-[13px] font-semibold text-white">
+                  Optional · Install Flight Deck (desktop terminal)
+                </div>
+                <p className="text-[11px] text-white/55 mt-0.5">
+                  Works with both modes — connects to a local Baseline OS or to this cloud workspace. Browser-only is fine if you skip this.
+                </p>
+              </div>
+              <span className="shrink-0 text-[11px] uppercase tracking-wider text-white/45 font-mono">View →</span>
+            </div>
+          </Link>
+        </section>
+
         {/* Progress */}
         <section className="mb-6" data-testid="activation-progress-card">
           <div className="flex items-center justify-between mb-2">

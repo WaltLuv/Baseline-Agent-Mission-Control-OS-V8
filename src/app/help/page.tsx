@@ -100,6 +100,28 @@ Configure on first launch:
 Settings persist across restarts. If your settings don't stick, see Troubleshooting → "Flight Deck won't save settings."`,
   },
   {
+    id: 'flight-deck-connection-modes',
+    category: 'flight-deck',
+    title: 'Flight Deck: local Baseline OS vs cloud Mission Control',
+    tags: ['flight-deck', 'baseline-os', 'cloud', 'connect', 'pairing'],
+    body: `Flight Deck is the same desktop install for both deployment modes — you just point it at a different URL per workspace.
+
+Mode 1 — Local Baseline OS
+- Best for: solo operators, on-prem, air-gapped
+- In Flight Deck, add a workspace with URL:  http://localhost:8081
+- No API key needed for the loopback URL — Baseline OS gates by host.
+
+Mode 2 — Cloud Mission Control
+- Best for: teams, shared workspaces, runtimes on multiple hosts
+- In Flight Deck, add a workspace with:
+  URL:     https://<your-tenant>.mission-control.app  (or your self-hosted deployment)
+  API key: mc_runtime_•••••• (Runtime keys panel → Mint key)
+- The same panel that mints runtime daemon keys (Settings → Runtime keys) is where you mint a key for Flight Deck. Save the key when it's shown — Mission Control will not display it again.
+
+Switching modes
+- Each workspace entry in Flight Deck stays independent. You can run a local Baseline OS workspace and a cloud workspace side-by-side and switch between them from the workspace picker.`,
+  },
+  {
     id: 'invite-team',
     category: 'team',
     title: 'Invite a teammate',

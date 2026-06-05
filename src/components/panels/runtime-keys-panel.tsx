@@ -312,8 +312,17 @@ node scripts/connect-runtime.mjs`}
         </section>
       )}
 
-      <footer className="text-xs text-muted-foreground">
-        Need the connector? See <code className="px-1 rounded bg-muted">scripts/connect-runtime.mjs</code> or the Runtime Setup Guide.
+      <footer className="text-xs text-muted-foreground space-y-1" data-testid="runtime-keys-footer">
+        <div>
+          Need the connector? See <code className="px-1 rounded bg-muted">scripts/connect-runtime.mjs</code> or the Runtime Setup Guide.
+        </div>
+        <div>
+          The Flight Deck desktop terminal also uses these keys to attach to this Mission Control workspace —
+          paste a freshly-minted key into Flight Deck&apos;s &ldquo;Add workspace&rdquo; dialog.{' '}
+          <a href="/flight-deck" className="underline hover:text-foreground" data-testid="runtime-keys-flight-deck-link">
+            Install Flight Deck →
+          </a>
+        </div>
       </footer>
     </div>
   )

@@ -34,6 +34,7 @@ type Artifact = {
 type Manifest = {
   version: string
   release_url: string | null
+  release_published: boolean
   ci_workflow: string
   ci_tag_command: string
   available_count: number
@@ -160,16 +161,52 @@ export default function FlightDeckDownloadPage() {
 
       <main className="mx-auto max-w-screen-lg px-6 py-16 md:py-24">
         {/* Hero */}
-        <section className="mb-16" data-testid="flight-deck-hero">
+        <section className="mb-12" data-testid="flight-deck-hero">
           <div className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/20 bg-violet-500/5 px-3.5 py-1 text-[13px] font-medium text-violet-300 mb-6">
             Baseline Flight Deck · <span className="text-violet-400/80" data-testid="flight-deck-version">{manifest?.version || FLIGHT_DECK_VERSION}</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-[1.1] mb-5">
-            The installed desktop terminal for Mission Control.
+            The installed desktop terminal — for either deployment mode.
           </h1>
           <p className="text-lg text-white/55 leading-relaxed max-w-2xl">
-            Open Mission Control like real desktop software. Switch between Emergent Production, DigitalOcean, Staging, and Localhost without typing a URL each time. Runtime status, demo links, and workforce health one click away.
+            Flight Deck is the desktop companion. It connects to <strong className="text-white/80">Baseline OS</strong> if you run it locally, or directly to your <strong className="text-white/80">Mission Control</strong> cloud workspace. Same install, switch per workspace, no Baseline OS dependency for cloud users.
           </p>
+        </section>
+
+        {/* Connection modes — Mode 1 (local Baseline OS) vs Mode 2 (cloud MC) */}
+        <section className="mb-16" data-testid="flight-deck-modes">
+          <h2 className="text-2xl font-semibold tracking-tight mb-5">Two ways to connect</h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div
+              data-testid="flight-deck-mode-local"
+              className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-5"
+            >
+              <div className="inline-flex items-center rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] uppercase tracking-wider font-semibold text-emerald-300 mb-3">
+                Mode 1 · local
+              </div>
+              <h3 className="text-base font-semibold text-white">Connect to Baseline OS (local)</h3>
+              <p className="text-sm text-white/55 mt-2 leading-relaxed">
+                Run Baseline OS on your Mac mini, VPS, or workstation. Flight Deck points at <code className="bg-white/10 px-1 rounded text-xs">http://localhost:8081</code> (or your custom port). All your runtimes, files, and memory stay local.
+              </p>
+              <CopyBlock testId="flight-deck-mode-local-cmd">{`# In the Flight Deck app, switch the active workspace to:
+http://localhost:8081`}</CopyBlock>
+            </div>
+            <div
+              data-testid="flight-deck-mode-cloud"
+              className="rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-5"
+            >
+              <div className="inline-flex items-center rounded-full bg-violet-500/15 px-2.5 py-0.5 text-[10px] uppercase tracking-wider font-semibold text-violet-300 mb-3">
+                Mode 2 · cloud
+              </div>
+              <h3 className="text-base font-semibold text-white">Connect to Mission Control (cloud)</h3>
+              <p className="text-sm text-white/55 mt-2 leading-relaxed">
+                Point Flight Deck at your Mission Control tenant URL + a runtime API key (generate one in the cloud dashboard). No Baseline OS install required; agents you run on any machine can register against the same workspace.
+              </p>
+              <CopyBlock testId="flight-deck-mode-cloud-cmd">{`# In the Flight Deck app, add a workspace:
+URL:       https://<your-tenant>.mission-control.app
+API key:   mc_runtime_•••••• (from /app/settings → Runtime keys)`}</CopyBlock>
+            </div>
+          </div>
         </section>
 
         {/* Manifest summary */}
