@@ -39,6 +39,13 @@ export interface WorkforceWorkflow {
   /** Initial task state. Most are 'inbox' so the operator triages them. */
   initial_status?: 'inbox' | 'in_progress' | 'backlog'
   priority?: 'low' | 'medium' | 'high' | 'critical'
+  /**
+   * Optional demo-seed multiplier. When > 1, the installer creates N task
+   * instances from this workflow at install time so the operator sees a
+   * realistic operational density on first run (e.g. 8 open claims, not 1).
+   * Defaults to 1 when omitted.
+   */
+  demo_seed_count?: number
 }
 
 export interface WorkforceToolHint {
@@ -326,6 +333,274 @@ const PROPERTY_MGMT: WorkforceTemplate = {
 }
 
 // ───────────────────────────────────────────────────────────────────
+// Insurance Operations Workforce — second flagship.
+//
+// Positioning (Walt): "Mission Control helps insurance teams move claims,
+// renewals, documents, and customer follow-ups through one supervised AI
+// workforce."
+//
+// Demo data is intentionally fictional. Carrier integration is NOT claimed
+// — every tool hint that would touch a real carrier system is marked
+// `needs_connect`. PII never leaves the workspace.
+// ───────────────────────────────────────────────────────────────────
+
+const INSURANCE: WorkforceTemplate = {
+  slug: 'insurance',
+  vertical: 'Insurance',
+  headline: 'Iris, Malcolm, and 4 more — ready to work claims the moment you install.',
+  tagline:
+    'A six-person AI workforce that triages new claims, chases documents, coordinates adjusters, and prepares renewals — with approval gates on every customer-facing message.',
+  install_seconds: 60,
+  status: 'ready',
+  personas: [
+    {
+      slug: 'iris-bennett-claims-intake',
+      name: 'Iris Bennett',
+      role: 'Claims Intake Coordinator',
+      description:
+        'Takes new FNOL submissions, builds the intake packet, classifies severity, and routes to the right adjuster queue.',
+      capabilities: ['fnol-intake', 'severity-triage', 'packet-build', 'adjuster-route'],
+    },
+    {
+      slug: 'malcolm-price-adjuster-coord',
+      name: 'Malcolm Price',
+      role: 'Adjuster Coordination Lead',
+      description:
+        'Books inspections, syncs adjuster calendars, and tracks every open claim through its next action — surfaces stalled files before SLAs slip.',
+      capabilities: ['adjuster-scheduling', 'sla-watch', 'file-status', 'reassignment'],
+    },
+    {
+      slug: 'nina-flores-policyholder-followup',
+      name: 'Nina Flores',
+      role: 'Policyholder Follow-Up Specialist',
+      description:
+        'Drafts status updates, answers routine policyholder questions, and keeps customer expectations calibrated with the claims pipeline.',
+      capabilities: ['policyholder-comm', 'status-update', 'expectation-mgmt', 'sentiment-flag'],
+    },
+    {
+      slug: 'grant-mercer-compliance',
+      name: 'Grant Mercer',
+      role: 'Compliance Review Analyst',
+      description:
+        'Audits outgoing language for coverage interpretation, denial wording, and regulatory exposure before anything goes to the customer.',
+      capabilities: ['compliance-review', 'coverage-language-audit', 'denial-language-audit', 'state-exposure-flag'],
+    },
+    {
+      slug: 'sofia-lane-renewals',
+      name: 'Sofia Lane',
+      role: 'Renewal Operations Coordinator',
+      description:
+        'Runs the renewal cadence — preparation, producer follow-up, customer reminders — and queues pricing communication for approval.',
+      capabilities: ['renewal-prep', 'producer-followup', 'reminder-cadence', 'pricing-comm-draft'],
+    },
+    {
+      slug: 'theo-brooks-documents',
+      name: 'Theo Brooks',
+      role: 'Document Collection Specialist',
+      description:
+        'Builds document checklists per claim, requests missing items from policyholders + producers, and confirms completeness before the file advances.',
+      capabilities: ['doc-checklist', 'doc-request', 'completeness-audit', 'loss-run-request'],
+    },
+  ],
+  workflows: [
+    {
+      slug: 'ins-wf-new-claim-intake',
+      title: 'New claim intake',
+      description:
+        'A new claim has been reported. Build the intake packet, classify severity, attach the policy summary, and route to the right adjuster queue.',
+      owner_persona: 'iris-bennett-claims-intake',
+      tool_hint: 'claims-cli',
+      skill_hint: 'fnol-intake',
+      approval_policy: 'medium',
+      proof_expectation: 'intake_packet_id + severity classification + adjuster queue assignment',
+      success_criteria: 'Claim file created, severity set, adjuster assigned within SLA.',
+      initial_status: 'inbox',
+      priority: 'high',
+      demo_seed_count: 4,
+    },
+    {
+      slug: 'ins-wf-fnol-triage',
+      title: 'FNOL triage',
+      description:
+        'First Notice of Loss came in via email / phone log. Extract the loss summary, flag any urgent-care or fraud indicators, and route to intake.',
+      owner_persona: 'iris-bennett-claims-intake',
+      tool_hint: 'fnol-cli',
+      skill_hint: 'fnol-triage',
+      approval_policy: 'medium',
+      proof_expectation: 'triage_note linked to FNOL record + urgent/fraud flag results',
+      success_criteria: 'FNOL routed to claim intake within 30 minutes; any urgent indicator escalated.',
+      initial_status: 'inbox',
+      priority: 'high',
+      demo_seed_count: 4,
+    },
+    {
+      slug: 'ins-wf-doc-collection',
+      title: 'Policyholder document collection',
+      description:
+        'Build the document checklist for this claim, request missing items from the policyholder, and confirm completeness before the file advances to coverage review.',
+      owner_persona: 'theo-brooks-documents',
+      tool_hint: 'resend',
+      skill_hint: 'doc-collection',
+      approval_policy: 'medium',
+      proof_expectation: 'checklist_id + per-item upload status (received / outstanding)',
+      success_criteria: 'All required docs received OR a clear list of outstanding items shared with the policyholder.',
+      initial_status: 'inbox',
+      priority: 'high',
+      demo_seed_count: 5,
+    },
+    {
+      slug: 'ins-wf-adjuster-scheduling',
+      title: 'Adjuster scheduling',
+      description:
+        'Book an inspection for an open claim. Match adjuster availability, location, and severity, then send confirmations.',
+      owner_persona: 'malcolm-price-adjuster-coord',
+      tool_hint: 'calendar',
+      skill_hint: 'adjuster-scheduling',
+      approval_policy: 'medium',
+      proof_expectation: 'calendar_event_id + adjuster confirmation + policyholder confirmation',
+      success_criteria: 'Inspection scheduled within the urgency window; all parties confirmed.',
+      initial_status: 'inbox',
+      priority: 'medium',
+      demo_seed_count: 3,
+    },
+    {
+      slug: 'ins-wf-claim-status-followup',
+      title: 'Claim status follow-up',
+      description:
+        'Send a policyholder-facing status update for an in-flight claim. Pull the latest claim state, draft the message, and queue for compliance approval.',
+      owner_persona: 'nina-flores-policyholder-followup',
+      tool_hint: 'resend',
+      skill_hint: 'status-update',
+      approval_policy: 'high',
+      proof_expectation: 'message_id from Resend + claim_state snapshot at send time',
+      success_criteria: 'Policyholder receives an accurate, compliant status update on cadence.',
+      initial_status: 'inbox',
+      priority: 'medium',
+    },
+    {
+      slug: 'ins-wf-coverage-verification',
+      title: 'Coverage verification',
+      description:
+        'Verify whether the reported loss is covered under the active policy. Compile coverage language, endorsements, and exclusions for adjuster review.',
+      owner_persona: 'grant-mercer-compliance',
+      tool_hint: 'policy-cli',
+      skill_hint: 'coverage-verification',
+      approval_policy: 'high',
+      proof_expectation: 'coverage_memo with citations to policy + endorsements',
+      success_criteria: 'Adjuster has a clear coverage position before drafting any customer-facing language.',
+      priority: 'high',
+    },
+    {
+      slug: 'ins-wf-renewal-prep',
+      title: 'Renewal preparation',
+      description:
+        'Build the renewal packet for a policy approaching expiration: loss history, exposure changes, producer notes, suggested action.',
+      owner_persona: 'sofia-lane-renewals',
+      tool_hint: 'policy-cli',
+      skill_hint: 'renewal-prep',
+      approval_policy: 'medium',
+      proof_expectation: 'renewal_packet_id + suggested next-step',
+      success_criteria: 'Producer receives a complete renewal packet 60 days out.',
+      initial_status: 'inbox',
+      priority: 'medium',
+      demo_seed_count: 4,
+    },
+    {
+      slug: 'ins-wf-producer-followup',
+      title: 'Producer follow-up queue',
+      description:
+        'Walk the producer follow-up queue — open quotes, pending endorsements, renewal nudges — and draft the day’s outbound messages.',
+      owner_persona: 'sofia-lane-renewals',
+      tool_hint: 'resend',
+      skill_hint: 'producer-followup',
+      approval_policy: 'medium',
+      proof_expectation: 'queue snapshot + per-producer drafted action',
+      success_criteria: 'No producer item waits longer than 48h without an action or escalation.',
+      priority: 'medium',
+    },
+    {
+      slug: 'ins-wf-compliance-exception',
+      title: 'Compliance exception review',
+      description:
+        'A piece of outbound language tripped a compliance flag — denial wording, coverage interpretation, or state-specific exposure. Grant reviews and rewrites.',
+      owner_persona: 'grant-mercer-compliance',
+      tool_hint: 'compliance-cli',
+      skill_hint: 'compliance-review',
+      approval_policy: 'high',
+      proof_expectation: 'before/after diff + cited reason for rewrite',
+      success_criteria: 'Outbound language is compliant before it ships; audit trail saved.',
+      initial_status: 'inbox',
+      priority: 'high',
+      demo_seed_count: 2,
+    },
+    {
+      slug: 'ins-wf-loss-run-request',
+      title: 'Loss-run request processing',
+      description:
+        'A producer or insured needs a loss-run report. Theo verifies authorization, pulls the run, and packages it for delivery.',
+      owner_persona: 'theo-brooks-documents',
+      tool_hint: 'policy-cli',
+      skill_hint: 'loss-run-request',
+      approval_policy: 'medium',
+      proof_expectation: 'loss_run_id + delivery receipt (recipient + timestamp)',
+      success_criteria: 'Authorized loss runs delivered within 1 business day.',
+      priority: 'low',
+    },
+    {
+      slug: 'ins-wf-coi-request',
+      title: 'Certificate of insurance request',
+      description:
+        'A COI request came in from a third party. Validate authorization, draft the certificate, and route for issuance.',
+      owner_persona: 'theo-brooks-documents',
+      tool_hint: 'policy-cli',
+      skill_hint: 'coi-issue',
+      approval_policy: 'medium',
+      proof_expectation: 'coi_document_id + delivery receipt',
+      success_criteria: 'Authorized COI issued within 1 business day, audit trail intact.',
+      priority: 'low',
+    },
+    {
+      slug: 'ins-wf-escalated-complaint',
+      title: 'Escalated complaint routing',
+      description:
+        'A policyholder complaint escalated past routine follow-up. Nina compiles the file, Grant reviews exposure, and the case routes to the right human owner.',
+      owner_persona: 'nina-flores-policyholder-followup',
+      tool_hint: 'resend',
+      skill_hint: 'complaint-routing',
+      approval_policy: 'high',
+      proof_expectation: 'complaint_file_id + ownership assignment + planned next contact',
+      success_criteria: 'Complaint has a named owner + next-action time within 1 business day.',
+      initial_status: 'inbox',
+      priority: 'critical',
+      demo_seed_count: 1,
+    },
+  ],
+  tools: [
+    { cli_tool_id: 'mc', label: 'Mission Control CLI', description: 'Talk to your own supervision plane.', state: 'installed', default_risk: 'low' },
+    { cli_tool_id: 'resend', label: 'Resend (transactional email)', description: 'Policyholder + producer communication.', state: 'installed', default_risk: 'high' },
+    { cli_tool_id: 'calendar', label: 'Calendar integration', description: 'Adjuster scheduling + customer appointments.', state: 'needs_connect', default_risk: 'low' },
+    { cli_tool_id: 'claims-cli', label: 'Claims system bridge', description: 'Connects to your claims platform (Guidewire / Duck Creek / Origami / in-house).', state: 'needs_connect', default_risk: 'high' },
+    { cli_tool_id: 'fnol-cli', label: 'FNOL intake CLI', description: 'Ingests First Notice of Loss from email / phone log feeds.', state: 'available', default_risk: 'medium' },
+    { cli_tool_id: 'policy-cli', label: 'Policy administration bridge', description: 'Reads policy state, endorsements, loss runs, COIs.', state: 'needs_connect', default_risk: 'high' },
+    { cli_tool_id: 'compliance-cli', label: 'Compliance review CLI', description: 'Outbound language audit + state exposure flags.', state: 'available', default_risk: 'medium' },
+  ],
+  approval_summary: {
+    auto: [
+      'Status lookups, internal task updates, document checklist creation, calendar lookups',
+    ],
+    medium: [
+      'Policyholder follow-up drafts, producer update drafts, adjuster coordination drafts, renewal reminder drafts',
+    ],
+    high: [
+      'Claim denial language, coverage interpretation, compliance-sensitive responses, customer-facing claim updates, renewal pricing communication, escalated complaint responses',
+    ],
+    blocked: [
+      'Unauthorized claim approval or denial, issuing binding coverage, changing policy terms, deleting customer records, exposing PII or secrets, financial transfers',
+    ],
+  },
+}
+
+// ───────────────────────────────────────────────────────────────────
 // Coming soon — exposed in the catalog but installation refuses.
 // ───────────────────────────────────────────────────────────────────
 
@@ -346,6 +621,7 @@ function comingSoon(slug: string, vertical: string, tagline: string): WorkforceT
 
 export const WORKFORCE_TEMPLATES: Record<string, WorkforceTemplate> = {
   'property-management': PROPERTY_MGMT,
+  insurance: INSURANCE,
   'general-contractor': comingSoon(
     'general-contractor',
     'General Contractor',

@@ -55,19 +55,25 @@ describe('Workforce Templates — catalog + installer', () => {
     runMigrations(getDatabase())
   })
 
-  it('catalog: Property Management ready; 7 others coming_soon', async () => {
+  it('catalog: Property Management + Insurance ready; 7 others coming_soon', async () => {
     const { cookie } = await adminSession()
     const res = await templatesGET(authedReq(cookie, '/api/workforce/templates') as never)
     expect(res.status).toBe(200)
     const data = (await res.json()) as {
       templates: Array<{ slug: string; status: string; persona_count: number; workflow_count: number }>
     }
-    expect(data.templates.length).toBe(8)
+    expect(data.templates.length).toBe(9)
     const pm = data.templates.find((t) => t.slug === 'property-management')!
     expect(pm.status).toBe('ready')
     expect(pm.persona_count).toBe(6)
     expect(pm.workflow_count).toBe(12)
-    const others = data.templates.filter((t) => t.slug !== 'property-management')
+    const ins = data.templates.find((t) => t.slug === 'insurance')!
+    expect(ins.status).toBe('ready')
+    expect(ins.persona_count).toBe(6)
+    expect(ins.workflow_count).toBe(12)
+    const others = data.templates.filter(
+      (t) => t.slug !== 'property-management' && t.slug !== 'insurance',
+    )
     expect(others.length).toBe(7)
     expect(others.every((t) => t.status === 'coming_soon')).toBe(true)
   })
@@ -178,10 +184,112 @@ describe('Workforce Templates — catalog + installer', () => {
         workflows: Array<{ owner_persona: string }>
       }>
     }
-    const pm = data.templates.find((t) => t.slug === 'property-management')!
-    const personaSlugs = new Set(pm.personas.map((p) => p.slug))
-    for (const w of pm.workflows) {
-      expect(personaSlugs.has(w.owner_persona)).toBe(true)
+    for (const slug of ['property-management', 'insurance']) {
+      const tmpl = data.templates.find((t) => t.slug === slug)!
+      const personaSlugs = new Set(tmpl.personas.map((p) => p.slug))
+      for (const w of tmpl.workflows) {
+        expect(personaSlugs.has(w.owner_persona)).toBe(true)
+      }
     }
+  })
+
+  it('Insurance template installs 6 personas + the seeded task count Walt specified', async () => {
+    const { cookie, workspaceId } = await adminSession()
+    const res = await installPOST(
+      authedReq(cookie, '/api/workforce/install', {
+        method: 'POST',
+        body: JSON.stringify({ template: 'insurance' }),
+      }) as never,
+    )
+    expect(res.status).toBe(201)
+    const data = (await res.json()) as {
+      status: string
+      personas: Array<unknown>
+      workflows: Array<{ slug: string; title: string }>
+    }
+    expect(data.status).toBe('installed')
+    expect(data.personas.length).toBe(6)
+
+    // 12 workflows with demo_seed_count of: 4+4+5+3+1+1+4+1+2+1+1+1 = 28 task instances.
+    expect(data.workflows.length).toBe(28)
+
+    const db = getDatabase()
+    const agents = db
+      .prepare(
+        `SELECT COUNT(*) as n FROM agents WHERE workspace_id = ? AND source = ?`,
+      )
+      .get(workspaceId, 'workforce-template:insurance') as { n: number }
+    expect(agents.n).toBe(6)
+
+    // demo_seed_count > 1 → individually addressable task instances.
+    const claimIntakeRows = db
+      .prepare(
+        `SELECT COUNT(*) as n FROM tasks
+         WHERE workspace_id = ? AND metadata LIKE '%"workforce_workflow_slug":"ins-wf-new-claim-intake#%'`,
+      )
+      .get(workspaceId) as { n: number }
+    expect(claimIntakeRows.n).toBe(4) // demo_seed_count: 4
+
+    const docCollectionRows = db
+      .prepare(
+        `SELECT COUNT(*) as n FROM tasks
+         WHERE workspace_id = ? AND metadata LIKE '%"workforce_workflow_slug":"ins-wf-doc-collection#%'`,
+      )
+      .get(workspaceId) as { n: number }
+    expect(docCollectionRows.n).toBe(5) // demo_seed_count: 5
+
+    // Workflows without demo_seed_count keep the original slug (no '#') for backward compat.
+    const coverageVerifRows = db
+      .prepare(
+        `SELECT COUNT(*) as n FROM tasks
+         WHERE workspace_id = ? AND metadata LIKE '%"workforce_workflow_slug":"ins-wf-coverage-verification"%'`,
+      )
+      .get(workspaceId) as { n: number }
+    expect(coverageVerifRows.n).toBe(1)
+  })
+
+  it('Insurance reinstall is idempotent across seeded instances', async () => {
+    const { cookie, workspaceId } = await adminSession()
+    await installPOST(
+      authedReq(cookie, '/api/workforce/install', {
+        method: 'POST',
+        body: JSON.stringify({ template: 'insurance' }),
+      }) as never,
+    )
+    const res2 = await installPOST(
+      authedReq(cookie, '/api/workforce/install', {
+        method: 'POST',
+        body: JSON.stringify({ template: 'insurance' }),
+      }) as never,
+    )
+    expect(res2.status).toBe(200)
+    const db = getDatabase()
+    const total = db
+      .prepare(
+        `SELECT COUNT(*) as n FROM tasks
+         WHERE workspace_id = ? AND metadata LIKE '%"workforce_template":"insurance"%'`,
+      )
+      .get(workspaceId) as { n: number }
+    expect(total.n).toBe(28) // unchanged after reinstall
+  })
+
+  it('Insurance approval_summary covers AUTO / MEDIUM / HIGH / BLOCKED tiers (Walt’s spec)', async () => {
+    const { cookie } = await adminSession()
+    const res = await templatesGET(authedReq(cookie, '/api/workforce/templates') as never)
+    const data = (await res.json()) as {
+      templates: Array<{
+        slug: string
+        approval_summary: { auto: string[]; medium: string[]; high: string[]; blocked: string[] }
+      }>
+    }
+    const ins = data.templates.find((t) => t.slug === 'insurance')!
+    expect(ins.approval_summary.auto.length).toBeGreaterThan(0)
+    expect(ins.approval_summary.medium.length).toBeGreaterThan(0)
+    expect(ins.approval_summary.high.length).toBeGreaterThan(0)
+    expect(ins.approval_summary.blocked.length).toBeGreaterThan(0)
+    // High-risk tier names the customer-facing claim updates path Walt called out.
+    expect(ins.approval_summary.high.join(' ')).toMatch(/claim/i)
+    // Blocked tier denies unauthorized claim approval/denial.
+    expect(ins.approval_summary.blocked.join(' ')).toMatch(/unauthorized claim/i)
   })
 })

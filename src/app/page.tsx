@@ -166,11 +166,17 @@ export default function LandingPage() {
             />
             Baseline Automations
           </Link>
-          <nav className="hidden md:flex items-center gap-8">
-            <a href="#problem" className="text-sm text-white/50 hover:text-white transition-colors" data-testid="nav-problem">The Problem</a>
-            <a href="#how-it-works" className="text-sm text-white/50 hover:text-white transition-colors" data-testid="nav-how-it-works">How It Works</a>
-            <a href="#features" className="text-sm text-white/50 hover:text-white transition-colors" data-testid="nav-features">What You Get</a>
-            <a href="#pricing" className="text-sm text-white/50 hover:text-white transition-colors" data-testid="nav-pricing">Pricing</a>
+          <nav className="hidden md:flex items-center gap-6">
+            {/* Top nav surfaces the destinations Walt called out — Marketplace,
+                VisionOps, PropControl, Mission Control. Section-jump links
+                (Problem / How It Works / Features / Pricing) still live in
+                the page body. */}
+            <Link href="/marketplace" data-testid="nav-marketplace" className="text-sm text-white/65 hover:text-white transition-colors">Marketplace</Link>
+            <a href="https://rehab-vision.emergent.host" target="_blank" rel="noopener noreferrer" data-testid="nav-visionops" className="text-sm text-white/65 hover:text-white transition-colors">VisionOps</a>
+            <a href="https://propcontrolempire.com" target="_blank" rel="noopener noreferrer" data-testid="nav-propcontrol" className="text-sm text-white/65 hover:text-white transition-colors">PropControl</a>
+            <Link href="/login" data-testid="nav-mission-control" className="text-sm text-white/65 hover:text-white transition-colors">Mission Control</Link>
+            <span className="text-white/15" aria-hidden>·</span>
+            <a href="#pricing" className="text-sm text-white/45 hover:text-white transition-colors" data-testid="nav-pricing">Pricing</a>
           </nav>
           <div className="flex items-center gap-3">
             <Link href="/login" data-testid="header-sign-in" className="text-sm text-white/60 hover:text-white transition-colors px-3 py-1.5">
@@ -357,9 +363,10 @@ export default function LandingPage() {
           {[
             'Property Management',
             'Real Estate',
+            'Insurance',
             'Mortgage',
-            'CPA Firms',
-            'Law Firms',
+            'CPA',
+            'Law',
             'General Contractors',
             'Home Services',
             'Marketing Agencies',

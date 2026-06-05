@@ -62,6 +62,36 @@ describe('Landing page — credit-model + deployment modes', () => {
     expect(src).toContain('data-testid="footer-link-help"')
   })
 
+  it('top nav promotes Marketplace / VisionOps / PropControl / Mission Control (Walt’s correction)', () => {
+    expect(src).toContain('data-testid="nav-marketplace"')
+    expect(src).toContain('data-testid="nav-visionops"')
+    expect(src).toContain('data-testid="nav-propcontrol"')
+    expect(src).toContain('data-testid="nav-mission-control"')
+  })
+
+  it('industry vertical list includes Insurance as a first-class item', () => {
+    // Walt: "Insurance must be visible in: industry/vertical list".
+    // Walt: "It is not optional."
+    const verticalsBlock = src.match(/\[\s*\n?\s*'Property Management'[\s\S]*?\]\.map/)
+    expect(verticalsBlock, 'verticals array not found').toBeTruthy()
+    expect(verticalsBlock![0]).toContain("'Insurance'")
+    // Sanity — the canonical 10 verticals per Walt's spec.
+    for (const v of [
+      'Property Management',
+      'Real Estate',
+      'Insurance',
+      'Mortgage',
+      'CPA',
+      'Law',
+      'General Contractors',
+      'Home Services',
+      'Marketing Agencies',
+      'AI Agencies',
+    ]) {
+      expect(verticalsBlock![0]).toContain(`'${v}'`)
+    }
+  })
+
   it('preserves the existing scroll-friendly min-h-screen wrapper', () => {
     expect(src).toMatch(/\bmin-h-screen\b/)
   })

@@ -154,61 +154,72 @@ export function installWorkforceTemplate(
       : 0
 
     for (const wf of tmpl.workflows) {
-      const existingTask = db
-        .prepare(
-          `SELECT id, status FROM tasks
-           WHERE workspace_id = ? AND metadata LIKE ?`,
-        )
-        .get(workspaceId, `%"workforce_workflow_slug":"${wf.slug}"%`) as
-        | { id: number; status: string }
-        | undefined
-      if (existingTask) {
-        workflowsInstalled.push({
-          id: existingTask.id,
-          slug: wf.slug,
-          title: wf.title,
-          status: existingTask.status,
+      // demo_seed_count > 1 → create N idempotent task instances so the
+      // operator sees realistic operational density on first install.
+      // When undefined / 1 we keep the original 1-task-per-workflow shape
+      // so the Property Management flagship is unchanged.
+      const seedCount = Math.max(1, Math.floor(wf.demo_seed_count ?? 1))
+      for (let seedIdx = 1; seedIdx <= seedCount; seedIdx += 1) {
+        const instanceSlug = seedCount === 1 ? wf.slug : `${wf.slug}#${seedIdx}`
+        const existingTask = db
+          .prepare(
+            `SELECT id, status FROM tasks
+             WHERE workspace_id = ? AND metadata LIKE ?`,
+          )
+          .get(workspaceId, `%"workforce_workflow_slug":"${instanceSlug}"%`) as
+          | { id: number; status: string }
+          | undefined
+        if (existingTask) {
+          workflowsInstalled.push({
+            id: existingTask.id,
+            slug: instanceSlug,
+            title: seedCount === 1 ? wf.title : `${wf.title} (#${seedIdx})`,
+            status: existingTask.status,
+          })
+          continue
+        }
+        ticketCounter += 1
+        const meta = JSON.stringify({
+          workforce_template: tmpl.slug,
+          workforce_workflow_slug: instanceSlug,
+          owner_persona: wf.owner_persona,
+          runtime_hint: wf.runtime_hint ?? null,
+          tool_hint: wf.tool_hint ?? null,
+          skill_hint: wf.skill_hint ?? null,
+          approval_policy: wf.approval_policy,
+          proof_expectation: wf.proof_expectation,
+          success_criteria: wf.success_criteria,
+          seed_index: seedCount === 1 ? null : seedIdx,
+          seed_count: seedCount,
         })
-        continue
+        const instanceTitle = seedCount === 1 ? wf.title : `${wf.title} (#${seedIdx})`
+        const res = db
+          .prepare(
+            `INSERT INTO tasks
+              (title, description, status, priority, project_id, project_ticket_no,
+               created_by, workspace_id, created_at, updated_at, metadata)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          )
+          .run(
+            instanceTitle,
+            wf.description,
+            wf.initial_status ?? 'inbox',
+            wf.priority ?? 'medium',
+            projectId,
+            projectId ? ticketCounter : 0,
+            actor,
+            workspaceId,
+            now,
+            now,
+            meta,
+          )
+        workflowsInstalled.push({
+          id: Number(res.lastInsertRowid),
+          slug: instanceSlug,
+          title: instanceTitle,
+          status: wf.initial_status ?? 'inbox',
+        })
       }
-      ticketCounter += 1
-      const meta = JSON.stringify({
-        workforce_template: tmpl.slug,
-        workforce_workflow_slug: wf.slug,
-        owner_persona: wf.owner_persona,
-        runtime_hint: wf.runtime_hint ?? null,
-        tool_hint: wf.tool_hint ?? null,
-        skill_hint: wf.skill_hint ?? null,
-        approval_policy: wf.approval_policy,
-        proof_expectation: wf.proof_expectation,
-        success_criteria: wf.success_criteria,
-      })
-      const res = db
-        .prepare(
-          `INSERT INTO tasks
-            (title, description, status, priority, project_id, project_ticket_no,
-             created_by, workspace_id, created_at, updated_at, metadata)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        )
-        .run(
-          wf.title,
-          wf.description,
-          wf.initial_status ?? 'inbox',
-          wf.priority ?? 'medium',
-          projectId,
-          projectId ? ticketCounter : 0,
-          actor,
-          workspaceId,
-          now,
-          now,
-          meta,
-        )
-      workflowsInstalled.push({
-        id: Number(res.lastInsertRowid),
-        slug: wf.slug,
-        title: wf.title,
-        status: wf.initial_status ?? 'inbox',
-      })
     }
     if (projectId && ticketCounter > 0) {
       db.prepare(
