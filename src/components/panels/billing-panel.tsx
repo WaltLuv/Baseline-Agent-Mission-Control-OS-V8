@@ -107,7 +107,23 @@ export function BillingPanel() {
   const [overview, setOverview] = useState<BillingOverview | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedTab, setSelectedTab] = useState<'overview' | 'ledger' | 'usage' | 'buy'>('overview')
+  // Default tab is `overview`. When the user arrives from the public pricing
+  // page with `?billing=buy[&pkg=N]`, jump straight to the Buy tab so they
+  // can complete the purchase without hunting through the panel.
+  const initialTab: 'overview' | 'ledger' | 'usage' | 'buy' = (() => {
+    if (typeof window === 'undefined') return 'overview'
+    const params = new URLSearchParams(window.location.search)
+    return params.get('billing') === 'buy' ? 'buy' : 'overview'
+  })()
+  const [selectedTab, setSelectedTab] = useState<'overview' | 'ledger' | 'usage' | 'buy'>(initialTab)
+  // Optional pkg hint surfaced from the pricing-page CTA; the Buy tab uses
+  // it to highlight the requested package.
+  const [requestedPackageId, setRequestedPackageId] = useState<number | null>(() => {
+    if (typeof window === 'undefined') return null
+    const raw = new URLSearchParams(window.location.search).get('pkg')
+    const n = raw ? parseInt(raw, 10) : NaN
+    return Number.isFinite(n) && n > 0 ? n : null
+  })
   const [fuel, setFuel] = useState<WorkforceFuelData | null>(null)
   const [showLowBalance, setShowLowBalance] = useState(false)
   const [autoDismissedLowBalance, setAutoDismissedLowBalance] = useState(false)
@@ -493,9 +509,28 @@ export function BillingPanel() {
                 <p className="text-xs mt-1">{t('noLedgerEntriesSubtitle')}</p>
               </div>
             ) : (
-              recentLedger.map(entry => (
-                <div key={entry.id} className="bg-card border border-border rounded-lg p-3 flex items-center justify-between">
+              recentLedger.map(entry => {
+                // Map raw source_type → operator-friendly group label.
+                const sourceLabel =
+                  entry.source_type === 'stripe' ? 'Stripe'
+                  : entry.source_type === 'subscription' ? 'Stripe (renewal)'
+                  : entry.source_type?.startsWith('marketplace_') ? 'Marketplace'
+                  : entry.source_type === 'api_usage' || entry.source_type === 'agent_session' || entry.source_type === 'task' || entry.source_type === 'workflow' ? 'Usage'
+                  : entry.source_type === 'adjustment' || entry.source_type === 'manual' ? 'Adjustment'
+                  : entry.source_type === 'voice_call' || entry.source_type === 'vision_analysis' || entry.source_type === 'lead_research' || entry.source_type === 'document_analysis' ? 'Usage'
+                  : (entry.source_type || 'Other')
+                const sourceColor =
+                  sourceLabel === 'Stripe' || sourceLabel === 'Stripe (renewal)' ? 'text-violet-300'
+                  : sourceLabel === 'Marketplace' ? 'text-cyan-300'
+                  : sourceLabel === 'Usage' ? 'text-amber-300'
+                  : sourceLabel === 'Adjustment' ? 'text-white/60'
+                  : 'text-white/55'
+                return (
+                <div key={entry.id} data-testid={`ledger-entry-${entry.id}`} className="bg-card border border-border rounded-lg p-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
+                    <span className={`text-[10px] uppercase tracking-wider font-semibold ${sourceColor}`} data-testid={`ledger-source-${entry.id}`}>
+                      {sourceLabel}
+                    </span>
                     <span className={`text-xs font-medium ${creditTypeColors[entry.type] || 'text-muted-foreground'}`}>
                       {creditTypeLabels[entry.type] || entry.type}
                     </span>
@@ -509,7 +544,7 @@ export function BillingPanel() {
                     <span className="text-xs text-muted-foreground">{formatRelativeTime(entry.created_at)}</span>
                   </div>
                 </div>
-              ))
+              )})
             )}
           </div>
         )}
@@ -551,8 +586,20 @@ export function BillingPanel() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
               {packages.map(pkg => (
-                <div key={pkg.id} className="bg-card border border-border rounded-lg p-4 hover:border-primary/50 transition-smooth">
-                  <h4 className="text-sm font-semibold">{pkg.name}</h4>
+                <div
+                  key={pkg.id}
+                  className={`bg-card border rounded-lg p-4 hover:border-primary/50 transition-smooth ${
+                    requestedPackageId === pkg.id ? 'border-primary ring-1 ring-primary/30' : 'border-border'
+                  }`}
+                >
+                  <div className="flex items-baseline justify-between">
+                    <h4 className="text-sm font-semibold">{pkg.name}</h4>
+                    {requestedPackageId === pkg.id && (
+                      <span className="text-[10px] uppercase tracking-wider text-primary font-semibold">
+                        From pricing
+                      </span>
+                    )}
+                  </div>
                   <p className="text-2xl font-bold font-mono mt-2">
                     {formatDollars(pkg.price_cents)}
                   </p>
@@ -567,6 +614,9 @@ export function BillingPanel() {
                     size="sm"
                     className="w-full mt-3"
                     onClick={async () => {
+                      // Clear the pre-select hint once they engage so a later page reload
+                      // doesn't re-highlight a package they may have already changed their mind about.
+                      if (requestedPackageId === pkg.id) setRequestedPackageId(null)
                       try {
                         const res = await fetch('/api/billing/purchase-order', {
                           method: 'POST',
