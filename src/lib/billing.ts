@@ -10,6 +10,9 @@ export type SourceType =
   | 'task' | 'workflow' | 'voice_call' | 'vision_analysis'
   | 'lead_research' | 'document_analysis' | 'manual' | 'stripe'
   | 'subscription' | 'adjustment' | 'api_usage' | 'agent_session'
+  // Marketplace credit-debit purchases under the unified token-pack model.
+  // Stripe sells token packs; everything below debits credits from the workspace ledger.
+  | 'marketplace_employee' | 'marketplace_skill' | 'marketplace_workflow' | 'marketplace_bundle'
 
 export interface CreditMutation {
   workspaceId: number
@@ -318,6 +321,82 @@ export function createPurchaseOrder(workspaceId: number, packageId: number, stri
      VALUES (?, ?, ?, ?, ?, 'pending', 0, unixepoch(), unixepoch())`
   ).run(workspaceId, packageId, stripeSessionId, creditsToGrant, amountCents)
   return result.lastInsertRowid as number
+}
+
+export interface SubscriptionRenewalResult {
+  workspaceId: number
+  subscriptionId: number
+  creditsGranted: number
+  balanceAfter: number
+  idempotent: boolean
+}
+
+/**
+ * Grant the renewal credit bundle for a Stripe subscription invoice.paid event.
+ *
+ * Idempotent on stripe_event_id (and falls back to stripe_invoice_id when present)
+ * so Stripe retries never double-grant. Returns null if the subscription is unknown
+ * (logged + 200-OK at the route so Stripe doesn't keep retrying).
+ */
+export function grantSubscriptionRenewalCredits(opts: {
+  stripeSubscriptionId: string
+  stripeInvoiceId: string
+  stripeEventId: string
+  periodStart: number | null
+  periodEnd: number | null
+}): SubscriptionRenewalResult | null {
+  const db = getDatabase()
+  const sub = db.prepare(
+    `SELECT cs.id, cs.workspace_id, cs.plan_id, bp.included_credits
+       FROM customer_subscriptions cs
+       JOIN billing_plans bp ON bp.id = cs.plan_id
+      WHERE cs.stripe_subscription_id = ?
+      LIMIT 1`
+  ).get(opts.stripeSubscriptionId) as
+    | { id: number; workspace_id: number; plan_id: number; included_credits: number }
+    | undefined
+  if (!sub) return null
+
+  const idempotencyKey = `stripe_invoice_${opts.stripeInvoiceId || opts.stripeEventId}`
+  const result = applyCreditMutation({
+    workspaceId: sub.workspace_id,
+    type: 'grant',
+    amount: sub.included_credits,
+    sourceType: 'subscription',
+    sourceId: opts.stripeSubscriptionId,
+    description: `Subscription renewal grant (invoice ${opts.stripeInvoiceId})`,
+    idempotencyKey,
+  })
+
+  db.prepare(
+    `UPDATE customer_subscriptions
+        SET current_period_start = COALESCE(?, current_period_start),
+            current_period_end   = COALESCE(?, current_period_end),
+            included_credits_granted = included_credits_granted + ?,
+            status = 'active',
+            updated_at = unixepoch()
+      WHERE id = ?`
+  ).run(opts.periodStart, opts.periodEnd, result.idempotent ? 0 : sub.included_credits, sub.id)
+
+  return {
+    workspaceId: sub.workspace_id,
+    subscriptionId: sub.id,
+    creditsGranted: result.idempotent ? 0 : sub.included_credits,
+    balanceAfter: result.balanceAfter,
+    idempotent: result.idempotent,
+  }
+}
+
+/**
+ * Update the lifecycle status of a known subscription (created / updated / deleted).
+ * Idempotent — repeated calls with the same status are no-ops.
+ */
+export function updateSubscriptionStatus(stripeSubscriptionId: string, status: string): boolean {
+  const db = getDatabase()
+  const res = db.prepare(
+    `UPDATE customer_subscriptions SET status = ?, updated_at = unixepoch() WHERE stripe_subscription_id = ?`
+  ).run(status, stripeSubscriptionId)
+  return res.changes > 0
 }
 
 export function fulfillPurchaseOrder(workspaceId: number, stripeSessionId: string, stripeEventId: string, idempotencyKey: string): { creditsGranted: number; balanceAfter: number } | null {

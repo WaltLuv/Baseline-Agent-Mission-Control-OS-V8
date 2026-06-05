@@ -4,6 +4,17 @@ import { requireRole } from '@/lib/auth'
 import { getDatabase } from '@/lib/db'
 import { getSkillBySlug, getEmployeeBySlug, getBundleBySlug } from '@/lib/marketplace-catalog'
 import { createStripeCheckoutSession, isLiveStripeMode } from '@/lib/stripe-client'
+import {
+  installSkill,
+  hireEmployee,
+  deployBundle,
+  recordMarketplaceAudit,
+  recordPendingMarketplacePurchase,
+  resolveItemCreditPrice,
+  purchaseWithCredits,
+  type MarketplaceItemType,
+} from '@/lib/marketplace-fulfillment'
+import { getWorkspaceBalance } from '@/lib/billing'
 
 /**
  * Marketplace purchase endpoint — closes the loop browse → hire → pay → deploy.
@@ -36,141 +47,10 @@ interface PurchaseBody {
   attachToAgentSlug?: string
 }
 
-function ensureTables(db: ReturnType<typeof getDatabase>) {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS workforce_skills (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      workspace_id INTEGER NOT NULL,
-      slug TEXT NOT NULL,
-      name TEXT NOT NULL,
-      category TEXT NOT NULL,
-      price_cents INTEGER NOT NULL,
-      attached_agent_id INTEGER,
-      installed_at INTEGER NOT NULL,
-      idempotency_key TEXT,
-      UNIQUE(workspace_id, slug, idempotency_key)
-    );
-    CREATE TABLE IF NOT EXISTS workforce_subscriptions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      workspace_id INTEGER NOT NULL,
-      employee_slug TEXT NOT NULL,
-      monthly_cents INTEGER NOT NULL,
-      status TEXT NOT NULL DEFAULT 'active',
-      started_at INTEGER NOT NULL,
-      idempotency_key TEXT,
-      UNIQUE(workspace_id, employee_slug, idempotency_key)
-    );
-    CREATE TABLE IF NOT EXISTS workforce_memory (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      workspace_id INTEGER NOT NULL,
-      agent_id INTEGER,
-      agent_slug TEXT,
-      kind TEXT NOT NULL,
-      title TEXT NOT NULL,
-      detail TEXT,
-      rationale TEXT,
-      value_impact_cents INTEGER DEFAULT 0,
-      created_at INTEGER NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS idx_workforce_memory_workspace ON workforce_memory(workspace_id, created_at DESC);
-    CREATE INDEX IF NOT EXISTS idx_workforce_memory_agent ON workforce_memory(workspace_id, agent_slug, created_at DESC);
-  `)
-}
-
-function recordAudit(workspaceId: number, actorId: number, action: string, slug: string, type: string, valueCents: number) {
-  try {
-    const db = getDatabase()
-    db.prepare(
-      `INSERT INTO usage_events (workspace_id, agent_id, model, event_type, input_tokens, output_tokens, raw_cost_cents, retail_cost_cents, markup_multiplier, idempotency_key, created_at, metadata)
-       VALUES (?, NULL, ?, ?, 0, 0, ?, ?, 1, ?, strftime('%s','now'), ?)`
-    ).run(
-      workspaceId,
-      `marketplace-${type}`,
-      `marketplace.${action}`,
-      valueCents,
-      valueCents,
-      `mkt-${randomBytes(8).toString('hex')}`,
-      JSON.stringify({ actorId, slug, type }),
-    )
-  } catch {
-    // best-effort
-  }
-}
-
-function installSkill(workspaceId: number, slug: string, idempotencyKey: string, agentSlug?: string | null, agentId?: number | null) {
-  const skill = getSkillBySlug(slug)
-  if (!skill) throw new Error(`Unknown skill slug: ${slug}`)
-  const db = getDatabase()
-  ensureTables(db)
-  db.prepare(
-    `INSERT OR IGNORE INTO workforce_skills (workspace_id, slug, name, category, price_cents, attached_agent_id, installed_at, idempotency_key)
-     VALUES (?, ?, ?, ?, ?, ?, strftime('%s','now'), ?)`
-  ).run(workspaceId, skill.slug, skill.name, skill.category, skill.priceUsd * 100, agentId ?? null, idempotencyKey)
-  db.prepare(
-    `INSERT INTO workforce_memory (workspace_id, agent_id, agent_slug, kind, title, detail, rationale, created_at)
-     VALUES (?, ?, ?, 'skill-installed', ?, ?, ?, strftime('%s','now'))`
-  ).run(
-    workspaceId,
-    agentId ?? null,
-    agentSlug ?? null,
-    skill.slug,
-    `${skill.outcome} Estimated impact: ${skill.timeSaved}.`,
-    `Operator added this capability to expand the workforce.`,
-  )
-  return skill
-}
-
-function hireEmployee(workspaceId: number, slug: string, idempotencyKey: string) {
-  const employee = getEmployeeBySlug(slug)
-  if (!employee) throw new Error(`Unknown employee slug: ${slug}`)
-  const db = getDatabase()
-  ensureTables(db)
-  // Create the subscription row
-  db.prepare(
-    `INSERT OR IGNORE INTO workforce_subscriptions (workspace_id, employee_slug, monthly_cents, started_at, idempotency_key)
-     VALUES (?, ?, ?, strftime('%s','now'), ?)`
-  ).run(workspaceId, employee.slug, employee.monthlyUsd * 100, idempotencyKey)
-  // Provision an agent row so the employee actually appears in the squad.
-  let agentId: number | undefined
-  try {
-    const existing = db.prepare(
-      `SELECT id FROM agents WHERE workspace_id = ? AND name = ? LIMIT 1`
-    ).get(workspaceId, employee.name) as { id: number } | undefined
-    if (existing) {
-      agentId = existing.id
-    } else {
-      const result = db.prepare(
-        `INSERT INTO agents (workspace_id, name, role, status, hidden, created_at)
-         VALUES (?, ?, ?, 'idle', 0, strftime('%s','now'))`
-      ).run(workspaceId, employee.name, employee.role)
-      agentId = Number(result.lastInsertRowid)
-    }
-  } catch {
-    // best-effort — `agents` schema may vary
-  }
-  // First starter task — gives the operator immediate "they're working" signal.
-  try {
-    db.prepare(
-      `INSERT INTO tasks (workspace_id, title, status, agent_id, created_at)
-       VALUES (?, ?, 'todo', ?, strftime('%s','now'))`
-    ).run(workspaceId, `${employee.name}: introduction & first assignment`, agentId ?? null)
-  } catch {
-    // tasks table schema may vary across forks
-  }
-  // Memory entry — operator-visible rationale.
-  db.prepare(
-    `INSERT INTO workforce_memory (workspace_id, agent_id, agent_slug, kind, title, detail, rationale, created_at)
-     VALUES (?, ?, ?, 'employee-hired', ?, ?, ?, strftime('%s','now'))`
-  ).run(
-    workspaceId,
-    agentId ?? null,
-    employee.slug,
-    `Hired ${employee.name} as ${employee.role}`,
-    employee.outcome,
-    `Operator chose this employee to ${employee.outcome.toLowerCase()}`,
-  )
-  return { employee, agentId }
-}
+// Install / hire / deploy helpers now live in `src/lib/marketplace-fulfillment.ts`
+// so the secure Stripe webhook can call the same code paths after a signed
+// `checkout.session.completed` event lands. The route imports the helpers
+// above; the webhook imports them too.
 
 export async function POST(request: NextRequest) {
   const auth = requireRole(request, 'operator')
@@ -197,37 +77,123 @@ export async function POST(request: NextRequest) {
   let label = ''
   let billingMode: 'one-time' | 'monthly' = 'one-time'
 
+  // ─────────────────────────────────────────────────────────────────────
+  // Unified token-pack model (P0-H, 2026-06-05):
+  //   Marketplace purchases debit credits from the workspace ledger.
+  //   Stripe is reserved for token-pack sales only. Per-item Stripe
+  //   checkout remains as a legacy compatibility branch behind
+  //   `?legacy_stripe=1`.
+  // ─────────────────────────────────────────────────────────────────────
+  const itemType = body.type as MarketplaceItemType
+  const pricing = resolveItemCreditPrice(itemType, body.slug)
+  if (!pricing) {
+    return NextResponse.json({ error: `Unknown ${itemType}` }, { status: 404 })
+  }
+
   if (body.type === 'skill') {
-    const s = getSkillBySlug(body.slug)
-    if (!s) return NextResponse.json({ error: 'Unknown skill' }, { status: 404 })
-    priceCents = s.priceUsd * 100
-    label = `Install skill — ${s.name}`
-    billingMode = 'one-time'
+    label = `Install skill — ${pricing.name}`
   } else if (body.type === 'employee') {
-    const e = getEmployeeBySlug(body.slug)
-    if (!e) return NextResponse.json({ error: 'Unknown employee' }, { status: 404 })
-    priceCents = e.monthlyUsd * 100
-    label = `Hire AI employee — ${e.name}`
-    billingMode = 'monthly'
+    label = `Hire AI employee — ${pricing.name}`
   } else if (body.type === 'bundle') {
-    const b = getBundleBySlug(body.slug)
-    if (!b) return NextResponse.json({ error: 'Unknown bundle' }, { status: 404 })
-    priceCents = b.monthlyUsd * 100 + b.oneTimeUsd * 100
-    label = `Deploy team — ${b.name}`
-    billingMode = 'monthly'
+    label = `Deploy team — ${pricing.name}`
   } else {
     return NextResponse.json({ error: 'Unknown type' }, { status: 400 })
   }
+  priceCents = pricing.credits // (legacy field name; now carries credits)
+  billingMode = 'one-time'
 
-  // --- LIVE Stripe mode → redirect to Checkout ---
-  if (isLiveStripeMode()) {
+  // ── Credit-debit path (default) ───────────────────────────────────────
+  const useLegacyStripe = new URL(request.url).searchParams.get('legacy_stripe') === '1' && isLiveStripeMode()
+  if (!useLegacyStripe) {
+    try {
+      const result = purchaseWithCredits({
+        workspaceId,
+        purchaserUserId: actorId,
+        itemType,
+        itemId: body.slug,
+        idempotencyKey,
+      })
+      // Free items: helper returns ok:false reason:'free_item' AFTER fulfilling.
+      if (!result.ok && result.reason === 'free_item') {
+        return NextResponse.json({
+          ok: true,
+          mode: 'free',
+          type: body.type,
+          slug: body.slug,
+          label,
+          chargedCredits: 0,
+          billingMode,
+          nextStep: body.type === 'employee' ? 'first-task-queued' : 'capability-attached',
+        })
+      }
+      if (!result.ok && result.reason === 'included_item') {
+        return NextResponse.json({ ok: true, mode: 'included', type: body.type, slug: body.slug })
+      }
+      if (!result.ok && result.reason === 'insufficient_credits') {
+        return NextResponse.json(
+          {
+            error: 'You need more credits to unlock this item.',
+            code: 'INSUFFICIENT_CREDITS',
+            required: result.required,
+            balance: result.balance,
+            shortfall: result.required - result.balance,
+            buy_credits_path: '/app/billing',
+          },
+          { status: 402 },
+        )
+      }
+      if (!result.ok && result.reason === 'unknown_item') {
+        return NextResponse.json({ error: 'unknown item' }, { status: 404 })
+      }
+      if (result.ok) {
+        return NextResponse.json({
+          ok: true,
+          mode: 'credits',
+          type: body.type,
+          slug: body.slug,
+          label,
+          chargedCredits: result.chargedCredits,
+          balanceAfter: result.balanceAfter,
+          idempotent: result.idempotent,
+          nextStep: body.type === 'employee' ? 'first-task-queued' : 'capability-attached',
+        })
+      }
+    } catch (e) {
+      return NextResponse.json({ error: 'purchase failed', detail: String(e).slice(0, 200) }, { status: 500 })
+    }
+  }
+
+  // ── Legacy Stripe checkout (compatibility only, opt-in) ───────────────
+  if (useLegacyStripe) {
     try {
       const origin =
         process.env.NEXT_PUBLIC_APP_URL ||
         `${request.headers.get('x-forwarded-proto') || 'https'}://${request.headers.get('host')}`
+      const stripeSessionId = `mkt-${idempotencyKey}`
+
+      // 1. Record pending marketplace_purchases row BEFORE redirecting. The
+      //    secure webhook will flip status → fulfilled and call the install
+      //    helpers when the signed event lands.
+      recordPendingMarketplacePurchase({
+        workspaceId,
+        purchaserUserId: actorId,
+        itemType: body.type as MarketplaceItemType,
+        itemId: body.slug,
+        itemName: label,
+        priceCents,
+        stripeCheckoutSessionId: stripeSessionId,
+        idempotencyKey,
+        metadata: {
+          attachToAgentId: body.attachToAgentId ?? null,
+          attachToAgentSlug: body.attachToAgentSlug ?? null,
+          billingMode,
+        },
+      })
+
+      // 2. Create Stripe Checkout session.
       const session = await createStripeCheckoutSession({
         workspaceId,
-        stripeSessionId: `mkt-${idempotencyKey}`,
+        stripeSessionId,
         packageId: 0,
         packageName: label,
         packagePriceCents: priceCents,
@@ -235,35 +201,18 @@ export async function POST(request: NextRequest) {
         successUrl: `${origin}/app/agents?install=success&type=${body.type}&slug=${body.slug}`,
         cancelUrl: `${origin}/marketplace?install=cancelled`,
       })
-      return NextResponse.json({ ok: true, mode: 'stripe', checkoutUrl: session.url })
+      return NextResponse.json({ ok: true, mode: 'stripe-legacy', checkoutUrl: session.url, deprecated: true })
     } catch (e) {
       return NextResponse.json({ error: 'Stripe checkout failed', detail: String(e).slice(0, 200) }, { status: 502 })
     }
   }
 
-  // --- TEST / mock mode → fulfill immediately ---
-  try {
-    if (body.type === 'skill') {
-      installSkill(workspaceId, body.slug, idempotencyKey, body.attachToAgentSlug, body.attachToAgentId)
-    } else if (body.type === 'employee') {
-      hireEmployee(workspaceId, body.slug, idempotencyKey)
-    } else if (body.type === 'bundle') {
-      const bundle = getBundleBySlug(body.slug)!
-      bundle.employeeSlugs.forEach((slug, i) => hireEmployee(workspaceId, slug, `${idempotencyKey}-emp-${i}`))
-      bundle.skillSlugs.forEach((slug, i) => installSkill(workspaceId, slug, `${idempotencyKey}-skl-${i}`))
-    }
-    recordAudit(workspaceId, actorId, 'install', body.slug, body.type, priceCents)
-    return NextResponse.json({
-      ok: true,
-      mode: 'fulfilled',
-      type: body.type,
-      slug: body.slug,
-      label,
-      priceCents,
-      billingMode,
-      nextStep: body.type === 'employee' ? 'first-task-queued' : 'capability-attached',
-    })
-  } catch (e) {
-    return NextResponse.json({ error: 'Install failed', detail: String(e).slice(0, 200) }, { status: 500 })
-  }
+  // ── Fallthrough: shouldn't be reachable; the credit-debit path
+  //    handles every type when `legacy_stripe=1` isn't set.
+  return NextResponse.json({ error: 'no purchase path matched' }, { status: 500 })
 }
+
+// Silence unused-import warnings for compatibility branches.
+void getSkillBySlug; void getEmployeeBySlug; void getBundleBySlug
+void installSkill; void hireEmployee; void deployBundle
+void getWorkspaceBalance; void recordMarketplaceAudit; void recordPendingMarketplacePurchase
