@@ -407,63 +407,111 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── PRICING TEASER ─── */}
+      {/* ─── TWO DEPLOYMENT MODES — honest about where it runs ─── */}
+      <section className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-32" data-testid="deployment-modes">
+        <div className="text-center mb-12 max-w-3xl mx-auto">
+          <span className="inline-block text-xs font-mono uppercase tracking-widest text-white/40 mb-3">Two Ways To Run It</span>
+          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">
+            Same workforce.{' '}
+            <span className="text-violet-400">Local or cloud.</span>
+          </h2>
+          <p className="mt-4 text-white/55 leading-relaxed">
+            Mission Control is the same product in both modes — only the host changes. Run it on your own machine for on-prem control, or in the cloud for shared team workspaces.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 max-w-3xl mx-auto">
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-5" data-testid="mode-local">
+            <div className="inline-flex items-center rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] uppercase tracking-wider font-semibold text-emerald-300 mb-3">
+              Mode 1 · Local
+            </div>
+            <h3 className="text-base font-semibold text-white">Baseline OS</h3>
+            <p className="mt-2 text-sm text-white/55 leading-relaxed">
+              Self-host on a Mac mini, VPS, or workstation. Your runtimes, files, and memory stay on the box. No vendor lock-in.
+            </p>
+          </div>
+          <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-5" data-testid="mode-cloud">
+            <div className="inline-flex items-center rounded-full bg-violet-500/15 px-2.5 py-0.5 text-[10px] uppercase tracking-wider font-semibold text-violet-300 mb-3">
+              Mode 2 · Cloud
+            </div>
+            <h3 className="text-base font-semibold text-white">Mission Control</h3>
+            <p className="mt-2 text-sm text-white/55 leading-relaxed">
+              Run it as a hosted workspace your team shares. Connect runtimes from any machine. Start free, top up with credits when you need paid work.
+            </p>
+          </div>
+        </div>
+        <div className="mt-6 text-center">
+          <Link
+            href="/flight-deck"
+            data-testid="deployment-modes-flight-deck"
+            className="inline-flex items-center gap-2 text-sm text-white/65 hover:text-white transition-colors"
+          >
+            Or install the Flight Deck desktop terminal — works with both modes
+            <ArrowRight />
+          </Link>
+        </div>
+      </section>
+
+      {/* ─── PRICING TEASER — credit-pack model, honest about free vs paid ─── */}
       <section id="pricing" className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-36">
         <div className="text-center mb-14">
+          <span className="inline-block text-xs font-mono uppercase tracking-widest text-white/40 mb-3">Pricing</span>
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">
-            Pricing that <span className="text-violet-400">scales with you</span>
+            Free to start.{' '}
+            <span className="text-violet-400">Top up with credits when you need paid work.</span>
           </h2>
-          <p className="mt-3 text-white/45 max-w-lg mx-auto">
-            Start with the systems you need today and expand as your operation grows.
+          <p className="mt-4 text-white/55 max-w-2xl mx-auto leading-relaxed">
+            Mission Control is free. Buy credit packs when your workforce runs paid work or when you unlock premium marketplace items. No subscription.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-3xl mx-auto">
-          {/* Free */}
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6" data-testid="pricing-card-starter">
-            <span className="inline-block text-xs font-medium uppercase tracking-wider text-white/40 mb-2">Starter</span>
-            <div className="text-3xl font-bold">Free</div>
-            <p className="mt-2 text-sm text-white/40">For evaluating the platform.</p>
+          {/* Starter Pack */}
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6" data-testid="pricing-card-pack-starter">
+            <span className="inline-block text-xs font-medium uppercase tracking-wider text-white/40 mb-2">Starter Pack</span>
+            <div className="text-3xl font-bold">$10</div>
+            <p className="mt-2 text-sm text-white/40">1,000 credits — try the workforce on one or two recurring jobs.</p>
             <ul className="mt-5 space-y-2 text-sm text-white/55">
-              <li className="flex items-center gap-2"><CheckCircleIcon /> 1 automated workflow</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> Basic systems library</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> 7-day activity history</li>
+              <li className="flex items-center gap-2"><CheckCircleIcon /> One-time purchase</li>
+              <li className="flex items-center gap-2"><CheckCircleIcon /> Credits never expire</li>
+              <li className="flex items-center gap-2"><CheckCircleIcon /> Buys premium skills, workflows, employees</li>
             </ul>
           </div>
 
-          {/* Pro — highlighted */}
-          <div className="relative rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6" data-testid="pricing-card-professional">
+          {/* Power Pack — highlighted */}
+          <div className="relative rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6" data-testid="pricing-card-pack-power">
             <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[11px] font-semibold uppercase tracking-wider text-violet-300 bg-violet-500/20 border border-violet-500/30 rounded-full px-3 py-0.5">
-              Popular
+              Most Popular
             </span>
-            <span className="inline-block text-xs font-medium uppercase tracking-wider text-violet-300/80 mb-2">Professional</span>
-            <div className="mt-1 text-3xl font-bold">$499<span className="text-base font-normal text-white/40">/mo</span></div>
-            <p className="mt-2 text-sm text-white/40">For growing teams.</p>
+            <span className="inline-block text-xs font-medium uppercase tracking-wider text-violet-300/80 mb-2">Power Pack</span>
+            <div className="mt-1 text-3xl font-bold">$25</div>
+            <p className="mt-2 text-sm text-white/40">2,750 credits (250 bonus) — sustains a small workforce on real workflows.</p>
             <ul className="mt-5 space-y-2 text-sm text-white/55">
-              <li className="flex items-center gap-2"><CheckCircleIcon /> Up to 10 active workflows</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> Full systems library</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> Approval &amp; quality gates</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> 90-day activity history</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> Priority support</li>
+              <li className="flex items-center gap-2"><CheckCircleIcon /> 10% bonus credits</li>
+              <li className="flex items-center gap-2"><CheckCircleIcon /> Credits never expire</li>
+              <li className="flex items-center gap-2"><CheckCircleIcon /> Paid AI/API usage at 2.5× markup</li>
+              <li className="flex items-center gap-2"><CheckCircleIcon /> Unlocks all marketplace items</li>
             </ul>
           </div>
 
-          {/* Enterprise */}
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6" data-testid="pricing-card-enterprise">
-            <span className="inline-block text-xs font-medium uppercase tracking-wider text-white/40 mb-2">Enterprise</span>
-            <div className="text-3xl font-bold">Custom</div>
-            <p className="mt-2 text-sm text-white/40">For multi-location operators.</p>
+          {/* Pro Pack */}
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6" data-testid="pricing-card-pack-pro">
+            <span className="inline-block text-xs font-medium uppercase tracking-wider text-white/40 mb-2">Pro Pack</span>
+            <div className="text-3xl font-bold">$50</div>
+            <p className="mt-2 text-sm text-white/40">6,000 credits (500 bonus) — for operators running multiple agents daily.</p>
             <ul className="mt-5 space-y-2 text-sm text-white/55">
-              <li className="flex items-center gap-2"><CheckCircleIcon /> Unlimited workflows</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> Per-location workspaces</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> Security &amp; compliance</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> SSO &amp; audit logs</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> Dedicated support</li>
+              <li className="flex items-center gap-2"><CheckCircleIcon /> 10% bonus credits</li>
+              <li className="flex items-center gap-2"><CheckCircleIcon /> Credits never expire</li>
+              <li className="flex items-center gap-2"><CheckCircleIcon /> Best per-credit price</li>
             </ul>
           </div>
         </div>
 
-        <div className="text-center mt-10">
+        <p className="mt-8 text-center text-xs text-white/40 max-w-xl mx-auto leading-relaxed" data-testid="pricing-credit-disclosure">
+          1 credit = $0.10 customer price. Paid AI / API usage debits credits at a 2.5× markup on raw provider cost.
+          Free workforce templates, demo employees, and free marketplace items debit nothing.
+        </p>
+
+        <div className="text-center mt-8">
           <Link
             href="/pricing"
             data-testid="pricing-view-full"
@@ -483,7 +531,7 @@ export default function LandingPage() {
             <span className="text-violet-400">first AI employee?</span>
           </h2>
           <p className="mt-4 text-white/45 max-w-md mx-auto">
-            Set up in minutes. No credit card required.
+            Set up in minutes. Mission Control is free to start — credits only when you run paid work.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
@@ -516,8 +564,11 @@ export default function LandingPage() {
             </div>
             &copy; {new Date().getFullYear()} Baseline Automations. All rights reserved.
           </div>
-          <div className="flex items-center gap-6 text-sm text-white/30">
-            <Link href="/marketplace" className="hover:text-white/80 transition-colors">Marketplace</Link>
+          <div className="flex items-center gap-6 text-sm text-white/30 flex-wrap justify-center">
+            <Link href="/marketplace" data-testid="footer-link-marketplace" className="hover:text-white/80 transition-colors">Marketplace</Link>
+            <Link href="/pricing" data-testid="footer-link-pricing" className="hover:text-white/80 transition-colors">Pricing</Link>
+            <Link href="/flight-deck" data-testid="footer-link-flight-deck" className="hover:text-white/80 transition-colors">Flight Deck</Link>
+            <Link href="/help" data-testid="footer-link-help" className="hover:text-white/80 transition-colors">Help</Link>
             <a
               href="https://rehab-vision.emergent.host"
               target="_blank"
