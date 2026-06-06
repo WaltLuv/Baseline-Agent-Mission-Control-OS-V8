@@ -2472,6 +2472,28 @@ const migrations: Migration[] = [
         CREATE INDEX IF NOT EXISTS idx_orch_proofs_task ON orchestration_proofs(task_id, created_at DESC);
       `)
     },
+  },
+  {
+    // Mirror dedup: every event ingested via /api/orchestration/mirror gets
+    // an external_id (the local emitter's row id, e.g. kanban-events.jsonl
+    // line number or sha). UNIQUE(workspace_id, source, external_id) lets
+    // the mirror endpoint be retried idempotently — a duplicate POST is a
+    // no-op rather than a second row. Existing cloud-native events keep
+    // external_id NULL.
+    id: '068_orchestration_mirror_dedup',
+    up: (db) => {
+      // SQLite treats every NULL as distinct in UNIQUE constraints, so a
+      // plain UNIQUE INDEX works for both shapes: external_id=NULL rows
+      // (existing cloud-native events) never collide, and external_id
+      // set rows (mirror traffic) dedupe by (workspace_id, source, ext_id).
+      // We avoid the partial-index variant because SQLite's ON CONFLICT
+      // clause requires a non-partial UNIQUE constraint to match.
+      db.exec(`
+        ALTER TABLE orchestration_events ADD COLUMN external_id TEXT;
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_orch_events_external
+          ON orchestration_events(workspace_id, source, external_id);
+      `)
+    },
   }
 ]
 

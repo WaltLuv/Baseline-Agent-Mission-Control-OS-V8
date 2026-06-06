@@ -53,9 +53,16 @@ const SOURCE_LABEL: Record<Task['source'], string> = {
   'maestro-import': 'Maestro import',
 }
 
+type MirrorStatus = {
+  total_mirrored: number
+  by_source: Record<string, number>
+  latest_event_at: number | null
+}
+
 export default function OrchestrationPage() {
   const [missions, setMissions] = useState<Mission[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
+  const [mirror, setMirror] = useState<MirrorStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeMission, setActiveMission] = useState<number | 'all'>('all')
@@ -64,9 +71,10 @@ export default function OrchestrationPage() {
     setLoading(true)
     setError(null)
     try {
-      const [mRes, tRes] = await Promise.all([
+      const [mRes, tRes, sRes] = await Promise.all([
         fetch('/api/orchestration/missions', { cache: 'no-store' }),
         fetch('/api/orchestration/tasks', { cache: 'no-store' }),
+        fetch('/api/orchestration/mirror/status', { cache: 'no-store' }),
       ])
       if (!mRes.ok) throw new Error(`missions HTTP ${mRes.status}`)
       if (!tRes.ok) throw new Error(`tasks HTTP ${tRes.status}`)
@@ -74,6 +82,7 @@ export default function OrchestrationPage() {
       const tData = (await tRes.json()) as { tasks: Task[] }
       setMissions(mData.missions)
       setTasks(tData.tasks)
+      if (sRes.ok) setMirror((await sRes.json()) as MirrorStatus)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'load failed')
     } finally {
@@ -151,6 +160,40 @@ export default function OrchestrationPage() {
           <div className="rounded-xl border border-red-500/30 bg-red-500/[0.06] px-4 py-3 text-sm text-red-200">
             Could not load: {error}
           </div>
+        )}
+
+        {/* Mirror status — surfaces #63 health honestly. Empty state when no
+            Baseline OS box has connected yet; live counters when it has. */}
+        {mirror && (
+          <section
+            data-testid="orchestration-mirror-status"
+            className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 flex flex-wrap items-center gap-4 text-[12px]"
+          >
+            <div className="text-[11px] uppercase tracking-[0.22em] text-white/45 font-mono">
+              Mirror (#63 event/proof sync)
+            </div>
+            {mirror.total_mirrored === 0 ? (
+              <span className="text-white/45">
+                No Baseline OS mirror traffic yet. Run <code className="bg-black/40 px-1 rounded text-white/70">bun run scripts/mc.ts mirror push</code> on your local box.
+              </span>
+            ) : (
+              <>
+                <span className="text-white/75">
+                  <strong className="text-white">{mirror.total_mirrored}</strong> events mirrored
+                </span>
+                {Object.entries(mirror.by_source).map(([source, n]) => (
+                  <span key={source} className="text-white/55">
+                    · {source}: <strong className="text-white/80">{n}</strong>
+                  </span>
+                ))}
+                {mirror.latest_event_at && (
+                  <span className="text-white/45 font-mono">
+                    · latest {new Date(mirror.latest_event_at * 1000).toLocaleTimeString()}
+                  </span>
+                )}
+              </>
+            )}
+          </section>
         )}
 
         {/* Mission picker */}
