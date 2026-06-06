@@ -35,7 +35,14 @@ function makeFetcher(
 
 describe('credentials probes — wire shape', () => {
   it('every advertised provider has a probe registered', () => {
-    for (const id of ['openai', 'anthropic', 'google_gemini', 'openrouter', 'stripe', 'resend', 'telegram_bot', 'github', 'supabase']) {
+    for (const id of [
+      // Original 9
+      'openai', 'anthropic', 'google_gemini', 'openrouter', 'stripe', 'resend',
+      'telegram_bot', 'github', 'supabase',
+      // 11 new in this slice
+      'mistral', 'discord', 'slack', 'twilio', 'elevenlabs', 'minimax',
+      'notion', 'pinecone', 'vercel', 'netlify', 'digitalocean',
+    ]) {
       expect(isProbeSupported(id)).toBe(true)
     }
   })
@@ -128,5 +135,120 @@ describe('credentials probes — wire shape', () => {
     const res = await PROBES.openai({ api_key: 'sk-test' }, {}, failing)
     expect(res.ok).toBe(false)
     if (!res.ok) expect(res.error).toBe('econnreset')
+  })
+
+  // ── New probes (11) — each verified for: URL + auth header shape. ──
+
+  it('Mistral probe hits /v1/models with Bearer auth', async () => {
+    const calls: CapturedCall[] = []
+    await PROBES.mistral({ api_key: 'mst_test' }, {}, makeFetcher(calls))
+    expect(calls[0].url).toContain('api.mistral.ai/v1/models')
+    expect((calls[0].init.headers as Record<string, string>).authorization).toBe('Bearer mst_test')
+  })
+
+  it('Discord probe uses Bot <token> auth (NOT Bearer)', async () => {
+    const calls: CapturedCall[] = []
+    await PROBES.discord({ bot_token: 'discord_test' }, {}, makeFetcher(calls))
+    expect(calls[0].url).toContain('discord.com/api/v10/users/@me')
+    expect((calls[0].init.headers as Record<string, string>).authorization).toBe('Bot discord_test')
+  })
+
+  it('Slack probe hits /api/auth.test and parses the ok field from the body', async () => {
+    const calls: CapturedCall[] = []
+    // Slack returns HTTP 200 even on bad auth; the `ok` field is the real signal.
+    const ok = await PROBES.slack({ bot_token: 'xoxb-good' }, {}, makeFetcher(calls, { body: { ok: true } }))
+    expect(ok.ok).toBe(true)
+    expect(calls[0].url).toContain('slack.com/api/auth.test')
+    expect((calls[0].init.headers as Record<string, string>).authorization).toBe('Bearer xoxb-good')
+
+    const bad = await PROBES.slack(
+      { bot_token: 'xoxb-bad' },
+      {},
+      makeFetcher([], { body: { ok: false, error: 'invalid_auth' } }),
+    )
+    expect(bad.ok).toBe(false)
+    if (!bad.ok) expect(bad.error).toContain('slack: invalid_auth')
+  })
+
+  it('Twilio probe uses Basic auth (sid:token) on the Accounts endpoint', async () => {
+    const calls: CapturedCall[] = []
+    await PROBES.twilio(
+      { auth_token: 'tw_token' },
+      { account_sid: 'AC123' },
+      makeFetcher(calls),
+    )
+    expect(calls[0].url).toContain('api.twilio.com/2010-04-01/Accounts/AC123.json')
+    const auth = (calls[0].init.headers as Record<string, string>).authorization
+    expect(auth.startsWith('Basic ')).toBe(true)
+    const decoded = Buffer.from(auth.slice('Basic '.length), 'base64').toString()
+    expect(decoded).toBe('AC123:tw_token')
+  })
+
+  it('ElevenLabs probe uses xi-api-key header (NOT Bearer)', async () => {
+    const calls: CapturedCall[] = []
+    await PROBES.elevenlabs({ api_key: 'el_test' }, {}, makeFetcher(calls))
+    expect(calls[0].url).toContain('api.elevenlabs.io/v1/user')
+    expect((calls[0].init.headers as Record<string, string>)['xi-api-key']).toBe('el_test')
+  })
+
+  it('MiniMax probe hits /v1/files with Bearer auth', async () => {
+    const calls: CapturedCall[] = []
+    await PROBES.minimax({ api_key: 'mm_test' }, {}, makeFetcher(calls))
+    expect(calls[0].url).toContain('api.minimax.chat/v1/files')
+    expect((calls[0].init.headers as Record<string, string>).authorization).toBe('Bearer mm_test')
+  })
+
+  it('Notion probe sets notion-version header', async () => {
+    const calls: CapturedCall[] = []
+    await PROBES.notion({ api_key: 'secret_test' }, {}, makeFetcher(calls))
+    expect(calls[0].url).toContain('api.notion.com/v1/users/me')
+    const h = calls[0].init.headers as Record<string, string>
+    expect(h.authorization).toBe('Bearer secret_test')
+    expect(h['notion-version']).toBe('2022-06-28')
+  })
+
+  it('Pinecone probe uses flat api-key header on the control plane', async () => {
+    const calls: CapturedCall[] = []
+    await PROBES.pinecone({ api_key: 'pc_test' }, {}, makeFetcher(calls))
+    expect(calls[0].url).toContain('api.pinecone.io/indexes')
+    const h = calls[0].init.headers as Record<string, string>
+    expect(h['api-key']).toBe('pc_test')
+    expect(h.authorization).toBeUndefined()
+  })
+
+  it('Vercel probe hits /v2/user with Bearer auth', async () => {
+    const calls: CapturedCall[] = []
+    await PROBES.vercel({ token: 'vc_test' }, {}, makeFetcher(calls))
+    expect(calls[0].url).toContain('api.vercel.com/v2/user')
+    expect((calls[0].init.headers as Record<string, string>).authorization).toBe('Bearer vc_test')
+  })
+
+  it('Netlify probe hits /api/v1/user with Bearer auth', async () => {
+    const calls: CapturedCall[] = []
+    await PROBES.netlify({ token: 'nf_test' }, {}, makeFetcher(calls))
+    expect(calls[0].url).toContain('api.netlify.com/api/v1/user')
+    expect((calls[0].init.headers as Record<string, string>).authorization).toBe('Bearer nf_test')
+  })
+
+  it('DigitalOcean probe hits /v2/account with Bearer auth', async () => {
+    const calls: CapturedCall[] = []
+    await PROBES.digitalocean({ token: 'do_test' }, {}, makeFetcher(calls))
+    expect(calls[0].url).toContain('api.digitalocean.com/v2/account')
+    expect((calls[0].init.headers as Record<string, string>).authorization).toBe('Bearer do_test')
+  })
+
+  it('all 11 new probes refuse with ok:false when their required secret is missing', async () => {
+    expect((await PROBES.mistral({}, {})).ok).toBe(false)
+    expect((await PROBES.discord({}, {})).ok).toBe(false)
+    expect((await PROBES.slack({}, {})).ok).toBe(false)
+    expect((await PROBES.twilio({ auth_token: 'x' }, {})).ok).toBe(false) // missing sid
+    expect((await PROBES.twilio({}, { account_sid: 'AC' })).ok).toBe(false) // missing token
+    expect((await PROBES.elevenlabs({}, {})).ok).toBe(false)
+    expect((await PROBES.minimax({}, {})).ok).toBe(false)
+    expect((await PROBES.notion({}, {})).ok).toBe(false)
+    expect((await PROBES.pinecone({}, {})).ok).toBe(false)
+    expect((await PROBES.vercel({}, {})).ok).toBe(false)
+    expect((await PROBES.netlify({}, {})).ok).toBe(false)
+    expect((await PROBES.digitalocean({}, {})).ok).toBe(false)
   })
 })
