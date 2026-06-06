@@ -340,15 +340,234 @@ E   Slim                        — depends on B (Hermes V16 must be stable) + e
 
 ---
 
-## 10) Open questions for Walt
+## 10) Decisions — answered 2026-06-06
 
-1. **PI Agent naming** — keep "PI Agent" as the customer-facing label with `memnos` as the internal slug, or rename outright to avoid the Pi-CLI clash?
-2. **Hermes V16** — is "v16" a real release tag, a major-version aspiration, or "the next minor"? `hermes --version` shows 0.15.1 today; the maintainer's release page needs to confirm what 16 means before we run `hermes update`.
-3. **VPS Hermes** — does the VPS already have an API key minted in your local credential store, or do we need to mint one against the VPS first?
-4. **EMAI vault location** — where on disk is the EMAI vault rooted? The Knowledge OS Vault Browser reads from `~/.claude-os/config.json:obsidianVaultPath`; the EMAI overlay needs to land in that vault for Knowledge OS to surface it.
-5. **gstack skill count** — without cloning the repo, I can't tell whether it's 10 skills or 200. The classification checklist scales linearly; just confirm import order priority (some skills first, the rest after, or all-or-nothing audit pass).
+The five open questions from the architecture-review pass were
+answered by Walt on 2026-06-06. Each row is the rule the codebase
+must follow; the **Why** is Walt's reason; the **How** is the concrete
+predicate Phase-F-and-after work checks against.
+
+### D-A1 · PI Agent naming
+
+- **Display name:** `PI Agent`
+- **Internal slug:** `pi-agent` (**not** `memnos`)
+- **Role:** Chief Memory Officer — owns the four brain layers
+  (Working / Project / Knowledge / Strategic)
+- **Why:** Walt prefers the customer-facing name; `memnos` was an
+  internal proposal that adds zero clarity for the operator.
+- **How to apply:** all UI labels read `PI Agent`. Code identifiers,
+  route paths, slugs, and DB rows use `pi-agent`. PI Agent never owns
+  coding/marketing/sales/ops — those stay with Slim or Maestro.
+
+### D-A2 · Hermes V16 — audit, don't fake
+
+- **Rule:** `hermes --version` is the source of truth. Today it
+  reports `0.15.1` (283 commits behind upstream). If `hermes update`
+  surfaces a `v16.x` tag, that's the version. If it doesn't, the UI
+  reports the actual latest available version, **never a fabricated
+  `v16`**.
+- **Why:** Walt's standing "no fake states" rule. A version label that
+  doesn't match what the binary reports is a lie.
+- **How to apply:** the Hermes runtime card surfaces (a) installed
+  version, (b) latest available version when detectable, (c) update
+  status, (d) VPS Hermes status, (e) `setup-needed` if unreachable.
+  Phase B implementation runs `hermes update --help` + `hermes update`
+  and reads the actual output — no hard-coded tag.
+
+### D-A3 · VPS Hermes — mint runtime key
+
+- **Runtime identity:** `hermes-vps` (display: `Hermes VPS`)
+- **Required surface fields:** runtime key, heartbeat, health endpoint
+  (if available), last-seen timestamp, status, capabilities, linked
+  workspace, optional proof/event sync.
+- **Registers with:** both Baseline OS local *and* Mission Control cloud.
+- **Why:** Walt runs a VPS-hosted Hermes alongside the local one; both
+  surfaces need to see it.
+- **How to apply:** mint via [[credentials-manager]] runtime-key flow
+  (the same path mints local agent-scoped API keys today, `users.id < 0`).
+  Never hardcode the VPS key. Mirror sync is opt-in per the existing
+  Phase #63 contract.
+
+### D-A4 · EMAI vault disk root
+
+- **Default path:** `~/Documents/EMAI-Command-Center-OS`
+- **Env override:** `EMAI_VAULT_PATH`
+- **Future:** Knowledge OS page surfaces a manual selector.
+- **Rules:**
+  - never overwrite an existing vault without confirmation
+  - update pack must dry-run first
+  - preserve existing `notes/`, `projects/`, `tasks/`, `context/`
+  - surface vault status in the Knowledge OS UI
+- **Why:** Walt's EMAI vault is a live working set, not scratch space.
+- **How to apply:** `src/lib/emai/vault-path.ts` resolves the path
+  with env > default precedence. The "open EMAI vault" flow checks
+  `vaultExists()` first and refuses overwrite without explicit
+  `--force` from the user.
+
+### D-A5 · gstack skills — first-25 prioritized
+
+- **Strategy:** first-N (start with 25), not all-or-nothing.
+- **Priority order:** (1) YC / startup building · (2) customer
+  discovery · (3) product strategy · (4) landing pages · (5) growth
+  / SEO · (6) fundraising · (7) sales / outbound · (8) product launch
+  · (9) analytics · (10) operations
+- **Per-skill metadata required for import:** name, category,
+  description, inputs, outputs, required credentials, pricing state,
+  install status, dedupe check, marketplace listing.
+- **Duplicates** are skipped or merged — never re-installed.
+- **Why:** Walt's "do not blindly install hundreds of skills"
+  directive. The first 25 give us the highest-leverage starter pack
+  without burying the marketplace.
+- **How to apply:** Phase D import script audits each skill against
+  the checklist before insertion, sorts by category priority, takes
+  the top 25, and emits a skip-list with reasons for the rest.
 
 ---
 
-*Reviewed-by: Claude (System Pilot). Awaiting Walt's go on the five open
-questions and the Phase ordering before any product code lands.*
+## 11) Phase F — Oh My Pi / OMP runtime
+
+> **Status:** Added 2026-06-06 per Walt's Phase F directive. Phase F
+> sits beside Phases A–E and is the *coding-harness* counterpart to
+> Phase C's PI Agent. Do not confuse them — the name collision is
+> deliberate on the Pi side and routinely conflated by users.
+
+### F.0 · Distinction (this is the whole point)
+
+| Concept | Slug | Role | Owns |
+|---|---|---|---|
+| **Oh My Pi / OMP** | `omp` | Open-source coding harness/runtime | TUI, providers, models, tools, browser automation, LSP, DAP, sessions, AGENTS.md / SYSTEM.md, skills, prompt templates, extensions — all coding-side. |
+| **PI Agent** | `pi-agent` | Chief Memory Officer | The four-brain memory layers, Obsidian sync, Pinecone, NotebookLM, retrieval, cleanup — all memory-side. |
+
+OMP is a **runtime**. PI Agent is a **role**. They never share UI
+labels; they never share storage; they never share credentials. The
+only thing they share is the word "Pi" in their name, and even that
+is disambiguated in code (`omp` vs `pi-agent`).
+
+### F.1 · Where it lives
+
+- **`src/lib/agent-runtimes.ts`** — `RuntimeId` extended to include
+  `'omp'`. Detector follows the `detectBinary` pattern Codex/Claude
+  use; installer follows the `runInstallCmd` pattern. Sits beside
+  `claude`, `codex`, `hermes`, `opencode`.
+- **Mission Control runtime card** — `/runtimes/omp` renders via the
+  existing `[id]` route. Card surfaces install status, version, config
+  path (`~/.omp/`), models path, AGENTS.md path, SYSTEM.md path, skills
+  path, sessions path, connected providers, and the four supported
+  modes (Interactive / Print-JSON / RPC / SDK).
+- **Baseline OS route** — `/agents/pi-runtime` (or `/agents/omp` per
+  the existing `agents.<name>.tsx` convention) probes the binary on
+  the local machine and surfaces install + version + config paths.
+- **Obsidian / Knowledge OS panel** — labelled **"Pi Coding Harness"**
+  (not "PI Memory Agent"). Provides install, connect, launch, and
+  context-engineering quick actions. PI Agent's memory panel sits on
+  the same page but is visually separated.
+
+### F.2 · Install paths (offered, never auto-executed)
+
+```bash
+# Walt's preferred path (bun):
+bun install -g @oh-my-pi/pi-coding-agent
+
+# Walt's GitHub fork (the install target):
+git clone https://github.com/WaltLuv/oh-my-pi.git
+# (clone the fork; the published npm package may not match WaltLuv/oh-my-pi
+#  HEAD until upstreamed — see note F.5 below)
+
+# Official curl|sh (preferred when bun is unavailable):
+curl -fsSL https://omp.sh/install | sh
+
+# Windows:
+irm https://omp.sh/install.ps1 | iex
+
+# Pinned (mise):
+mise use -g github:can1357/oh-my-pi
+```
+
+Mission Control does **not** silently run any of these. The install
+job surfaces the chosen command, asks for approval, then runs in the
+background-job harness (same machinery as Hermes/OpenCode installs).
+
+### F.3 · Credentials + model integration
+
+OMP supports 40+ providers. We tie its provider configuration into
+the existing Credentials Manager, not to a parallel store:
+
+- OpenRouter, OpenAI, Anthropic, Gemini, MiniMax, Kimi, xAI, Ollama,
+  LM Studio, Hugging Face, Groq, Mistral.
+- Missing credential → `setup-needed` deep-link to `/credentials`.
+- Model Catalog feeds OMP's model selector. No duplicate catalogs.
+
+### F.4 · Skills + browser
+
+- OMP skills + prompt templates + extensions are **audited before
+  import** per the Phase D checklist. Marketplace dedupes against
+  existing entries. Do not bulk-import.
+- OMP's browser automation routes through the existing `/browser`
+  page / Browser Use harness — they are two surfaces over the same
+  Puppeteer-backed capability, with the same per-action approval gate.
+
+### F.5 · WaltLuv/oh-my-pi.git fork
+
+Walt's directive names `https://github.com/WaltLuv/oh-my-pi.git`
+as the install source. Until that fork is upstreamed or published to
+npm under Walt's scope, the install flow:
+
+1. Probes for the `omp` binary on PATH (handles already-installed via
+   bun / curl|sh / mise).
+2. If absent and Walt's fork is the chosen source, clones to
+   `~/.omp-src/oh-my-pi` and runs the fork's documented build path.
+3. Records the source (`fork` / `npm` / `curl-sh` / `mise`) in the
+   runtime status so the UI can surface "you're on the fork" honestly.
+
+### F.6 · pi-vs-claude-code companion repo
+
+Walt's second link, `https://github.com/WaltLuv/pi-vs-claude-code.git`,
+is a reference / tutorial repo — *not* a runtime. It lives under the
+coding-agent comparison page in both surfaces and is cloned read-only
+when the user opts in. It does **not** register in
+`agent-runtimes.ts`. Treat it as documentation source-of-truth for
+the Pi-vs-Claude-Code narrative on `/agents/pi-runtime`.
+
+### F.7 · Approval policy (Walt's gates, applied to OMP)
+
+| Tier | Operations |
+|---|---|
+| **LOW / AUTO** | read files, summarize, search, inspect session tree, generate plan drafts |
+| **MEDIUM** | write local notes, create prompts, create skill drafts, create documentation drafts |
+| **HIGH** | code edits, git commits, GitHub pushes, deployment, provider config changes, model config changes |
+| **BLOCKED** | deleting production data, exposing secrets, changing billing logic without approval, destructive filesystem actions outside project scope, unauthorized remote SSH execution |
+
+Approval engine reuses the existing per-action gate (`approvals.ts`).
+OMP runs do not bypass it.
+
+### F.8 · Security (Walt's hard rules)
+
+- Never auto-run destructive OMP commands.
+- Never allow unrestricted FS ops from Mission Control cloud against
+  a remote OMP without approval.
+- Remote OMP runtimes respect: runtime key auth, workspace scoping,
+  approval engine, proof receipts, [[credentials-manager]], no secret
+  logging.
+- The strategy line stays explicit: **80% Claude Code, 20% OMP** for
+  deep customization, open-source control, and experimental multi-
+  agent workflows.
+
+### F.9 · Test surface (Phase F acceptance)
+
+- Pi runtime card appears in Mission Control runtimes list
+- Pi setup route renders
+- Missing install shows `setup-needed` honestly (no fake connected)
+- Installed CLI surfaces a real version string
+- Credentials link deep-routes to `/credentials`
+- Model Catalog link works
+- PI Agent memory page exists and is visually distinct from the
+  Pi Coding Harness panel
+- Approval policy is exposed in the UI
+- Tests cover both the live-present and live-absent install states
+
+---
+
+*Reviewed-by: Claude (System Pilot). Phase A–F unblocked 2026-06-06.
+Implementation lands in slices, foundation first
+(runtime registry + vault resolver), UI surfaces next, then VPS
+Hermes registration and gstack first-25 import.*

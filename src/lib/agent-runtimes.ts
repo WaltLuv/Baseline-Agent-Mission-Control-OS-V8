@@ -159,7 +159,7 @@ ${truncated}
   }
 }
 
-export type RuntimeId = 'openclaw' | 'hermes' | 'claude' | 'codex' | 'opencode'
+export type RuntimeId = 'openclaw' | 'hermes' | 'claude' | 'codex' | 'opencode' | 'omp'
 export type DeploymentMode = 'local' | 'docker'
 
 export interface RuntimeStatus {
@@ -222,6 +222,14 @@ const RUNTIME_META: Record<RuntimeId, RuntimeMeta> = {
     description: 'AI coding agent for the terminal with local SQLite-backed session storage.',
     authRequired: false,
     authHint: '',
+  },
+  // Oh My Pi (OMP) — coding harness. Distinct from "PI Agent" (Chief Memory
+  // Officer); see docs/architecture/CONSOLIDATION_ARCHITECTURE.md §11.
+  omp: {
+    name: 'Oh My Pi',
+    description: 'Open-source coding harness with 40+ providers, LSP, DAP, browser automation, subagents, and session tree.',
+    authRequired: true,
+    authHint: 'Run "omp /login" to authenticate a provider, or wire keys via the Credentials Manager.',
   },
 }
 
@@ -493,12 +501,62 @@ function detectOpenCode(): RuntimeStatus {
   return { id: 'opencode', ...meta, installed, version, running, authenticated: installed }
 }
 
+// Oh My Pi probe.
+//
+// `omp` is a single-binary distribution; the `omp --version` exit code is 0
+// and stdout starts with the version line. detectBinary() walks the standard
+// install locations (data-dir npm prefix, ~/.local/bin, /usr/local/bin,
+// ~/Library/pnpm, ~/.npm-global/bin) so installs landed by bun / npm /
+// curl|sh all resolve.
+//
+// Authentication: OMP stores per-provider state under ~/.omp/. We treat the
+// runtime as "authenticated" if (a) the binary is installed AND (b) the
+// config dir exists with at least one provider credential, OR an
+// OPENROUTER_API_KEY / ANTHROPIC_API_KEY is set. Anything weaker would
+// either show a false "connected" state (Walt's hard rule) or a false
+// "needs setup" once credentials are wired via the Credentials Manager.
+function detectOmp(): RuntimeStatus {
+  const meta = RUNTIME_META.omp
+  const { installed, version } = detectBinary(['omp'])
+
+  let authenticated = false
+  if (installed) {
+    try {
+      const homedir = require('node:os').homedir()
+      const path = require('node:path')
+      const fs = require('node:fs')
+      const ompDir = path.join(homedir, '.omp')
+      if (existsSync(ompDir)) {
+        // Any one of the per-provider auth files OR the agent/models.yml
+        // OR a session file is enough signal that the user has used omp.
+        const candidates = [
+          path.join(ompDir, 'agent', 'models.yml'),
+          path.join(ompDir, 'auth'),
+          path.join(ompDir, 'sessions'),
+          path.join(homedir, '.config', 'omp', 'agent', 'models.yml'),
+        ]
+        authenticated = candidates.some((p) => {
+          try { return existsSync(p) && (fs.statSync(p).isDirectory() ? fs.readdirSync(p).length > 0 : true) } catch { return false }
+        })
+      }
+      if (!authenticated) {
+        authenticated = !!(process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY)
+      }
+    } catch {
+      // ignore — fall through with authenticated = false
+    }
+  }
+
+  return { id: 'omp', ...meta, installed, version, running: false, authenticated }
+}
+
 const DETECTORS: Record<RuntimeId, () => RuntimeStatus> = {
   openclaw: detectOpenClaw,
   hermes: detectHermes,
   claude: detectClaude,
   codex: detectCodex,
   opencode: detectOpenCode,
+  omp: detectOmp,
 }
 
 export function detectRuntime(id: RuntimeId): RuntimeStatus {
@@ -545,6 +603,7 @@ export function startInstall(runtime: RuntimeId, mode: DeploymentMode): InstallJ
     claude: installClaudeLocal,
     codex: installCodexLocal,
     opencode: installOpenCodeLocal,
+    omp: installOmpLocal,
   }
   const installFn = INSTALL_FNS[runtime] || installOpenClawLocal
   installFn(job).catch((err) => {
@@ -752,6 +811,44 @@ async function installOpenCodeLocal(job: InstallJob): Promise<void> {
   } else {
     job.status = 'failed'
     job.error = 'brew install failed — see output above'
+  }
+  job.finishedAt = Date.now()
+}
+
+// Oh My Pi (OMP) install — Walt's preferred path is bun-global. Fall back
+// to npm-global if bun isn't on the host. The curl|sh path is offered in
+// the UI but not auto-executed from here (it expects a TTY and isn't safe
+// to script-pipe from a background install job).
+async function installOmpLocal(job: InstallJob): Promise<void> {
+  job.output += '> Installing Oh My Pi (omp) via bun-global...\n'
+  if (await runInstallCmd('bun', ['install', '-g', '@oh-my-pi/pi-coding-agent'], job)) {
+    const { installed } = detectBinary(['omp'])
+    if (installed) {
+      job.status = 'success'
+      job.output += '\n> Oh My Pi installed successfully.\n'
+      job.output += '> Run "omp /login" to authenticate a provider, or wire keys via Mission Control\'s Credentials Manager.\n'
+      job.finishedAt = Date.now()
+      return
+    }
+    job.output += '\n> bun reported success but omp was not detected on PATH; falling back to npm-global.\n'
+  } else {
+    job.output += '\n> bun install failed or bun is not on PATH; falling back to npm-global.\n'
+  }
+
+  if (await runInstallCmd('npm', ['install', '-g', '@oh-my-pi/pi-coding-agent'], job)) {
+    const { installed } = detectBinary(['omp'])
+    if (installed) {
+      job.status = 'success'
+      job.output += '\n> Oh My Pi installed successfully (via npm).\n'
+      job.output += '> Run "omp /login" to authenticate, or wire keys via the Credentials Manager.\n'
+    } else {
+      job.status = 'failed'
+      job.error = 'npm install succeeded but the omp binary is not on PATH. Try the curl|sh installer: curl -fsSL https://omp.sh/install | sh'
+      job.output += '\n> Install reported success but omp is not on PATH. Use the curl|sh installer instead.\n'
+    }
+  } else {
+    job.status = 'failed'
+    job.error = 'Both bun-global and npm-global installs failed. Try the curl|sh installer: curl -fsSL https://omp.sh/install | sh'
   }
   job.finishedAt = Date.now()
 }
