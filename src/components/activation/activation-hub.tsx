@@ -231,6 +231,13 @@ export function ActivationHub() {
               onSkip={() => setStepState('invite', 'skipped')}
             />
           )}
+          {/* Fallback so the active invite step is never a blank box while the
+              workspace id is still resolving from /api/auth/me. */}
+          {state.invite === 'active' && workspaceId === null && (
+            <div className="text-center py-8 text-white/55 text-sm" data-testid="activation-invite-loading">
+              Loading your workspace…
+            </div>
+          )}
           {allDone && (
             <div className="text-center space-y-4 py-4" data-testid="activation-complete">
               <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/[0.06] px-4 py-1.5 text-sm text-emerald-200 font-medium">

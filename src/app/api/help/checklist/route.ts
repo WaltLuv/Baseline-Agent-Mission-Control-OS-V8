@@ -69,8 +69,16 @@ export async function GET() {
   })()
 
   const runtimesConnectedCount = (() => {
+    // The runtime handshake (`POST /api/runtime/handshake` → registerHandshake)
+    // writes to `runtime_registry`. That is the source of truth for "a runtime
+    // connected." The older `runtimes` / `runtime_handshakes` /
+    // `runtime_telemetry` names never existed in this database, so the previous
+    // predicate was permanently 0 — which capped the setup bar at 80% and made
+    // onboarding impossible to complete. Count `runtime_registry` first; keep
+    // the legacy tables as fallbacks only if they ever appear.
     let c = 0
-    if (tableExists('runtimes')) c += count('SELECT COUNT(*) AS c FROM runtimes')
+    if (tableExists('runtime_registry')) c += count('SELECT COUNT(*) AS c FROM runtime_registry')
+    if (c === 0 && tableExists('runtimes')) c += count('SELECT COUNT(*) AS c FROM runtimes')
     if (c === 0 && tableExists('runtime_handshakes')) c += count('SELECT COUNT(DISTINCT runtime) AS c FROM runtime_handshakes')
     if (c === 0 && tableExists('runtime_telemetry')) c += count('SELECT COUNT(DISTINCT runtime) AS c FROM runtime_telemetry')
     return c

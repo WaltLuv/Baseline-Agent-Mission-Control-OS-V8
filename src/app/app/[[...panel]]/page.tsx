@@ -692,7 +692,11 @@ function ContentRouter({ tab }: { tab: string }) {
     case 'agent-gateway':
     case 'mcp-gateway':
       return <AgentGatewayPanel />
-    case 'default': {
+    default: {
+      // Unknown panel id → try a registered plugin panel, else fall back to
+      // the Dashboard. (Previously this was `case 'default':`, a string-literal
+      // case that only matched tab === "default" — every other unmatched panel
+      // rendered a blank screen instead of falling back.)
       return renderPluginPanel(tab)
     }
   }
