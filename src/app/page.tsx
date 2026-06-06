@@ -348,6 +348,79 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ─── AI PRODUCT LAUNCH TEAM — founders / creators / non-technical ─── */}
+      <section
+        id="ai-product-launch-team"
+        className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-32"
+        data-testid="ai-product-launch-team"
+      >
+        <div className="max-w-3xl mx-auto text-center mb-10">
+          <span className="inline-block text-xs font-mono uppercase tracking-widest text-violet-300/80 mb-4">
+            For founders, creators &amp; non-technical operators
+          </span>
+          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight leading-tight">
+            AI Team to{' '}
+            <span className="bg-gradient-to-r from-violet-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">
+              Build Faster and Win Customers
+            </span>
+          </h2>
+          <p className="mt-5 text-white/55 leading-relaxed max-w-2xl mx-auto">
+            A full AI team that helps you launch faster at a lower cost. You decide, and your agents handle research, planning, building, testing, and marketing.
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 mb-8" data-testid="ai-product-launch-explainer">
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
+            <h3 className="text-sm font-semibold text-white mb-2">What this team helps with</h3>
+            <p className="text-[13px] text-white/55 leading-relaxed">
+              Research, design, coding, marketing, and revenue systems in one place. Mission Control runs a multi-agent workflow — a team of AI employees such as Product Manager, Engineer, Designer, Data Scientist, QA Tester, SEO Strategist, and Growth Marketer — who work together to plan, build, test, and launch your app from scratch.
+            </p>
+          </div>
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
+            <h3 className="text-sm font-semibold text-white mb-2">Built for natural-language building</h3>
+            <p className="text-[13px] text-white/55 leading-relaxed">
+              You do not need technical experience to get started. If you can explain what you want, you can start building. For advanced users, export code, sync to GitHub, run locally, or deploy to your own infrastructure.
+            </p>
+          </div>
+        </div>
+
+        {/* Project types */}
+        <div className="mb-10" data-testid="ai-product-launch-project-types">
+          <p className="text-[11px] uppercase tracking-widest text-white/40 font-mono mb-3 text-center">Popular project types</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {[
+              { name: 'SaaS', desc: 'Subscription products with auth, billing, and real-time storage.' },
+              { name: 'Internal Tools', desc: 'Dashboards for business data, workflows, and operations.' },
+              { name: 'Personal Websites', desc: 'Portfolio, blog, creator, or lead-generation site.' },
+              { name: 'E-commerce', desc: 'Product pages that convert, with Stripe for secure payments.' },
+              { name: 'Automations', desc: 'Workflows that reduce repetitive work and connect tools.' },
+              { name: 'AI Agent Apps', desc: 'Custom AI employees, tools, dashboards, and workflows.' },
+            ].map((p) => (
+              <div key={p.name} data-testid="ai-product-launch-project-type" className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
+                <div className="text-sm font-semibold text-white">{p.name}</div>
+                <p className="mt-1 text-[12px] text-white/50 leading-relaxed">{p.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Capability strip — credits, Stripe, SEO, GitHub, multilingual */}
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-6 py-5" data-testid="ai-product-launch-capability-strip">
+          <h3 className="text-sm font-semibold text-white mb-3">From idea to revenue, in one supervised control plane</h3>
+          <ul className="grid sm:grid-cols-2 gap-2 text-[12.5px] text-white/65 leading-relaxed">
+            <li>· <strong className="text-white/85">Credits, not subscriptions.</strong> Mission Control uses a transparent credit system — research, build, test, SEO, and paid API usage all draw from the same balance. No monthly Mission Control fee, no setup fee.</li>
+            <li>· <strong className="text-white/85">SEO pages + launch content drafts.</strong> Helps you draft SEO landing pages, metadata, and growth content; reports on visibility signals rather than promising rankings.</li>
+            <li>· <strong className="text-white/85">Stripe payments wired with approval.</strong> Pricing changes and live checkouts wait for operator sign-off before customers see them.</li>
+            <li>· <strong className="text-white/85">Code ownership + GitHub sync.</strong> Export code or sync the project to GitHub anytime. After export, run it locally or host it on your own infrastructure.</li>
+            <li>· <strong className="text-white/85">Real integrations, not a demo.</strong> Connects to the tools, runtimes, APIs, and dev workflows you already use through the Credentials Manager.</li>
+            <li>· <strong className="text-white/85">Multilingual input.</strong> Ideate, chat, and build in your native language; the agents reply in kind.</li>
+          </ul>
+          <p className="mt-4 text-[11px] text-white/40 leading-relaxed" data-testid="ai-product-launch-truth-note">
+            What this isn&apos;t: an autonomous launch. Customer-facing pushes — production deploys, pricing changes, GitHub push to main, paid ad campaigns — wait for your approval. The team supervises and drafts; you decide.
+          </p>
+        </div>
+      </section>
+
       {/* ─── VERTICALS — built for businesses that depend on execution ─── */}
       <section className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-32">
         <div className="text-center max-w-3xl mx-auto">

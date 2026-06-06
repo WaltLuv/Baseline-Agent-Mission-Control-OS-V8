@@ -55,14 +55,14 @@ describe('Workforce Templates — catalog + installer', () => {
     runMigrations(getDatabase())
   })
 
-  it('catalog: Property Management + Insurance ready; 7 others coming_soon', async () => {
+  it('catalog: Property Management + Insurance + AI Product Launch ready; 7 others coming_soon', async () => {
     const { cookie } = await adminSession()
     const res = await templatesGET(authedReq(cookie, '/api/workforce/templates') as never)
     expect(res.status).toBe(200)
     const data = (await res.json()) as {
       templates: Array<{ slug: string; status: string; persona_count: number; workflow_count: number }>
     }
-    expect(data.templates.length).toBe(9)
+    expect(data.templates.length).toBe(10)
     const pm = data.templates.find((t) => t.slug === 'property-management')!
     expect(pm.status).toBe('ready')
     expect(pm.persona_count).toBe(6)
@@ -71,8 +71,12 @@ describe('Workforce Templates — catalog + installer', () => {
     expect(ins.status).toBe('ready')
     expect(ins.persona_count).toBe(6)
     expect(ins.workflow_count).toBe(12)
+    const apl = data.templates.find((t) => t.slug === 'ai-product-launch')!
+    expect(apl.status).toBe('ready')
+    expect(apl.persona_count).toBe(8)
+    expect(apl.workflow_count).toBe(12)
     const others = data.templates.filter(
-      (t) => t.slug !== 'property-management' && t.slug !== 'insurance',
+      (t) => t.slug !== 'property-management' && t.slug !== 'insurance' && t.slug !== 'ai-product-launch',
     )
     expect(others.length).toBe(7)
     expect(others.every((t) => t.status === 'coming_soon')).toBe(true)
@@ -184,7 +188,7 @@ describe('Workforce Templates — catalog + installer', () => {
         workflows: Array<{ owner_persona: string }>
       }>
     }
-    for (const slug of ['property-management', 'insurance']) {
+    for (const slug of ['property-management', 'insurance', 'ai-product-launch']) {
       const tmpl = data.templates.find((t) => t.slug === slug)!
       const personaSlugs = new Set(tmpl.personas.map((p) => p.slug))
       for (const w of tmpl.workflows) {
@@ -291,5 +295,157 @@ describe('Workforce Templates — catalog + installer', () => {
     expect(ins.approval_summary.high.join(' ')).toMatch(/claim/i)
     // Blocked tier denies unauthorized claim approval/denial.
     expect(ins.approval_summary.blocked.join(' ')).toMatch(/unauthorized claim/i)
+  })
+
+  it('AI Product Launch template installs 8 personas + the seeded task count Walt specified', async () => {
+    const { cookie, workspaceId } = await adminSession()
+    const res = await installPOST(
+      authedReq(cookie, '/api/workforce/install', {
+        method: 'POST',
+        body: JSON.stringify({ template: 'ai-product-launch' }),
+      }) as never,
+    )
+    expect(res.status).toBe(201)
+    const data = (await res.json()) as {
+      status: string
+      personas: Array<unknown>
+      workflows: Array<{ slug: string; title: string }>
+    }
+    expect(data.status).toBe('installed')
+    expect(data.personas.length).toBe(8)
+
+    // 12 workflows with demo_seed_count of: 5+1+1+1+4+1+1+2+3+2+3+2 = 26 task instances.
+    expect(data.workflows.length).toBe(26)
+
+    const db = getDatabase()
+    const agents = db
+      .prepare(
+        `SELECT COUNT(*) as n FROM agents WHERE workspace_id = ? AND source = ?`,
+      )
+      .get(workspaceId, 'workforce-template:ai-product-launch') as { n: number }
+    expect(agents.n).toBe(8)
+
+    // Per-slug seed densities match Walt's spec.
+    const counts: Record<string, number> = {}
+    for (const slug of [
+      'ipt-wf-idea-intake',
+      'ipt-wf-fullstack-scaffold',
+      'ipt-wf-stripe-checkout',
+      'ipt-wf-qa-test-sweep',
+      'ipt-wf-deployment-env',
+      'ipt-wf-seo-landing',
+      'ipt-wf-github-export',
+    ]) {
+      const row = db
+        .prepare(
+          `SELECT COUNT(*) as n FROM tasks
+           WHERE workspace_id = ? AND metadata LIKE ?`,
+        )
+        .get(workspaceId, `%"workforce_workflow_slug":"${slug}#%`) as { n: number }
+      counts[slug] = row.n
+    }
+    expect(counts['ipt-wf-idea-intake']).toBe(5)
+    expect(counts['ipt-wf-fullstack-scaffold']).toBe(4)
+    expect(counts['ipt-wf-stripe-checkout']).toBe(2)
+    expect(counts['ipt-wf-qa-test-sweep']).toBe(3)
+    expect(counts['ipt-wf-deployment-env']).toBe(2)
+    expect(counts['ipt-wf-seo-landing']).toBe(3)
+    expect(counts['ipt-wf-github-export']).toBe(2)
+
+    // Single-instance workflows still keep the bare slug (no '#').
+    const singleSlug = db
+      .prepare(
+        `SELECT COUNT(*) as n FROM tasks
+         WHERE workspace_id = ? AND metadata LIKE '%"workforce_workflow_slug":"ipt-wf-market-research"%'`,
+      )
+      .get(workspaceId) as { n: number }
+    expect(singleSlug.n).toBe(1)
+  })
+
+  it('AI Product Launch reinstall is idempotent (28 task instances stay 28… wait, 26)', async () => {
+    const { cookie, workspaceId } = await adminSession()
+    await installPOST(
+      authedReq(cookie, '/api/workforce/install', {
+        method: 'POST',
+        body: JSON.stringify({ template: 'ai-product-launch' }),
+      }) as never,
+    )
+    const res2 = await installPOST(
+      authedReq(cookie, '/api/workforce/install', {
+        method: 'POST',
+        body: JSON.stringify({ template: 'ai-product-launch' }),
+      }) as never,
+    )
+    expect(res2.status).toBe(200)
+    const db = getDatabase()
+    const total = db
+      .prepare(
+        `SELECT COUNT(*) as n FROM tasks
+         WHERE workspace_id = ? AND metadata LIKE '%"workforce_template":"ai-product-launch"%'`,
+      )
+      .get(workspaceId) as { n: number }
+    expect(total.n).toBe(26)
+  })
+
+  it('AI Product Launch approval_summary covers all four risk tiers per Walt\'s spec verbatim', async () => {
+    const { cookie } = await adminSession()
+    const res = await templatesGET(authedReq(cookie, '/api/workforce/templates') as never)
+    const data = (await res.json()) as {
+      templates: Array<{
+        slug: string
+        approval_summary: { auto: string[]; medium: string[]; high: string[]; blocked: string[] }
+      }>
+    }
+    const apl = data.templates.find((t) => t.slug === 'ai-product-launch')!
+    expect(apl.approval_summary.auto.length).toBeGreaterThan(0)
+    expect(apl.approval_summary.medium.length).toBeGreaterThan(0)
+    expect(apl.approval_summary.high.length).toBeGreaterThan(0)
+    expect(apl.approval_summary.blocked.length).toBeGreaterThan(0)
+    // High tier names the production deploy + Stripe pricing + push to main path Walt specified.
+    const high = apl.approval_summary.high.join(' ').toLowerCase()
+    expect(high).toContain('production deployment')
+    expect(high).toContain('stripe pricing')
+    expect(high).toContain('push to main')
+    expect(high).toContain('customer-facing launch')
+    // Blocked tier denies unauthorized customer-charging and production DB deletion.
+    const blocked = apl.approval_summary.blocked.join(' ').toLowerCase()
+    expect(blocked).toContain('deleting production database')
+    expect(blocked).toContain('charging customers without approval')
+  })
+
+  it('AI Product Launch template avoids every forbidden marketing claim Walt named', async () => {
+    const { cookie } = await adminSession()
+    const res = await templatesGET(authedReq(cookie, '/api/workforce/templates') as never)
+    const data = (await res.json()) as {
+      templates: Array<{
+        slug: string
+        headline: string
+        tagline: string
+        personas: Array<{ description: string }>
+        workflows: Array<{ description: string; success_criteria: string }>
+      }>
+    }
+    const apl = data.templates.find((t) => t.slug === 'ai-product-launch')!
+    // Roll every customer-facing string in the template into one haystack.
+    const haystack = [
+      apl.headline,
+      apl.tagline,
+      ...apl.personas.map((p) => p.description),
+      ...apl.workflows.flatMap((w) => [w.description, w.success_criteria]),
+    ].join(' \n ').toLowerCase()
+
+    const forbiddenPhrases = [
+      'guaranteed revenue',
+      'guaranteed seo',
+      'guaranteed ranking',
+      'guaranteed success',
+      'no bugs ever',
+      'fully autonomous',
+      'fully automatic launch',
+      'deployment always works',
+    ]
+    for (const phrase of forbiddenPhrases) {
+      expect(haystack).not.toContain(phrase)
+    }
   })
 })

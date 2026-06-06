@@ -601,6 +601,300 @@ const INSURANCE: WorkforceTemplate = {
 }
 
 // ───────────────────────────────────────────────────────────────────
+// AI Product Launch Team — third flagship workforce.
+//
+// Positioning (Walt's exact phrasing):
+//   "An AI-powered development team that helps you turn ideas into working
+//    products. Describe what you want, and your AI team handles research,
+//    planning, design, coding, testing, launch, marketing, SEO, Stripe,
+//    GitHub sync, and growth."
+//
+// Truth rules Walt set verbatim (forbidden claims removed; the language
+// here uses "helps / assists / drafts / supervises / tracks proof"):
+//   · No "fully autonomous launch without review"
+//   · No "guaranteed revenue / SEO ranking / no bugs / always works"
+// Every customer-facing deploy / pricing / push step lives behind a HIGH
+// approval gate.
+// ───────────────────────────────────────────────────────────────────
+
+const AI_PRODUCT_LAUNCH: WorkforceTemplate = {
+  slug: 'ai-product-launch',
+  vertical: 'AI Product Launch Team',
+  headline: 'Priya, Miles, and 6 more — your AI team to build faster and win customers.',
+  tagline:
+    'An AI-powered development team that helps you turn ideas into working products. Describe what you want, and your AI team handles research, planning, design, coding, testing, launch, marketing, SEO, Stripe, GitHub sync, and growth.',
+  install_seconds: 60,
+  status: 'ready',
+  personas: [
+    {
+      slug: 'priya-shah-product-manager',
+      name: 'Priya Shah',
+      role: 'Product Manager',
+      description:
+        'Owns requirements, scope, roadmap, and acceptance criteria. Drafts the brief, keeps the build honest against it, and surfaces scope creep before it hurts.',
+      capabilities: ['product-brief', 'requirements', 'roadmap', 'acceptance-criteria', 'scope-guard'],
+    },
+    {
+      slug: 'miles-carter-fullstack-engineer',
+      name: 'Miles Carter',
+      role: 'Full-Stack Engineer',
+      description:
+        'Builds features, fixes bugs, handles integrations. Scaffolds the app, wires auth + storage, lands API endpoints. Every change opens a draft PR for review.',
+      capabilities: ['scaffold', 'feature-build', 'bugfix', 'integrations', 'api-endpoints'],
+    },
+    {
+      slug: 'lena-brooks-ux-designer',
+      name: 'Lena Brooks',
+      role: 'UX / UI Designer',
+      description:
+        'Designs screens, layouts, flows, and product experience. Produces wireframes and copy drafts; the operator approves before production.',
+      capabilities: ['wireframe', 'flow-mapping', 'ui-copy', 'usability-review'],
+    },
+    {
+      slug: 'omar-reyes-qa-tester',
+      name: 'Omar Reyes',
+      role: 'QA Tester',
+      description:
+        'Tests flows, catches bugs, creates test plans. Surfaces regressions before they reach customers; never marks anything green it has not actually exercised.',
+      capabilities: ['test-plan', 'bug-sweep', 'regression-catch', 'smoke-runs'],
+    },
+    {
+      slug: 'dr-hana-kim-data-scientist',
+      name: 'Dr. Hana Kim',
+      role: 'Data Scientist',
+      description:
+        'Handles analytics, data modeling, metrics, dashboards. Defines the schema, builds the dashboards, and reports on what actually moved.',
+      capabilities: ['schema-design', 'metrics', 'analytics', 'dashboards'],
+    },
+    {
+      slug: 'theo-grant-devops',
+      name: 'Theo Grant',
+      role: 'DevOps / Deployment Engineer',
+      description:
+        'Handles GitHub, CI/CD, hosting, environments, deployment. Every production push waits for human approval; pre-deploy checks must pass first.',
+      capabilities: ['ci-cd', 'env-setup', 'hosting', 'github-sync', 'preflight-checks'],
+    },
+    {
+      slug: 'sasha-monroe-seo-growth',
+      name: 'Sasha Monroe',
+      role: 'SEO & Growth Strategist',
+      description:
+        'Drafts SEO landing pages, launch content, and growth campaigns. Reports on visibility and conversion signals — does not promise rankings or traffic.',
+      capabilities: ['seo-landing-pages', 'metadata', 'launch-content', 'growth-campaigns'],
+    },
+    {
+      slug: 'nina-cole-revenue-systems',
+      name: 'Nina Cole',
+      role: 'Revenue Systems Specialist',
+      description:
+        'Handles Stripe, pricing, checkout, billing, offers, and monetization. Pricing changes require operator approval; webhook fulfillment is verified end-to-end.',
+      capabilities: ['stripe-checkout', 'pricing', 'offers', 'billing-ops', 'webhook-verify'],
+    },
+  ],
+  workflows: [
+    {
+      slug: 'ipt-wf-idea-intake',
+      title: 'Idea intake and product brief',
+      description:
+        'Capture a product idea from chat or notes, draft a one-page brief (problem, customer, success metric, scope), and surface it for operator approval.',
+      owner_persona: 'priya-shah-product-manager',
+      tool_hint: 'notion-q',
+      skill_hint: 'product-brief',
+      approval_policy: 'medium',
+      proof_expectation: 'brief_id linked to source notes + operator sign-off line',
+      success_criteria: 'A reviewed, owner-signed brief that the team can build against.',
+      initial_status: 'inbox',
+      priority: 'high',
+      demo_seed_count: 5,
+    },
+    {
+      slug: 'ipt-wf-market-research',
+      title: 'Market research and competitor scan',
+      description:
+        'Research the space, list 5–10 direct competitors, summarise positioning, and flag risks. Outputs are drafts for the operator to keep / cut / iterate.',
+      owner_persona: 'priya-shah-product-manager',
+      tool_hint: 'firecrawl',
+      skill_hint: 'market-scan',
+      approval_policy: 'low',
+      proof_expectation: 'research_report_id + cited source URLs',
+      success_criteria: 'Operator has a defensible take on market + competition before scope is locked.',
+      initial_status: 'inbox',
+      priority: 'medium',
+    },
+    {
+      slug: 'ipt-wf-requirements-scope',
+      title: 'Requirements and scope definition',
+      description:
+        'Translate the approved brief into requirements, acceptance criteria, and a scope-cut list. Drafts go to the operator for sign-off before any build starts.',
+      owner_persona: 'priya-shah-product-manager',
+      tool_hint: 'mc',
+      skill_hint: 'requirements-doc',
+      approval_policy: 'medium',
+      proof_expectation: 'requirements_doc_id + operator sign-off',
+      success_criteria: 'Engineers and designers know exactly what is in and what is out for v1.',
+      initial_status: 'inbox',
+      priority: 'high',
+    },
+    {
+      slug: 'ipt-wf-ux-wireframe',
+      title: 'UX wireframe and user flow',
+      description:
+        'Sketch the user flow + low-fidelity wireframes for the v1 surface. Output is a draft for the operator to review — not a final design.',
+      owner_persona: 'lena-brooks-ux-designer',
+      tool_hint: 'drawio',
+      skill_hint: 'wireframe',
+      approval_policy: 'low',
+      proof_expectation: 'wireframe_set_id + flow diagram link',
+      success_criteria: 'Build team can scaffold against a concrete shape.',
+      initial_status: 'inbox',
+      priority: 'medium',
+    },
+    {
+      slug: 'ipt-wf-fullstack-scaffold',
+      title: 'Full-stack app scaffold',
+      description:
+        'Stand up a working app skeleton in a GitHub repo — routes, env config, base layout, deploy target wired but not yet pushed live.',
+      owner_persona: 'miles-carter-fullstack-engineer',
+      tool_hint: 'gh',
+      skill_hint: 'app-scaffold',
+      approval_policy: 'medium',
+      proof_expectation: 'repo URL + commit SHA + draft-PR link',
+      success_criteria: 'A runnable scaffold the operator can pull, run, and review.',
+      initial_status: 'inbox',
+      priority: 'high',
+      demo_seed_count: 4,
+    },
+    {
+      slug: 'ipt-wf-auth-accounts',
+      title: 'Authentication and user accounts',
+      description:
+        'Add sign-up / sign-in / password reset, session management, and basic role gating. Producer notes any provider keys the operator must add to credentials.',
+      owner_persona: 'miles-carter-fullstack-engineer',
+      tool_hint: 'gh',
+      skill_hint: 'auth-build',
+      approval_policy: 'medium',
+      proof_expectation: 'PR link + working auth happy-path screenshot in the proof folder',
+      success_criteria: 'A real user can sign up, sign in, and reset password in dev.',
+      initial_status: 'inbox',
+      priority: 'high',
+    },
+    {
+      slug: 'ipt-wf-database-schema',
+      title: 'Database schema and storage setup',
+      description:
+        'Define the tables, indexes, and migrations for v1. Storage strategy is documented; secrets stay in the credentials manager.',
+      owner_persona: 'dr-hana-kim-data-scientist',
+      tool_hint: 'mc',
+      skill_hint: 'schema-design',
+      approval_policy: 'medium',
+      proof_expectation: 'migration files in PR + ER diagram link',
+      success_criteria: 'Schema is reviewed and lands cleanly on a fresh database.',
+      initial_status: 'inbox',
+      priority: 'medium',
+    },
+    {
+      slug: 'ipt-wf-stripe-checkout',
+      title: 'Stripe checkout and billing setup',
+      description:
+        'Wire Stripe checkout for the product or service. Pricing changes require operator approval before they land in production.',
+      owner_persona: 'nina-cole-revenue-systems',
+      tool_hint: 'mc',
+      skill_hint: 'stripe-setup',
+      approval_policy: 'high',
+      proof_expectation: 'price IDs + webhook signing secret saved + test-mode checkout receipt',
+      success_criteria: 'Checkout works in Stripe test mode; webhook fulfillment is verified.',
+      initial_status: 'inbox',
+      priority: 'high',
+      demo_seed_count: 2,
+    },
+    {
+      slug: 'ipt-wf-qa-test-sweep',
+      title: 'QA test plan and bug sweep',
+      description:
+        'Author the test plan, run smoke + regression, and file findings with reproduction steps. Marks nothing green it has not actually exercised.',
+      owner_persona: 'omar-reyes-qa-tester',
+      tool_hint: 'mc',
+      skill_hint: 'qa-sweep',
+      approval_policy: 'low',
+      proof_expectation: 'test_plan_id + per-finding repro steps',
+      success_criteria: 'Known regressions are caught before a customer hits them.',
+      initial_status: 'inbox',
+      priority: 'high',
+      demo_seed_count: 3,
+    },
+    {
+      slug: 'ipt-wf-deployment-env',
+      title: 'Deployment and environment setup',
+      description:
+        'Configure staging + production environments, ENV vars, secrets, and preflight checks. Production deploys wait for operator approval; never auto-pushed.',
+      owner_persona: 'theo-grant-devops',
+      tool_hint: 'gh',
+      skill_hint: 'deploy-config',
+      approval_policy: 'high',
+      proof_expectation: 'environment URL + deploy log + preflight checklist',
+      success_criteria: 'Operator can promote a build to production with one click after review.',
+      initial_status: 'inbox',
+      priority: 'high',
+      demo_seed_count: 2,
+    },
+    {
+      slug: 'ipt-wf-seo-landing',
+      title: 'SEO landing pages and metadata',
+      description:
+        'Draft SEO landing pages + per-page metadata (title, description, OG tags) for launch. Reports on visibility signals; does not promise rankings.',
+      owner_persona: 'sasha-monroe-seo-growth',
+      tool_hint: 'serpapi',
+      skill_hint: 'seo-landing',
+      approval_policy: 'medium',
+      proof_expectation: 'page URLs + draft metadata block + keyword opportunity list',
+      success_criteria: 'Landing pages are live with reviewed metadata before launch.',
+      initial_status: 'inbox',
+      priority: 'medium',
+      demo_seed_count: 3,
+    },
+    {
+      slug: 'ipt-wf-github-export',
+      title: 'GitHub export / sync and handoff',
+      description:
+        'Export the project to GitHub or sync existing changes. Pushes to main require operator approval; documentation handoff is included.',
+      owner_persona: 'theo-grant-devops',
+      tool_hint: 'gh',
+      skill_hint: 'github-export',
+      approval_policy: 'high',
+      proof_expectation: 'GitHub repo URL + handoff doc link',
+      success_criteria: 'Operator has a clean repo + handoff doc; can run locally or hand to another team.',
+      initial_status: 'inbox',
+      priority: 'medium',
+      demo_seed_count: 2,
+    },
+  ],
+  tools: [
+    { cli_tool_id: 'mc', label: 'Mission Control CLI', description: 'Talk to your own supervision plane.', state: 'installed', default_risk: 'low' },
+    { cli_tool_id: 'gh', label: 'GitHub CLI', description: 'Scaffold + PRs + repo sync.', state: 'installed', default_risk: 'medium' },
+    { cli_tool_id: 'notion-q', label: 'Notion API shim', description: 'Product briefs + research docs.', state: 'installed', default_risk: 'medium' },
+    { cli_tool_id: 'drawio', label: 'Draw.io diagrams', description: 'Wireframes and user-flow diagrams.', state: 'available', default_risk: 'low' },
+    { cli_tool_id: 'firecrawl', label: 'Firecrawl', description: 'Market + competitor research scraping.', state: 'needs_connect', default_risk: 'medium' },
+    { cli_tool_id: 'serpapi', label: 'SerpAPI', description: 'SEO keyword + SERP signals.', state: 'needs_connect', default_risk: 'medium' },
+    { cli_tool_id: 'stripe-cli', label: 'Stripe CLI', description: 'Checkout setup + webhook verification.', state: 'needs_connect', default_risk: 'high' },
+    { cli_tool_id: 'vercel-cli', label: 'Vercel / hosting CLI', description: 'Deploy target for the scaffolded app.', state: 'needs_connect', default_risk: 'high' },
+  ],
+  approval_summary: {
+    auto: [
+      'Research drafts, internal notes, test plans, wireframe drafts, SEO keyword suggestions',
+    ],
+    medium: [
+      'Landing page copy, UI copy, product roadmap suggestions, generated task plans, documentation drafts',
+    ],
+    high: [
+      'Production deployment, Stripe pricing changes, GitHub push to main, domain or DNS changes, customer-facing launch, paid ad campaign launch',
+    ],
+    blocked: [
+      'Deleting production database, exposing secrets, pushing without approval, charging customers without approval, changing billing rules without approval, destructive filesystem actions outside project scope',
+    ],
+  },
+}
+
+// ───────────────────────────────────────────────────────────────────
 // Coming soon — exposed in the catalog but installation refuses.
 // ───────────────────────────────────────────────────────────────────
 
@@ -622,6 +916,7 @@ function comingSoon(slug: string, vertical: string, tagline: string): WorkforceT
 export const WORKFORCE_TEMPLATES: Record<string, WorkforceTemplate> = {
   'property-management': PROPERTY_MGMT,
   insurance: INSURANCE,
+  'ai-product-launch': AI_PRODUCT_LAUNCH,
   'general-contractor': comingSoon(
     'general-contractor',
     'General Contractor',

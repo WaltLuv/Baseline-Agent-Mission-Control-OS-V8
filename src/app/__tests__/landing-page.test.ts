@@ -95,4 +95,45 @@ describe('Landing page — credit-model + deployment modes', () => {
   it('preserves the existing scroll-friendly min-h-screen wrapper', () => {
     expect(src).toMatch(/\bmin-h-screen\b/)
   })
+
+  it('AI Product Launch Team section is present with Walt\'s headline + subheadline', () => {
+    expect(src).toContain('data-testid="ai-product-launch-team"')
+    expect(src).toMatch(/AI Team to[\s\S]*Build Faster and Win Customers/)
+    expect(src).toMatch(/A full AI team that helps you launch faster at a lower cost/)
+    // Project types Walt enumerated.
+    for (const p of ['SaaS', 'Internal Tools', 'Personal Websites', 'E-commerce', 'Automations', 'AI Agent Apps']) {
+      expect(src).toContain(p)
+    }
+  })
+
+  it('AI Product Launch section explicitly mentions credits, Stripe, SEO, GitHub, multilingual, integrations', () => {
+    const block = src.split('data-testid="ai-product-launch-team"')[1]?.split('data-testid="ai-product-launch-truth-note"')[0] ?? ''
+    expect(block).toBeTruthy()
+    expect(block.toLowerCase()).toContain('credit')
+    expect(block.toLowerCase()).toContain('stripe')
+    expect(block.toLowerCase()).toContain('seo')
+    expect(block.toLowerCase()).toContain('github')
+    expect(block.toLowerCase()).toContain('multilingual')
+    // "not a demo" — Walt's phrase
+    expect(block.toLowerCase()).toContain('not a demo')
+  })
+
+  it('AI Product Launch section uses truthful language and avoids every forbidden marketing claim Walt named', () => {
+    const block = src.split('data-testid="ai-product-launch-team"')[1]?.split("VERTICALS")[0] ?? ''
+    const haystack = block.toLowerCase()
+    const forbidden = [
+      'guaranteed revenue',
+      'guaranteed seo',
+      'guaranteed ranking',
+      'guaranteed success',
+      'no bugs ever',
+      'fully autonomous',
+      'deployment always works',
+    ]
+    for (const phrase of forbidden) {
+      expect(haystack).not.toContain(phrase)
+    }
+    // And uses Walt's preferred verbs.
+    expect(haystack).toMatch(/helps|assists|drafts|supervises/)
+  })
 })
