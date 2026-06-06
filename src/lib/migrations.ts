@@ -2300,6 +2300,43 @@ const migrations: Migration[] = [
           ON workspace_credentials(workspace_id, status, updated_at DESC);
       `)
     },
+  },
+  {
+    // Dynamic model catalogue. Mission Control no longer hardcodes the LLM
+    // model list. The catalogue is hydrated from a synced upstream source
+    // (OpenRouter today; local Ollama / LM Studio later) plus a small set
+    // of curated rows the operator manually pins for the UI. This table
+    // is the single source of truth — every model selector reads from it.
+    id: '065_model_catalog',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS model_catalog (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          provider TEXT NOT NULL,
+          model_slug TEXT NOT NULL,
+          display_name TEXT NOT NULL,
+          family TEXT,
+          context_window INTEGER,
+          input_price_usd_per_million REAL,
+          output_price_usd_per_million REAL,
+          supports_tools INTEGER NOT NULL DEFAULT 0,
+          supports_images INTEGER NOT NULL DEFAULT 0,
+          supports_audio INTEGER NOT NULL DEFAULT 0,
+          supports_video INTEGER NOT NULL DEFAULT 0,
+          supports_reasoning INTEGER NOT NULL DEFAULT 0,
+          supports_json INTEGER NOT NULL DEFAULT 0,
+          source TEXT NOT NULL CHECK (source IN ('openrouter','curated','custom','ollama','lm_studio')),
+          status TEXT NOT NULL DEFAULT 'available' CHECK (status IN ('available','deprecated','unavailable','custom')),
+          last_synced_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          metadata_json TEXT,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          UNIQUE(source, model_slug)
+        );
+        CREATE INDEX IF NOT EXISTS idx_model_catalog_provider ON model_catalog(provider, status);
+        CREATE INDEX IF NOT EXISTS idx_model_catalog_sync ON model_catalog(source, last_synced_at DESC);
+      `)
+    },
   }
 ]
 
