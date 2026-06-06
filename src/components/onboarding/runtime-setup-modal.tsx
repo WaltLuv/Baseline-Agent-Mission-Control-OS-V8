@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 
 interface RuntimeSetupModalProps {
-  runtime: 'openclaw' | 'hermes' | 'claude' | 'codex' | 'opencode'
+  runtime: 'openclaw' | 'hermes' | 'claude' | 'codex' | 'opencode' | 'omp'
   onClose: () => void
   onComplete: () => void
 }
@@ -16,6 +16,7 @@ export function RuntimeSetupModal({ runtime, onClose, onComplete }: RuntimeSetup
     claude: ClaudeSetup,
     codex: CodexSetup,
     opencode: OpenCodeSetup,
+    omp: OmpSetup,
   }[runtime]
 
   return (
@@ -45,6 +46,152 @@ function OpenCodeSetup({ onClose, onComplete }: { onClose: () => void; onComplet
       </div>
       <div className="flex justify-end mt-4">
         <Button size="sm" onClick={onComplete}>Done</Button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Oh My Pi (OMP) Setup ───────────────────────────────────────────────
+//
+// Walt's Phase F directive: OMP is the open-source coding harness. It is
+// NOT "PI Agent" (Chief Memory Officer). This setup surface makes that
+// distinction explicit so users do not conflate the runtime and the role.
+
+function OmpSetup({ onClose, onComplete }: { onClose: () => void; onComplete: () => void }) {
+  const [installing, setInstalling] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [jobOutput, setJobOutput] = useState<string>('')
+  const [installed, setInstalled] = useState<boolean | null>(null)
+  const [version, setVersion] = useState<string | null>(null)
+  const [copied, setCopied] = useState<string | null>(null)
+
+  const refreshStatus = useCallback(async () => {
+    try {
+      const res = await fetch('/api/agent-runtimes', { cache: 'no-store' })
+      if (!res.ok) return
+      const data = await res.json()
+      const row = (data.runtimes as Array<{ id: string; installed: boolean; version: string | null }>).find((r) => r.id === 'omp')
+      if (row) {
+        setInstalled(row.installed)
+        setVersion(row.version)
+      }
+    } catch {
+      // ignore — surface stays in pending state
+    }
+  }, [])
+
+  useEffect(() => { refreshStatus() }, [refreshStatus])
+
+  const runManagedInstall = useCallback(async () => {
+    setInstalling(true)
+    setError(null)
+    setJobOutput('')
+    try {
+      const res = await fetch('/api/agent-runtimes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'install', runtime: 'omp', mode: 'local' }),
+      })
+      if (!res.ok) {
+        const body = await res.text().catch(() => '')
+        throw new Error(`install request failed: ${res.status} ${body.slice(0, 200)}`)
+      }
+      const data = await res.json()
+      const jobId = data?.job?.id
+      if (!jobId) throw new Error('install accepted but no job id returned')
+
+      // Poll the job until it's done. Cap the poll loop so a wedged install
+      // doesn't hang the modal forever.
+      const deadline = Date.now() + 300_000
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 2000))
+        const j = await fetch(`/api/agent-runtimes?jobId=${encodeURIComponent(jobId)}`).then((r) => r.json()).catch(() => null)
+        const job = j?.job
+        if (!job) continue
+        setJobOutput(job.output || '')
+        if (job.status === 'success' || job.status === 'failed') {
+          if (job.status === 'failed') setError(job.error || 'install failed')
+          break
+        }
+      }
+      await refreshStatus()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'install failed')
+    } finally {
+      setInstalling(false)
+    }
+  }, [refreshStatus])
+
+  const copyCmd = useCallback(async (label: string, cmd: string) => {
+    try {
+      await navigator.clipboard.writeText(cmd)
+      setCopied(label)
+      setTimeout(() => setCopied(null), 1500)
+    } catch {
+      // clipboard denied — leave silently
+    }
+  }, [])
+
+  return (
+    <div className="p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold">Set Up Oh My Pi</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Open-source coding harness · 40+ providers · subagents · LSP · DAP · browser automation.</p>
+        </div>
+        <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <svg className="w-5 h-5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M4 4l8 8M12 4l-8 8" /></svg>
+        </button>
+      </div>
+
+      <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/5 text-xs text-amber-200/90 space-y-1">
+        <p className="font-medium">Oh My Pi ≠ PI Agent</p>
+        <p className="text-amber-200/70">
+          This installs the <strong>Oh My Pi</strong> coding harness (<code>omp</code> CLI).
+          The <strong>PI Agent</strong> on the Knowledge OS page is the Chief Memory Officer — a different role with a different scope.
+        </p>
+      </div>
+
+      {installed && version && (
+        <div className="p-3 rounded-lg border border-green-500/30 bg-green-500/5 text-xs text-green-300/90">
+          <p className="font-medium">omp detected · {version}</p>
+          <p className="text-green-200/70 mt-1">Run <code>omp /login</code> to authenticate a provider, or wire keys via the Credentials Manager.</p>
+        </div>
+      )}
+
+      {!installed && (
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">Install via one of these. Mission Control prefers <code>bun</code> on this host; the curl installer is the universal fallback.</p>
+          {([
+            ['bun', 'bun install -g @oh-my-pi/pi-coding-agent'],
+            ['curl', 'curl -fsSL https://omp.sh/install | sh'],
+            ['npm', 'npm install -g @oh-my-pi/pi-coding-agent'],
+            ['ps', 'irm https://omp.sh/install.ps1 | iex'],
+          ] as const).map(([label, cmd]) => (
+            <div key={label} className="flex items-center gap-2 p-2 rounded border border-border/30 bg-secondary/20">
+              <code className="text-[11px] flex-1 overflow-x-auto whitespace-nowrap">{cmd}</code>
+              <Button size="sm" variant="ghost" onClick={() => copyCmd(label, cmd)}>{copied === label ? 'copied' : 'copy'}</Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {jobOutput && (
+        <pre className="text-[11px] text-muted-foreground/80 whitespace-pre-wrap max-h-40 overflow-y-auto p-2 rounded border border-border/30 bg-black/30">{jobOutput}</pre>
+      )}
+
+      {error && <p className="text-xs text-red-400">{error}</p>}
+
+      <div className="flex items-center justify-between gap-2">
+        <a href="/credentials" className="text-[11px] text-muted-foreground hover:text-foreground underline">Wire provider keys →</a>
+        <div className="flex gap-2">
+          {!installed && (
+            <Button size="sm" onClick={runManagedInstall} disabled={installing}>
+              {installing ? 'Installing…' : 'Install via bun'}
+            </Button>
+          )}
+          <Button size="sm" variant={installed ? 'default' : 'ghost'} onClick={onComplete}>{installed ? 'Done' : 'Close'}</Button>
+        </div>
       </div>
     </div>
   )
