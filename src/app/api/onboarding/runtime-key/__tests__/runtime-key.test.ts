@@ -68,7 +68,7 @@ describe('POST /api/onboarding/runtime-key — runtime wizard mint', () => {
     expect(res.status).toBe(401)
   })
 
-  it.each(['claude', 'codex', 'openclaw', 'hermes'] as const)(
+  it.each(['claude', 'codex', 'openclaw', 'hermes', 'hermes-vps', 'omp'] as const)(
     'mints a runtime key + paste command for %s without hitting non-existent columns',
     async (runtime) => {
       const { cookie, workspaceId } = await makeAdminSession()
@@ -132,5 +132,44 @@ describe('POST /api/onboarding/runtime-key — runtime wizard mint', () => {
     const jb = (await b.json()) as { agent_id: number; workspace_id: number }
     expect(ja.agent_id).toBe(jb.agent_id)
     expect(ja.workspace_id).toBe(workspaceId)
+  })
+
+  // Walt's D-A3 — VPS Hermes pairing must:
+  //   - use the singleton agent name `hermes-vps` (no timestamp suffix), so
+  //     re-entering the wizard from the VPS Hermes panel re-keys the
+  //     existing agent rather than spawning a new one per click;
+  //   - surface a curl-only command in addition to the Node connect script,
+  //     since the VPS does not necessarily have the script colocated;
+  //   - default capabilities include 'production-controller', 'pipelines',
+  //     'agent-orchestration' so the MC UI shows the role honestly.
+  it('hermes-vps uses a singleton agent identity per workspace (no timestamp sprawl)', async () => {
+    const { cookie, workspaceId } = await makeAdminSession()
+    const a = await runtimeKeyPOST(makeRequest({ runtime: 'hermes-vps' }, cookie))
+    const b = await runtimeKeyPOST(makeRequest({ runtime: 'hermes-vps' }, cookie))
+    expect(a.status).toBe(200)
+    expect(b.status).toBe(200)
+    const ja = (await a.json()) as { agent_id: number; agent_name: string; workspace_id: number }
+    const jb = (await b.json()) as { agent_id: number; agent_name: string }
+    expect(ja.agent_name).toBe('hermes-vps')
+    expect(jb.agent_name).toBe('hermes-vps')
+    expect(ja.agent_id).toBe(jb.agent_id) // same agent row reused
+    expect(ja.workspace_id).toBe(workspaceId)
+  })
+
+  it('hermes-vps response surfaces a curl_command with the api key + hermes-vps capabilities', async () => {
+    const { cookie } = await makeAdminSession()
+    const res = await runtimeKeyPOST(makeRequest({ runtime: 'hermes-vps' }, cookie))
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      curl_command: string
+      api_key: string
+      docs_url: string
+    }
+    expect(body.curl_command).toContain('curl -sS -X POST')
+    expect(body.curl_command).toContain('/api/runtime/handshake')
+    expect(body.curl_command).toContain(body.api_key) // pre-filled, ready to paste on VPS
+    expect(body.curl_command).toContain('"kind":"hermes-vps"')
+    expect(body.curl_command).toContain('production-controller')
+    expect(body.docs_url).toContain('VPS_HERMES_PAIRING')
   })
 })

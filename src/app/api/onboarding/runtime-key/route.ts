@@ -11,13 +11,34 @@ import crypto from 'node:crypto'
 // command the operator should paste. Wraps existing `/api/agents` + `/api/agents/:id/keys`
 // so the wizard is a single click.
 
-const ALLOWED_RUNTIMES = ['claude', 'codex', 'openclaw', 'opencode', 'hermes'] as const
+// Walt's D-A3 + Phase F:
+//   - 'hermes-vps' is the VPS-hosted Hermes runtime identity (Production
+//     Controller for the 24 AI Maintenance Pipelines).
+//   - 'omp' is the Oh My Pi coding harness.
+// Both are paired via this same one-shot runtime-key flow.
+const ALLOWED_RUNTIMES = [
+  'claude',
+  'codex',
+  'openclaw',
+  'opencode',
+  'hermes',
+  'hermes-vps',
+  'omp',
+] as const
 
 type Runtime = (typeof ALLOWED_RUNTIMES)[number]
 
 function isRuntime(v: unknown): v is Runtime {
   return typeof v === 'string' && (ALLOWED_RUNTIMES as readonly string[]).includes(v)
 }
+
+/**
+ * Runtimes with a stable singleton identity (e.g. there's only one
+ * `hermes-vps` per workspace; we don't want timestamp-suffixed agent
+ * names sprawling on every wizard re-entry). For these, the default
+ * agent name is the runtime kind itself — idempotent by intent.
+ */
+const SINGLETON_RUNTIMES = new Set<Runtime>(['hermes-vps'])
 
 function makeApiKey() {
   // 32 random bytes → 43-char base64url plus the `mca_` prefix everything
@@ -51,7 +72,14 @@ export async function POST(request: Request) {
   }
 
   const now = Math.floor(Date.now() / 1000)
-  const agentName = label || `${runtime}-runtime-${now}`
+  // Singleton runtimes (e.g. hermes-vps) get a stable identity per workspace
+  // so re-entering the wizard re-keys the existing agent rather than
+  // sprouting hermes-vps-runtime-<ts1>, hermes-vps-runtime-<ts2>, …
+  const agentName =
+    label ||
+    (SINGLETON_RUNTIMES.has(runtime)
+      ? runtime
+      : `${runtime}-runtime-${now}`)
   // Reuse an existing agent record if one already exists with this exact
   // name + workspace — idempotent so re-entering the wizard doesn't sprawl.
   const existing = db
@@ -108,6 +136,22 @@ export async function POST(request: Request) {
     `RUNTIME_TYPE=${runtime} \\\n` +
     `node scripts/connect-runtime.mjs`
 
+  // For VPS / remote runtimes where Node + the connect script may not be
+  // colocated, surface a pure-curl handshake command. This is what Walt
+  // pastes on the VPS to register hermes-vps.
+  const curlBody = JSON.stringify({
+    kind: runtime,
+    installationId: agentName,
+    label: runtime === 'hermes-vps' ? 'Hermes VPS' : agentName,
+    version: null,
+    capabilities: runtime === 'hermes-vps' ? ['production-controller', 'pipelines', 'agent-orchestration'] : [],
+  })
+  const curlCommand =
+    `curl -sS -X POST "${origin}/api/runtime/handshake" \\\n` +
+    `  -H "Content-Type: application/json" \\\n` +
+    `  -H "X-API-Key: ${apiKey}" \\\n` +
+    `  -d '${curlBody.replace(/'/g, "'\\''")}'`
+
   return NextResponse.json({
     runtime,
     agent_id: agentId,
@@ -117,7 +161,11 @@ export async function POST(request: Request) {
     api_key_hint: apiKey.slice(0, 12) + '...' + apiKey.slice(-4),
     expires_at: null,
     connect_command: command,
+    curl_command: curlCommand,
     mission_control_url: origin,
-    docs_url: '/help#runtime-setup',
+    docs_url:
+      runtime === 'hermes-vps'
+        ? '/docs/security/VPS_HERMES_PAIRING'
+        : '/help#runtime-setup',
   })
 }

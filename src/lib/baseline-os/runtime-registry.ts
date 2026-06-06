@@ -21,7 +21,15 @@
 import type { Database } from 'better-sqlite3'
 import { getDatabase } from '@/lib/db'
 
-export type RuntimeKind = 'hermes' | 'openclaw' | 'opencode' | 'codex' | 'claude-code' | 'other'
+export type RuntimeKind =
+  | 'hermes'
+  | 'hermes-vps' // Walt's D-A3 — VPS-hosted Hermes (workspace runtime, paired via runtime-key)
+  | 'openclaw'
+  | 'opencode'
+  | 'codex'
+  | 'claude-code'
+  | 'omp' // Oh My Pi coding harness (distinct from PI Agent memory role)
+  | 'other'
 
 export interface RuntimeRecord {
   id: number
@@ -45,7 +53,16 @@ export interface RuntimeRecord {
   metadata?: Record<string, unknown> | null
 }
 
-const VALID_KINDS = new Set<RuntimeKind>(['hermes', 'openclaw', 'opencode', 'codex', 'claude-code', 'other'])
+const VALID_KINDS = new Set<RuntimeKind>([
+  'hermes',
+  'hermes-vps',
+  'openclaw',
+  'opencode',
+  'codex',
+  'claude-code',
+  'omp',
+  'other',
+])
 
 function ensureTable(db: Database): void {
   db.exec(`
@@ -284,10 +301,12 @@ function toRecord(row: RuntimeRow): RuntimeRecord {
 /** Friendly customer-facing label set (operator mode never sees the slug). */
 export const RUNTIME_LABEL: Record<RuntimeKind, string> = {
   hermes: 'Hermes',
+  'hermes-vps': 'Hermes VPS', // Walt's D-A3 — production controller identity
   openclaw: 'OpenClaw',
   opencode: 'Open Code',
   codex: 'Codex',
   'claude-code': 'Claude Code',
+  omp: 'Oh My Pi', // Phase F — coding harness (NOT the PI Agent memory role)
   other: 'Runtime',
 }
 
