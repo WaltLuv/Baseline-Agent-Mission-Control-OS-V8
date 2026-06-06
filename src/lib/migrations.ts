@@ -2261,6 +2261,45 @@ const migrations: Migration[] = [
         CREATE INDEX IF NOT EXISTS idx_documents_sha ON documents(workspace_id, sha256);
       `)
     },
+  },
+  {
+    // Workspace credentials — operator-supplied API keys for external providers
+    // (LLM providers, agent CLIs, creative APIs, productivity, comms, data,
+    // billing, devops, vertical APIs). One row per (workspace_id, provider_id).
+    //
+    // Secret data is stored encrypted in `secret_ciphertext` using AES-256-GCM
+    // with a workspace-scoped DEK wrapped by CREDENTIALS_ENCRYPTION_KEY. Raw
+    // plaintext NEVER touches this table or any API response. The API surface
+    // returns only a masked preview (`secret_preview`) and verification state.
+    //
+    // Public config (e.g. SMTP host, Stripe price IDs, OpenRouter base URL) is
+    // non-secret; it lives in `public_config_json` so the UI can show it back.
+    id: '064_workspace_credentials',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS workspace_credentials (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL,
+          provider_id TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','connected','error','revoked')),
+          mode TEXT NOT NULL DEFAULT 'bring_your_own_key' CHECK (mode IN ('mission_control_credits','bring_your_own_key','both')),
+          secret_ciphertext BLOB,
+          secret_nonce BLOB,
+          secret_preview TEXT,
+          public_config_json TEXT,
+          last_verified_at INTEGER,
+          last_error TEXT,
+          created_by_user_id INTEGER,
+          updated_by_user_id INTEGER,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          UNIQUE(workspace_id, provider_id),
+          FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_workspace_creds_status
+          ON workspace_credentials(workspace_id, status, updated_at DESC);
+      `)
+    },
   }
 ]
 
