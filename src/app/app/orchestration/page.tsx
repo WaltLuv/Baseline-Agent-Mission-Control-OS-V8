@@ -49,8 +49,8 @@ const STATUS_TONE: Record<Task['status'], string> = {
 
 const SOURCE_LABEL: Record<Task['source'], string> = {
   cloud: 'Cloud',
-  'baseline-local': 'Baseline mirror',
-  'maestro-import': 'Maestro import',
+  'baseline-local': 'Mirrored from Baseline OS',
+  'maestro-import': 'Imported from Maestro',
 }
 
 type MirrorStatus = {

@@ -1,4 +1,28 @@
 /**
+ * Mirror ingest hard limits + allowlist.
+ *
+ * Walt's #63 rules: bounded payloads, rejected unknown event types, no
+ * raw secrets land in any column.
+ */
+export const MAX_EVENT_PAYLOAD_BYTES = 64 * 1024 // 64 KB per event payload
+export const ALLOWED_EVENT_TYPES = new Set<string>([
+  'task.created',
+  'task.ready',
+  'task.in_progress',
+  'task.approval_required',
+  'task.blocked',
+  'task.failed',
+  'task.done',
+  'task.claimed',
+  'task.claim_recovered',
+  'task.dependency_added',
+  'task.event',
+  'proof.attached',
+  'dispatcher.run.started',
+  'dispatcher.run.completed',
+])
+
+/**
  * Mirror ingest — Baseline OS → Mission Control event/proof sync.
  *
  * Contract (Walt's #63 rule): **event/proof sync only, NOT database
@@ -109,6 +133,15 @@ export function ingestMirrorBatch(args: IngestArgs): MirrorResult {
           result.errors.push({ external_id: ev.external_id ?? '?', error: 'malformed_event' })
           continue
         }
+        if (!ALLOWED_EVENT_TYPES.has(ev.event_type)) {
+          result.errors.push({ external_id: ev.external_id, error: 'event_type_not_allowed' })
+          continue
+        }
+        const payloadJson = JSON.stringify(ev.payload ?? {})
+        if (Buffer.byteLength(payloadJson, 'utf8') > MAX_EVENT_PAYLOAD_BYTES) {
+          result.errors.push({ external_id: ev.external_id, error: 'payload_too_large' })
+          continue
+        }
         const taskId = resolveTaskId(ev.task_external_id)
         const ts = Math.floor(ev.occurred_at)
         const res = insertEvent.run(
@@ -116,7 +149,7 @@ export function ingestMirrorBatch(args: IngestArgs): MirrorResult {
           ev.event_type.slice(0, 120),
           (ev.actor ?? 'baseline-local').slice(0, 120),
           args.userId ?? null,
-          JSON.stringify(ev.payload ?? {}),
+          payloadJson,
           args.source,
           ev.external_id.slice(0, 200),
           ts,

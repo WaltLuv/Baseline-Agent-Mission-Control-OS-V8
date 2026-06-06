@@ -50,7 +50,7 @@ function makeEvent(overrides: Partial<IncomingEvent> = {}): IncomingEvent {
 describe('mirror — ingest contract', () => {
   it('accepts a batch and records each event with source=baseline-local', () => {
     const ws = freshWorkspace()
-    const events = [makeEvent(), makeEvent({ event_type: 'task.completed' })]
+    const events = [makeEvent(), makeEvent({ event_type: 'task.done' })]
     const result = ingestMirrorBatch({ workspaceId: ws, source: 'baseline-local', events })
     expect(result.accepted).toBe(2)
     expect(result.duplicates).toBe(0)
@@ -157,11 +157,34 @@ describe('mirror — ingest contract', () => {
     expect(statusB.total_mirrored).toBe(0)
   })
 
+  it('rejects an event with an unsupported event_type (Walt\'s allowlist rule)', () => {
+    const ws = freshWorkspace()
+    const result = ingestMirrorBatch({
+      workspaceId: ws,
+      source: 'baseline-local',
+      events: [makeEvent({ event_type: 'arbitrary.attacker.payload' })],
+    })
+    expect(result.accepted).toBe(0)
+    expect(result.errors[0]).toMatchObject({ error: 'event_type_not_allowed' })
+  })
+
+  it('rejects an event whose payload exceeds the per-event byte cap', () => {
+    const ws = freshWorkspace()
+    const huge = 'x'.repeat(64 * 1024 + 1) // 64KB + 1
+    const result = ingestMirrorBatch({
+      workspaceId: ws,
+      source: 'baseline-local',
+      events: [makeEvent({ payload: { blob: huge } })],
+    })
+    expect(result.accepted).toBe(0)
+    expect(result.errors[0]).toMatchObject({ error: 'payload_too_large' })
+  })
+
   it('status endpoint surfaces count + latest event timestamp per source', () => {
     const ws = freshWorkspace()
     const events = [
       makeEvent(),
-      makeEvent({ event_type: 'task.completed' }),
+      makeEvent({ event_type: 'task.done' }),
     ]
     ingestMirrorBatch({ workspaceId: ws, source: 'baseline-local', events })
     const status = getMirrorStatus(ws)
