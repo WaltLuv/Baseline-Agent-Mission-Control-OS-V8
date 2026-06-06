@@ -1,0 +1,199 @@
+<!--
+  CLAUDE.md — Project Operating Manual
+
+  Drop this template into the root of a new repo and fill the bracketed
+  slots. Claude Code reads CLAUDE.md at session start; everything below is
+  the contract you're handing to Claude for this project.
+
+  The seven sections (A–G) below are the canonical operating-manual shape.
+  Sections A–E are required for any real project. Section F (References)
+  is highly recommended. Section G (Overrides) is opt-in — leave it
+  empty unless you actually need project-specific exceptions to your
+  global rules.
+
+  Authoring rules:
+    · One sentence per rule. Long paragraphs get skimmed.
+    · Concrete file paths beat prose. Tell Claude exactly where things live.
+    · Decisions go in §D, not in the surrounding prose, so future-you can
+      grep one place for "why did we do it this way?"
+    · If a rule rots, delete it. Stale rules are worse than no rules.
+
+  Delete this comment block before committing. The rest of the file is
+  your live operating manual.
+-->
+
+# {{PROJECT_NAME}} — Operating Manual
+
+## A. Project
+
+**What this is:** [One sentence. e.g. "Cloud dashboard for AI agent orchestration."]
+
+**Surface area:** [Web app · CLI tool · library · service · multiple — pick one.]
+
+**Audience:** [Who runs this in production — e.g. "Workspace admins and the runtimes they spawn."]
+
+**Status:** [Pre-release / Beta / GA — be honest. Customers read this.]
+
+---
+
+## B. Goal
+
+**Primary outcome this project must deliver:** [One sentence. e.g. "An operator can install a workforce template in under 60 seconds and queue real work within 10 minutes."]
+
+**Non-goals (what this project explicitly does NOT do):**
+- [e.g. "Train models — we orchestrate, we don't train."]
+- [e.g. "Replace the customer's calendar — we read it, we don't mutate it without approval."]
+
+**Finish line — when is this project "done"?** Pin objective predicates:
+- [e.g. "100% of new users complete the 5-step onboarding without contacting support."]
+- [e.g. "p95 task-claim latency under 200ms in production."]
+
+---
+
+## C. Stack
+
+**Runtime:** [Node 22 / Bun 1.x / Python 3.12 / etc.]
+
+**Frameworks + key dependencies:** [Next.js 16 + React 19 + TypeScript 5 / Vite 7 + TanStack Router / FastAPI + SQLAlchemy / etc.]
+
+**Data layer:** [SQLite (better-sqlite3) / Postgres / DynamoDB — single line is fine; details go in §F.]
+
+**Package manager:** [pnpm only — npm/yarn rejected / bun only / uv only]
+
+**Build / test commands** (Claude runs these by name; keep them current):
+
+```bash
+{{INSTALL}}              # e.g. pnpm install --frozen-lockfile
+{{DEV}}                  # e.g. pnpm dev      → localhost:3000
+{{BUILD}}                # e.g. pnpm build
+{{LINT}}                 # e.g. pnpm lint
+{{TYPECHECK}}            # e.g. pnpm typecheck
+{{TEST}}                 # e.g. pnpm test --run
+```
+
+**Quality gate:** Every commit must pass `{{LINT}}` + `{{TYPECHECK}}` + `{{TEST}}` + `{{BUILD}}` before pushing.
+
+**Path alias:** `@/*` → `./src/*` (or whatever your tsconfig says — keep this line in sync with `tsconfig.json`).
+
+**Common pitfalls:** [Native addon rebuild on Node version change · auth-pass quoting with special chars · standalone vs full server mode — list the things a new contributor will hit in their first day.]
+
+---
+
+## D. Decisions
+
+> Append-only log of architectural decisions. Newest at the top.
+> Each entry: **D-NNN: one-line decision · reason · alternative considered.**
+
+- **D-002 (YYYY-MM-DD):** [e.g. "Use AES-256-GCM for credential storage. Reason: standard library, no dep. Alternative: libsodium — heavier, no FIPS path."]
+- **D-001 (YYYY-MM-DD):** [Seed with your first non-trivial choice.]
+
+Don't put decisions in the surrounding prose — keep them in this list so future-you can grep one place.
+
+---
+
+## E. Memory Map
+
+Tell Claude where state lives. Be specific.
+
+| Memory | Location | Owner |
+|---|---|---|
+| Source code | `./src/**` | Repo |
+| Project memory | `./memory/decisions.md`, `./memory/findings.md` | Repo |
+| Runtime state | `./{{DATA_DIR}}/**` (gitignored) | Local machine |
+| Secrets | `./.env.local` (gitignored) + Credentials Manager | Local + cloud |
+| Long-term memory | `~/.{{PROJECT_SLUG}}/memory/` or vector store | User |
+| Logs | `./{{DATA_DIR}}/logs/` | Local machine |
+| Schema | `./src/lib/migrations.ts` (or equivalent) | Repo |
+
+**Data-directory override:** Set `{{DATA_DIR_ENV_VAR}}` to point runtime state somewhere other than the default (defaults to `./{{DATA_DIR}}/`).
+
+**Backup policy:** [Daily snapshots to S3 / git push memory/ files / none — be explicit.]
+
+---
+
+## F. References
+
+External docs, repos, dashboards, and decision sources Claude can pull from.
+
+**Code:**
+- [Repo URL]
+- [Sibling repos this project talks to]
+
+**Docs:**
+- [Main spec / RFC / Notion / Linear project URL]
+- `./docs/architecture/*.md` — internal architecture review docs
+
+**Dashboards + telemetry:**
+- [Grafana / Sentry / observability URLs]
+
+**External APIs:**
+- [Per-provider docs URL — Stripe / Anthropic / OpenAI / etc.]
+
+**Style guides:**
+- Conventional Commits (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`)
+- [Any project-specific style addendum]
+
+---
+
+## G. Overrides (optional)
+
+Project-specific exceptions to your global rules. Leave empty unless you need them. Each override states the rule it overrides, the project-specific replacement, and the reason.
+
+<!--
+Example:
+- **Override `global: never amend commits`:** This repo squashes feature branches on merge; amending the last local commit before the squash is fine. Reason: the CI bot's diff already snapshotted the pre-amend state.
+-->
+
+---
+
+## Conventions (delete this section if your global instructions already cover these — keep them here only when they need to override globals)
+
+- **Commits**: Conventional Commits (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`)
+- **No AI attribution**: Never add `Co-Authored-By` or similar trailers to commits unless explicitly asked.
+- **Comments**: Default to none. Only write a comment when the WHY is non-obvious.
+- **Tests**: Real database / network when feasible; mock only at system boundaries.
+- **Secrets**: Never in source. Never in MEMORY.md. Credentials Manager only.
+
+---
+
+## Common workflows
+
+### Add a new feature
+
+1. Read the relevant existing file(s).
+2. State the plan in one sentence.
+3. Make the smallest change that ships the feature.
+4. Run the full quality gate.
+5. Commit with a Conventional Commits message that explains *why*.
+
+### Fix a bug
+
+1. Reproduce it locally with the minimum failing input.
+2. Pin the regression with a failing test.
+3. Land the fix.
+4. Confirm the test now passes + the full suite still green.
+
+### Bump a dependency
+
+1. Read the changelog between current and target version.
+2. Bump in `package.json` (or equivalent), re-lock.
+3. Run the full quality gate.
+4. If breaking, fix the callers in the same commit.
+5. Note the bump in §D Decisions if it changes behaviour.
+
+---
+
+## Don't break
+
+This is the no-regression contract for the project. Edits that break any
+of these are reverted without discussion.
+
+- [e.g. "The Stripe webhook signature verification."]
+- [e.g. "Workspace isolation — never read across `workspace_id`."]
+- [e.g. "Setup completion math — first task queued → 100%."]
+- [Add the surfaces that, if broken, page someone or lose money.]
+
+---
+
+*Filed: {{YYYY-MM-DD}} · Maintained by: {{MAINTAINER}} · Built with the
+A–G operating-manual template at `docs/templates/CLAUDE.md.template`.*
