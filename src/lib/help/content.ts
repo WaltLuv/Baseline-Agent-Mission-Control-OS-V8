@@ -36,7 +36,22 @@ export interface ChecklistItemDef {
   label: string
   why: string
   actionLabel: string
+  /** Internal panel name (resolved by panelHref → /app/<panel>). */
   panel: string
+  /**
+   * Optional absolute href used when the destination is outside the
+   * panel router (e.g. /flight-deck, /marketplace). When set this wins
+   * over panel.
+   */
+  href?: string
+  /** Required vs optional — only required items count toward the 100% bar. */
+  tier: 'required' | 'optional'
+  /**
+   * Weight inside the required tier (used to derive the 20/40/60/80/100
+   * step model). Total of required weights must sum to 100. Ignored for
+   * optional items.
+   */
+  weight?: number
 }
 
 export interface GlossaryTerm {
@@ -148,83 +163,104 @@ export const GETTING_STARTED: HelpStep[] = [
 // ---------------------------------------------------------------------------
 // Setup Checklist — items + derivation rules
 // ---------------------------------------------------------------------------
+/**
+ * Setup checklist — Walt's "finish line" mapped to deterministic per-row
+ * truth predicates. Five required items, weighted 20/20/20/20/20 → 100%.
+ * Optional items improve the experience but never block the 100% bar.
+ *
+ * Per Walt's P0: NO circular routes (was: template → overview, which is
+ * THIS page). NO panel name that doesn't actually resolve. Every CTA
+ * goes to either a real /app/<panel> route OR an explicit external href.
+ */
 export const CHECKLIST_ITEMS: ChecklistItemDef[] = [
+  // ── Required (sum of weights = 100) ──────────────────────────────
   {
     id: 'workspace',
-    label: 'Workspace created',
-    why: 'A workspace holds your AI employees, your memory, and your work.',
+    label: 'Account created',
+    why: 'You\'re signed in to Mission Control. This is the starting line.',
     actionLabel: 'Open Settings',
     panel: 'settings',
+    tier: 'required',
+    weight: 20,
   },
   {
     id: 'template',
-    label: 'Business template selected',
-    why: 'The right template hires the right roles and skills for how you operate.',
-    actionLabel: 'Choose template',
-    panel: 'overview',
+    label: 'Workforce template installed',
+    why: 'Property Management, Insurance, or AI Product Launch Team — pick the one that fits your business.',
+    actionLabel: 'Choose a template',
+    panel: 'activate',
+    tier: 'required',
+    weight: 20,
   },
   {
-    id: 'employee',
-    label: 'First AI Employee added',
-    why: 'Without employees, no work gets done. Hire at least one.',
-    actionLabel: 'Open Agents',
-    panel: 'agents',
-  },
-  {
-    id: 'skill',
-    label: 'First skill installed',
-    why: 'Skills are the capabilities your workforce uses to do real work.',
-    actionLabel: 'Open Skills',
-    panel: 'skills',
-  },
-  {
-    id: 'memory',
-    label: 'Memory source connected',
-    why: 'Connect memory so your AI workforce remembers how your business operates.',
-    actionLabel: 'Open Memory',
-    panel: 'memory',
+    id: 'credentials',
+    label: 'Credentials or credits configured',
+    why: 'Either save your own API keys (BYOK) or top up Mission Control credits so your workforce can run paid work.',
+    actionLabel: 'Open Credentials',
+    panel: 'credentials',
+    tier: 'required',
+    weight: 20,
   },
   {
     id: 'runtime',
     label: 'Runtime connected',
-    why: 'Runtimes let your employees execute real work and report telemetry back.',
-    actionLabel: 'Runtime Setup',
-    panel: 'help/runtime-setup',
-  },
-  {
-    id: 'billing',
-    label: 'Workforce Credits configured',
-    why: 'Credits power the work. Configure billing so the workforce can stay on shift.',
-    actionLabel: 'Open Billing',
-    panel: 'billing',
+    why: 'Claude Code, Codex, Hermes, OpenClaw — at least one runtime needs to claim work.',
+    actionLabel: 'Connect a runtime',
+    panel: 'runtimes',
+    tier: 'required',
+    weight: 20,
   },
   {
     id: 'task',
-    label: 'First task created',
-    why: 'Tasks are how work gets into your workforce. Create the first one.',
+    label: 'First task queued',
+    why: 'Hand your workforce something real. The installed template seeds starter tasks automatically.',
     actionLabel: 'Open Tasks',
     panel: 'tasks',
+    tier: 'required',
+    weight: 20,
+  },
+  // ── Optional (do not count toward 100%) ──────────────────────────
+  {
+    id: 'team',
+    label: 'Invite a teammate',
+    why: 'Bring in operators and admins so the platform is more than a personal tool.',
+    actionLabel: 'Open Team',
+    panel: 'team',
+    tier: 'optional',
   },
   {
-    id: 'approval',
-    label: 'First approval reviewed',
-    why: 'Approvals are how you stay in control. Review one to close the loop.',
-    actionLabel: 'Open Approvals',
-    panel: 'exec-approvals',
+    id: 'google',
+    label: 'Connect Google (Drive / Gmail / Calendar)',
+    why: 'Lets your workforce read documents and post follow-ups without you forwarding emails.',
+    actionLabel: 'Connect Google',
+    panel: 'credentials',
+    tier: 'optional',
+  },
+  {
+    id: 'flightdeck',
+    label: 'Install Flight Deck (desktop terminal)',
+    why: 'Native desktop window for either deployment mode. Optional — browser-only is fine.',
+    actionLabel: 'Open Flight Deck',
+    panel: 'overview',
+    href: '/flight-deck',
+    tier: 'optional',
+  },
+  {
+    id: 'marketplace',
+    label: 'Add a marketplace skill',
+    why: 'Premium skills and workflows extend what your workforce can ship.',
+    actionLabel: 'Browse Marketplace',
+    panel: 'overview',
+    href: '/marketplace',
+    tier: 'optional',
   },
   {
     id: 'briefing',
-    label: 'Executive Briefing generated',
-    why: 'The morning briefing is your one-page view of the workforce.',
+    label: 'Daily Brief configured',
+    why: 'Your one-page workforce digest — runs automatically once configured.',
     actionLabel: 'Open Overview',
     panel: 'overview',
-  },
-  {
-    id: 'roi',
-    label: 'Skill ROI tracked',
-    why: 'See which skills are creating the most value for your business.',
-    actionLabel: 'Open Overview',
-    panel: 'overview',
+    tier: 'optional',
   },
 ]
 

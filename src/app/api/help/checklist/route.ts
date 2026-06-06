@@ -2,10 +2,11 @@
  * /api/help/checklist
  *
  * Returns the setup checklist derived from real workspace state.
- * No fake ticks: each line is satisfied only when the underlying entity exists.
+ * No fake ticks: each line is satisfied only when the underlying entity
+ * exists. See lib/help/checklist.ts for the predicate model.
  */
 import { NextResponse } from 'next/server'
-import { deriveChecklist, type ChecklistInput } from '@/lib/help/checklist'
+import { completionPercent, deriveChecklist, nextStep, type ChecklistInput } from '@/lib/help/checklist'
 import { getDatabase } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -34,54 +35,89 @@ function tableExists(name: string): boolean {
 }
 
 export async function GET() {
+  // Required predicates — each maps to ONE measurable condition.
+  const workspaceConfigured = tableExists('users') && count('SELECT COUNT(*) AS c FROM users') > 0
+
+  // Template "installed" — the install path creates agent rows with
+  // source = 'workforce-template:<slug>'. Falling back to the older
+  // settings key for legacy installs.
+  const templateSelected = (() => {
+    if (tableExists('agents') && count("SELECT COUNT(*) AS c FROM agents WHERE source LIKE 'workforce-template:%'") > 0) return true
+    if (tableExists('settings') && count("SELECT COUNT(*) AS c FROM settings WHERE key = 'business.template'") > 0) return true
+    return false
+  })()
+
+  // Credentials OR credits — either at least one credential row has a
+  // secret_preview (i.e. it was actually saved with an encrypted value)
+  // OR the workspace has a positive credit balance.
+  const credentialsOrCreditsConfigured = (() => {
+    if (tableExists('workspace_credentials') && count("SELECT COUNT(*) AS c FROM workspace_credentials WHERE secret_preview IS NOT NULL AND secret_preview != ''") > 0) return true
+    if (tableExists('credit_ledger')) {
+      const balanceRow = (() => {
+        try {
+          const db = getDatabase()
+          return db
+            .prepare(
+              `SELECT COALESCE(SUM(amount), 0) AS bal FROM credit_ledger`,
+            )
+            .get() as { bal: number } | undefined
+        } catch { return undefined }
+      })()
+      if (balanceRow && balanceRow.bal > 0) return true
+    }
+    return false
+  })()
+
+  const runtimesConnectedCount = (() => {
+    let c = 0
+    if (tableExists('runtimes')) c += count('SELECT COUNT(*) AS c FROM runtimes')
+    if (c === 0 && tableExists('runtime_handshakes')) c += count('SELECT COUNT(DISTINCT runtime) AS c FROM runtime_handshakes')
+    if (c === 0 && tableExists('runtime_telemetry')) c += count('SELECT COUNT(DISTINCT runtime) AS c FROM runtime_telemetry')
+    return c
+  })()
+
+  const taskCount = (() => {
+    let c = 0
+    if (tableExists('tasks')) c += count('SELECT COUNT(*) AS c FROM tasks')
+    if (tableExists('orchestration_tasks')) c += count('SELECT COUNT(*) AS c FROM orchestration_tasks')
+    return c
+  })()
+
+  // Optional predicates — failure to measure → false (not surfaced as broken).
+  const teamInvitedCount = tableExists('users') ? Math.max(0, count('SELECT COUNT(*) AS c FROM users') - 1) : 0
+  const googleConnected = tableExists('workspace_credentials')
+    ? count("SELECT COUNT(*) AS c FROM workspace_credentials WHERE provider_id IN ('gmail','google_drive','google_calendar','google_contacts') AND status = 'connected'") > 0
+    : false
+  const marketplacePurchasesCount = (() => {
+    if (tableExists('workspace_marketplace_purchases')) return count('SELECT COUNT(*) AS c FROM workspace_marketplace_purchases')
+    if (tableExists('marketplace_purchases')) return count('SELECT COUNT(*) AS c FROM marketplace_purchases')
+    return 0
+  })()
+  const briefingGenerated = tableExists('briefings') ? count('SELECT COUNT(*) AS c FROM briefings') > 0 : false
+
   const input: ChecklistInput = {
-    workspaceConfigured: tableExists('users') && count('SELECT COUNT(*) AS c FROM users') > 0,
-    templateSelected: tableExists('settings')
-      ? count("SELECT COUNT(*) AS c FROM settings WHERE key = 'business.template'") > 0
-      : false,
-    agentCount: tableExists('agents') ? count('SELECT COUNT(*) AS c FROM agents') : 0,
-    installedSkillsCount: tableExists('skills') ? count('SELECT COUNT(*) AS c FROM skills') : 0,
-    memorySourcesCount: (() => {
-      // Count distinct memory sources by inspecting integrations / connected memory.
-      let c = 0
-      if (tableExists('integrations')) {
-        c += count(
-          "SELECT COUNT(*) AS c FROM integrations WHERE name IN ('notion','obsidian','pinecone') AND status = 'connected'"
-        )
-      }
-      if (tableExists('memory_files')) {
-        c += count('SELECT COUNT(DISTINCT path) AS c FROM memory_files') > 0 ? 1 : 0
-      }
-      return c
-    })(),
-    runtimesConnectedCount: (() => {
-      let c = 0
-      if (tableExists('runtime_handshakes')) {
-        c += count('SELECT COUNT(DISTINCT runtime) AS c FROM runtime_handshakes')
-      } else if (tableExists('runtime_telemetry')) {
-        c += count('SELECT COUNT(DISTINCT runtime) AS c FROM runtime_telemetry')
-      }
-      return c
-    })(),
-    billingConfigured: tableExists('settings')
-      ? count("SELECT COUNT(*) AS c FROM settings WHERE key LIKE 'billing.%'") > 0
-      : false,
-    taskCount: tableExists('tasks') ? count('SELECT COUNT(*) AS c FROM tasks') : 0,
-    approvalsReviewedCount: tableExists('exec_approvals')
-      ? count("SELECT COUNT(*) AS c FROM exec_approvals WHERE status IN ('approved','rejected','changes_requested')")
-      : 0,
-    briefingGenerated: tableExists('briefings') ? count('SELECT COUNT(*) AS c FROM briefings') > 0 : false,
-    trackedSkillRoiCount: tableExists('skill_events')
-      ? count('SELECT COUNT(DISTINCT skill_id) AS c FROM skill_events')
-      : 0,
+    workspaceConfigured,
+    templateSelected,
+    credentialsOrCreditsConfigured,
+    runtimesConnectedCount,
+    taskCount,
+    teamInvitedCount,
+    googleConnected,
+    marketplacePurchasesCount,
+    briefingGenerated,
+    // flightDeckInstalled: not measurable from the cloud DB; stays false
+    // and the row appears as "not done" optional.
   }
 
   const items = deriveChecklist(input)
   const done = items.filter((i) => i.done).length
+  const percent = completionPercent(items)
+  const next = nextStep(items)
   return NextResponse.json({
     items,
     total: items.length,
     completed: done,
-    percent: items.length === 0 ? 0 : Math.round((done / items.length) * 100),
+    percent,
+    next_step: next,
   })
 }

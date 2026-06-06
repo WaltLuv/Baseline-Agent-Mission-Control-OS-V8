@@ -21,7 +21,7 @@ import {
   TOUR_STEPS,
   CHECKLIST_ITEMS,
 } from '../help/content'
-import { deriveChecklist, completionPercent } from '../help/checklist'
+import { deriveChecklist, completionPercent, nextStep } from '../help/checklist'
 
 const FORBIDDEN_IN_OWNER_CONTENT = ['pinecone', 'embedding', 'vector index', 'orchestrator', 'langchain']
 
@@ -115,14 +115,54 @@ describe('help content', () => {
     expect(TOUR_STEPS.length).toBe(10)
   })
 
-  it('checklist defines 11 items, each with action and panel', () => {
-    expect(CHECKLIST_ITEMS.length).toBe(11)
+  it('checklist defines required + optional items with valid CTAs', () => {
+    expect(CHECKLIST_ITEMS.length).toBeGreaterThan(0)
     for (const item of CHECKLIST_ITEMS) {
       expect(item.label).toBeTruthy()
       expect(item.why).toBeTruthy()
       expect(item.actionLabel).toBeTruthy()
-      expect(item.panel).toBeTruthy()
+      expect(['required', 'optional']).toContain(item.tier)
+      // No item may have an empty panel string OR a placeholder href.
+      expect(item.panel.length).toBeGreaterThan(0)
+      if (item.href) {
+        expect(item.href.startsWith('/')).toBe(true)
+        expect(item.href).not.toBe('#')
+      }
     }
+  })
+
+  it('required tier sums to exactly 100% weight (deterministic progress bar)', () => {
+    const required = CHECKLIST_ITEMS.filter((i) => i.tier === 'required')
+    expect(required.length).toBeGreaterThan(0)
+    const total = required.reduce((sum, i) => sum + (i.weight ?? 0), 0)
+    expect(total).toBe(100)
+  })
+
+  it('Walt\'s P0: no required item routes back to the overview page (no circular CTAs)', () => {
+    // The OLD bug: template → panel='overview' which is /app which is THIS page.
+    // Required items must point to a real destination, not the same page.
+    const required = CHECKLIST_ITEMS.filter((i) => i.tier === 'required')
+    for (const item of required) {
+      if (!item.href) {
+        expect(item.panel, `${item.id} routes to overview (circular)`).not.toBe('overview')
+      }
+    }
+  })
+
+  it('template CTA points at the activation hub (not overview), per Walt\'s acceptance criteria', () => {
+    const tmpl = CHECKLIST_ITEMS.find((i) => i.id === 'template')!
+    expect(tmpl).toBeDefined()
+    expect(tmpl.panel).toBe('activate')
+    expect(tmpl.actionLabel.toLowerCase()).toContain('template')
+  })
+
+  it('credentials, runtime, task CTAs route to /app/<panel> destinations that exist', () => {
+    // Sanity guard: routes for the four key onboarding steps must match
+    // the real /app subroutes built earlier in the cycle.
+    const idToPanel = Object.fromEntries(CHECKLIST_ITEMS.map((i) => [i.id, i.panel]))
+    expect(idToPanel.credentials).toBe('credentials')
+    expect(idToPanel.runtime).toBe('runtimes')
+    expect(idToPanel.task).toBe('tasks')
   })
 
   describe('owner-facing copy stays free of technical jargon', () => {
@@ -148,66 +188,134 @@ describe('help content', () => {
   })
 })
 
-describe('checklist derivation', () => {
-  it('derives done flags from real inputs', () => {
-    const items = deriveChecklist({
-      workspaceConfigured: true,
-      templateSelected: false,
-      agentCount: 2,
-      installedSkillsCount: 0,
-      memorySourcesCount: 1,
-      runtimesConnectedCount: 0,
-      billingConfigured: true,
-      taskCount: 5,
-      approvalsReviewedCount: 0,
-      briefingGenerated: false,
-      trackedSkillRoiCount: 0,
-    })
-    const done = Object.fromEntries(items.map((i) => [i.id, i.done]))
-    expect(done.workspace).toBe(true)
-    expect(done.template).toBe(false)
-    expect(done.employee).toBe(true)
-    expect(done.skill).toBe(false)
-    expect(done.memory).toBe(true)
-    expect(done.runtime).toBe(false)
-    expect(done.billing).toBe(true)
-    expect(done.task).toBe(true)
-    expect(done.approval).toBe(false)
-    expect(done.briefing).toBe(false)
-    expect(done.roi).toBe(false)
+describe('checklist derivation — Walt P0 model', () => {
+  const fresh = {
+    workspaceConfigured: false,
+    templateSelected: false,
+    credentialsOrCreditsConfigured: false,
+    runtimesConnectedCount: 0,
+    taskCount: 0,
+  }
+
+  it('fresh account reports 0% (no fake ticks)', () => {
+    expect(completionPercent(deriveChecklist(fresh))).toBe(0)
   })
 
-  it('completion percent rounds correctly', () => {
+  it('account-only signin reports 20%', () => {
+    const items = deriveChecklist({ ...fresh, workspaceConfigured: true })
+    expect(completionPercent(items)).toBe(20)
+    expect(items.find((i) => i.id === 'workspace')!.done).toBe(true)
+    expect(items.find((i) => i.id === 'template')!.done).toBe(false)
+  })
+
+  it('signin + template installed reports 40%', () => {
+    const items = deriveChecklist({
+      ...fresh,
+      workspaceConfigured: true,
+      templateSelected: true,
+    })
+    expect(completionPercent(items)).toBe(40)
+  })
+
+  it('signin + template + credentials reports 60% (the credentials-or-credits rule)', () => {
+    const items = deriveChecklist({
+      ...fresh,
+      workspaceConfigured: true,
+      templateSelected: true,
+      credentialsOrCreditsConfigured: true,
+    })
+    expect(completionPercent(items)).toBe(60)
+  })
+
+  it('signin + template + credentials + runtime reports 80%', () => {
+    const items = deriveChecklist({
+      ...fresh,
+      workspaceConfigured: true,
+      templateSelected: true,
+      credentialsOrCreditsConfigured: true,
+      runtimesConnectedCount: 1,
+    })
+    expect(completionPercent(items)).toBe(80)
+  })
+
+  it('all required = 100%', () => {
     const items = deriveChecklist({
       workspaceConfigured: true,
       templateSelected: true,
-      agentCount: 1,
-      installedSkillsCount: 1,
-      memorySourcesCount: 1,
+      credentialsOrCreditsConfigured: true,
       runtimesConnectedCount: 1,
-      billingConfigured: true,
       taskCount: 1,
-      approvalsReviewedCount: 1,
-      briefingGenerated: true,
-      trackedSkillRoiCount: 1,
     })
     expect(completionPercent(items)).toBe(100)
   })
 
-  it('reports 0 percent when nothing is set', () => {
+  it('optional items do not push percent past 100', () => {
     const items = deriveChecklist({
-      workspaceConfigured: false,
-      templateSelected: false,
-      agentCount: 0,
-      installedSkillsCount: 0,
-      memorySourcesCount: 0,
-      runtimesConnectedCount: 0,
-      billingConfigured: false,
-      taskCount: 0,
-      approvalsReviewedCount: 0,
-      briefingGenerated: false,
-      trackedSkillRoiCount: 0,
+      workspaceConfigured: true,
+      templateSelected: true,
+      credentialsOrCreditsConfigured: true,
+      runtimesConnectedCount: 1,
+      taskCount: 1,
+      teamInvitedCount: 3,
+      googleConnected: true,
+      flightDeckInstalled: true,
+      marketplacePurchasesCount: 5,
+      briefingGenerated: true,
     })
-    expect(completionPercent(items)).toBe(0)
+    expect(completionPercent(items)).toBe(100)
+  })
+
+  it('optional items do NOT contribute to the percent when required are incomplete', () => {
+    const items = deriveChecklist({
+      ...fresh,
+      workspaceConfigured: true,
+      teamInvitedCount: 5,
+      googleConnected: true,
+      marketplacePurchasesCount: 10,
+    })
+    // Only workspace (required) is done → 20%; optional state is ignored
+    // by the percent calculation.
+    expect(completionPercent(items)).toBe(20)
+  })
+
+  it('nextStep walks required tier first, then optional, then null at 100%', () => {
+    const noneDone = deriveChecklist(fresh)
+    expect(nextStep(noneDone)?.id).toBe('workspace')
+
+    const requiredDone = deriveChecklist({
+      workspaceConfigured: true,
+      templateSelected: true,
+      credentialsOrCreditsConfigured: true,
+      runtimesConnectedCount: 1,
+      taskCount: 1,
+    })
+    // All required done; nextStep returns the first undone optional row.
+    const next = nextStep(requiredDone)
+    expect(next?.tier).toBe('optional')
+
+    const allDone = deriveChecklist({
+      workspaceConfigured: true,
+      templateSelected: true,
+      credentialsOrCreditsConfigured: true,
+      runtimesConnectedCount: 1,
+      taskCount: 1,
+      teamInvitedCount: 1,
+      googleConnected: true,
+      flightDeckInstalled: true,
+      marketplacePurchasesCount: 1,
+      briefingGenerated: true,
+    })
+    expect(nextStep(allDone)).toBeNull()
+  })
+
+  it('the stuck-37% scenario from Walt no longer happens (no fake auto-true items)', () => {
+    // Old bug: workspace/interface/credentials hardcoded as true → ~37%
+    // for a fresh user. The new model only ticks `workspace` automatically.
+    const items = deriveChecklist({ ...fresh, workspaceConfigured: true })
+    const required = items.filter((i) => i.tier === 'required')
+    const requiredDone = required.filter((i) => i.done).length
+    // Exactly 1 of 5 required ticked → 20%, NOT 37%.
+    expect(requiredDone).toBe(1)
+    expect(completionPercent(items)).toBe(20)
   })
 })
