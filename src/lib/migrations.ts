@@ -2337,6 +2337,34 @@ const migrations: Migration[] = [
         CREATE INDEX IF NOT EXISTS idx_model_catalog_sync ON model_catalog(source, last_synced_at DESC);
       `)
     },
+  },
+  {
+    // OAuth state tokens for the Google round-trip flow.
+    //
+    // We never trust the `state` echo'd back by Google's callback — it has to
+    // match a row WE created at consent time, scoped to the workspace + service
+    // and within the freshness window. Each row is single-use: callback
+    // consumes it, errors delete it. This blocks CSRF attempts where an
+    // attacker tries to bait the operator into linking THEIR Google account
+    // to a workspace they don't own.
+    id: '066_oauth_states',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS oauth_states (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          state TEXT NOT NULL UNIQUE,
+          provider TEXT NOT NULL,
+          service TEXT,
+          workspace_id INTEGER NOT NULL,
+          user_id INTEGER,
+          return_to TEXT,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          expires_at INTEGER NOT NULL,
+          FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_oauth_states_expiry ON oauth_states(expires_at);
+      `)
+    },
   }
 ]
 

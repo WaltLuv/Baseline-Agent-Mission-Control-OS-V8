@@ -80,6 +80,60 @@ const CATEGORY_LABELS: Record<string, string> = {
   vertical_api: 'Vertical APIs',
 }
 
+// Provider IDs that use the Google OAuth round-trip. The credential row
+// stores only the encrypted refresh_token; the operator never types it
+// manually.
+const GOOGLE_SERVICES = new Set(['gmail', 'google_drive', 'google_calendar', 'google_contacts'])
+
+function GoogleConnectButton({
+  service,
+  saved,
+  onError,
+}: {
+  service: string
+  saved: boolean
+  onError: (msg: string) => void
+}) {
+  const [busy, setBusy] = useState(false)
+  async function startConnect() {
+    setBusy(true)
+    try {
+      const res = await fetch('/api/credentials/google/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ service, return_to: '/app/credentials' }),
+      })
+      const json = (await res.json().catch(() => ({}))) as { consent_url?: string; error?: string; hint?: string }
+      if (!res.ok || !json.consent_url) {
+        const hint = json.hint ? ` — ${json.hint}` : ''
+        onError(`${json.error ?? `HTTP ${res.status}`}${hint}`)
+        return
+      }
+      window.location.href = json.consent_url
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'connect failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="mt-5">
+      <button
+        type="button"
+        onClick={startConnect}
+        disabled={busy}
+        data-testid={`google-connect-${service}`}
+        className="h-10 w-full rounded-lg border border-violet-500/40 bg-violet-500/[0.08] text-violet-200 text-sm font-semibold hover:bg-violet-500/[0.14] disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
+      >
+        {busy ? 'Opening Google…' : saved ? 'Reconnect with Google' : 'Connect with Google'}
+      </button>
+      <p className="mt-2 text-[11px] text-white/45 leading-relaxed">
+        You&apos;ll be redirected to Google&apos;s consent screen. Mission Control stores only the encrypted refresh token; access tokens are issued on demand by the runtime that needs them.
+      </p>
+    </div>
+  )
+}
+
 export default function CredentialsPage() {
   const [data, setData] = useState<CatalogResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -168,9 +222,41 @@ export default function CredentialsPage() {
 
   const encryptionWarning = data && !data.encryption_configured
 
+  // Read the Google callback status banner from the URL once on mount. If
+  // the operator just returned from a consent flow we surface a clear
+  // success / error chip up top and strip the param so a refresh doesn't
+  // re-fire the banner.
+  const [googleBanner, setGoogleBanner] = useState<{ kind: 'ok' | 'error'; detail?: string } | null>(null)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const g = params.get('google')
+    if (g === 'ok' || g === 'error') {
+      setGoogleBanner({ kind: g, detail: params.get('google_error') ?? undefined })
+      params.delete('google')
+      params.delete('google_error')
+      const next = params.toString()
+      window.history.replaceState(null, '', `${window.location.pathname}${next ? `?${next}` : ''}`)
+    }
+  }, [])
+
   return (
     <div className="min-h-screen bg-[#09090b] text-[#fafafa] antialiased" data-testid="credentials-page">
       <main className="mx-auto max-w-screen-xl px-6 py-10">
+        {googleBanner && (
+          <div
+            data-testid="google-oauth-banner"
+            className={`mb-4 rounded-xl border px-4 py-3 text-sm ${
+              googleBanner.kind === 'ok'
+                ? 'border-emerald-500/30 bg-emerald-500/[0.06] text-emerald-200'
+                : 'border-amber-500/30 bg-amber-500/[0.06] text-amber-200'
+            }`}
+          >
+            {googleBanner.kind === 'ok'
+              ? 'Google account connected. Refresh token saved (encrypted).'
+              : `Google OAuth did not complete${googleBanner.detail ? ` — ${googleBanner.detail.replace(/_/g, ' ')}` : ''}.`}
+          </div>
+        )}
         <header className="mb-8">
           <h1 className="text-2xl font-semibold tracking-tight">API Keys &amp; Credentials</h1>
           <p className="mt-2 text-sm text-white/55 max-w-2xl">
@@ -366,6 +452,19 @@ export default function CredentialsPage() {
                 </section>
               )}
 
+              {/* Google OAuth deep link — visible only on Gmail / Drive /
+                  Calendar / Contacts cards. Starts the real /api/credentials/
+                  google/connect → consent → callback round trip. The button
+                  is disabled until the operator has saved the google_oauth
+                  client_id + client_secret on the Google OAuth card. */}
+              {GOOGLE_SERVICES.has(active.id) && (
+                <GoogleConnectButton
+                  service={active.id}
+                  saved={!!active.saved}
+                  onError={(msg) => setSaveError(msg)}
+                />
+              )}
+
               {saveError && (
                 <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/[0.06] px-3 py-2 text-sm text-red-200" data-testid="credentials-save-error">
                   {saveError}
@@ -380,16 +479,22 @@ export default function CredentialsPage() {
                   data-testid="credentials-delete"
                   className="text-sm text-red-300/80 hover:text-red-300 disabled:opacity-40"
                 >
-                  Delete
+                  {GOOGLE_SERVICES.has(active.id) && active.saved ? 'Disconnect' : 'Delete'}
                 </button>
                 <button
                   type="button"
-                  disabled={saving || (encryptionWarning ?? false)}
+                  disabled={saving || (encryptionWarning ?? false) || GOOGLE_SERVICES.has(active.id)}
                   onClick={saveActive}
                   data-testid="credentials-save"
                   className="h-10 px-5 rounded-lg bg-white text-[#09090b] text-sm font-semibold hover:bg-white/90 disabled:opacity-40"
                 >
-                  {saving ? 'Saving…' : active.saved ? 'Update' : 'Save credential'}
+                  {GOOGLE_SERVICES.has(active.id)
+                    ? 'Use Connect with Google ↑'
+                    : saving
+                      ? 'Saving…'
+                      : active.saved
+                        ? 'Update'
+                        : 'Save credential'}
                 </button>
               </div>
             </div>
