@@ -2365,6 +2365,113 @@ const migrations: Migration[] = [
         CREATE INDEX IF NOT EXISTS idx_oauth_states_expiry ON oauth_states(expires_at);
       `)
     },
+  },
+  {
+    // Cloud-native orchestration tables. See
+    // docs/architecture/ORCHESTRATION_MAP.md for the full three-mode model.
+    //
+    // Hard rule: Mission Control does NOT shell out to a local Maestro CLI,
+    // does NOT read .maestro/ from disk, and does NOT depend on Baseline OS
+    // being installed for any of these flows. The schema is multi-tenant
+    // from day one (workspace_id everywhere) and integrates with the
+    // existing runtime_keys / credit_ledger / approval surfaces.
+    id: '067_cloud_orchestration',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS orchestration_missions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL,
+          slug TEXT NOT NULL,
+          title TEXT NOT NULL,
+          description TEXT,
+          status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','done','archived')),
+          tags_json TEXT,
+          metadata_json TEXT,
+          source TEXT NOT NULL DEFAULT 'cloud' CHECK (source IN ('cloud','baseline-local','maestro-import')),
+          created_by_user_id INTEGER,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          UNIQUE(workspace_id, slug),
+          FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_orch_missions_ws ON orchestration_missions(workspace_id, status, updated_at DESC);
+
+        CREATE TABLE IF NOT EXISTS orchestration_tasks (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL,
+          mission_id INTEGER NOT NULL,
+          title TEXT NOT NULL,
+          description TEXT,
+          status TEXT NOT NULL DEFAULT 'todo'
+            CHECK (status IN ('todo','ready','in_progress','approval_required','blocked','failed','done')),
+          tag TEXT,
+          assignee TEXT,
+          runtime_hint TEXT,
+          priority INTEGER NOT NULL DEFAULT 0,
+          payload_json TEXT,
+          result_json TEXT,
+          error TEXT,
+          claimed_by_runtime_key_id INTEGER,
+          claimed_at INTEGER,
+          heartbeat_at INTEGER,
+          completed_at INTEGER,
+          approval_policy TEXT NOT NULL DEFAULT 'auto'
+            CHECK (approval_policy IN ('auto','operator','required')),
+          source TEXT NOT NULL DEFAULT 'cloud' CHECK (source IN ('cloud','baseline-local','maestro-import')),
+          maestro_task_id TEXT,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+          FOREIGN KEY (mission_id) REFERENCES orchestration_missions(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_orch_tasks_ws_status ON orchestration_tasks(workspace_id, status, priority DESC, updated_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_orch_tasks_mission ON orchestration_tasks(mission_id);
+        CREATE INDEX IF NOT EXISTS idx_orch_tasks_heartbeat ON orchestration_tasks(heartbeat_at) WHERE status = 'in_progress';
+
+        CREATE TABLE IF NOT EXISTS orchestration_task_dependencies (
+          task_id INTEGER NOT NULL,
+          depends_on_task_id INTEGER NOT NULL,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          PRIMARY KEY (task_id, depends_on_task_id),
+          FOREIGN KEY (task_id) REFERENCES orchestration_tasks(id) ON DELETE CASCADE,
+          FOREIGN KEY (depends_on_task_id) REFERENCES orchestration_tasks(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_orch_deps_lookup ON orchestration_task_dependencies(depends_on_task_id);
+
+        CREATE TABLE IF NOT EXISTS orchestration_events (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL,
+          task_id INTEGER,
+          mission_id INTEGER,
+          event_type TEXT NOT NULL,
+          actor TEXT NOT NULL,
+          actor_user_id INTEGER,
+          actor_runtime_key_id INTEGER,
+          payload_json TEXT,
+          source TEXT NOT NULL DEFAULT 'cloud',
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_orch_events_ws_time ON orchestration_events(workspace_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_orch_events_task ON orchestration_events(task_id, created_at DESC);
+
+        CREATE TABLE IF NOT EXISTS orchestration_proofs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL,
+          task_id INTEGER NOT NULL,
+          proof_type TEXT NOT NULL,
+          proof_uri TEXT,
+          proof_sha256 TEXT,
+          metadata_json TEXT,
+          posted_by_runtime_key_id INTEGER,
+          posted_by_user_id INTEGER,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+          FOREIGN KEY (task_id) REFERENCES orchestration_tasks(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_orch_proofs_task ON orchestration_proofs(task_id, created_at DESC);
+      `)
+    },
   }
 ]
 
