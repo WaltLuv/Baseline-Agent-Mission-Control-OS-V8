@@ -1,6 +1,13 @@
 'use client'
 
 import Link from 'next/link'
+import { useState, useRef } from 'react'
+import {
+  CONSOLE_DIRECTIVES,
+  directivesByGroup,
+  INDUSTRIES,
+  type ConsoleDirective,
+} from '@/lib/workforce-console'
 
 function ArrowRight() {
   return (
@@ -10,141 +17,166 @@ function ArrowRight() {
   )
 }
 
-function CheckCircleIcon() {
+// ─── Interactive Workforce OS Console (landing simulation — labeled DEMO) ───
+function WorkforceConsole() {
+  const [directiveId, setDirectiveId] = useState<string>(CONSOLE_DIRECTIVES[0].directiveId)
+  const [running, setRunning] = useState(false)
+  const [doneStep, setDoneStep] = useState(-1)
+  const [elapsed, setElapsed] = useState(0)
+  const [finished, setFinished] = useState(false)
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([])
+
+  const directive = CONSOLE_DIRECTIVES.find((d) => d.directiveId === directiveId) as ConsoleDirective
+
+  function reset() {
+    timers.current.forEach(clearTimeout)
+    timers.current = []
+    setRunning(false); setDoneStep(-1); setElapsed(0); setFinished(false)
+  }
+
+  function selectDirective(id: string) {
+    reset()
+    setDirectiveId(id)
+  }
+
+  function run() {
+    if (running) return
+    reset()
+    setRunning(true)
+    const stepMs = 700
+    directive.steps.forEach((_, i) => {
+      timers.current.push(setTimeout(() => {
+        setDoneStep(i)
+        setElapsed(Number(((i + 1) * (stepMs / 1000)).toFixed(1)))
+        if (i === directive.steps.length - 1) { setRunning(false); setFinished(true) }
+      }, (i + 1) * stepMs))
+    })
+  }
+
+  const tokenEstimate = directive.steps.length * 1200 + directive.agentMap.length * 400
+
   return (
-    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
-      <path d="M22 4L12 14.01l-3-3" />
-    </svg>
+    <section className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24" id="console" data-testid="workforce-console">
+      <div className="text-center mb-8">
+        <span className="inline-block text-xs font-mono uppercase tracking-widest text-violet-300/70 mb-3">Interactive Workforce OS Console</span>
+        <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Pick a directive. Watch the workforce run.</h2>
+        <p className="mt-3 text-white/55 max-w-2xl mx-auto text-sm">
+          Choose a directive below and run the simulation to see how Baseline dispatches workers, tracks tools, and triggers human gates.{' '}
+          <span className="text-amber-300/80" data-testid="console-demo-label">This is a simulation/demo — no live work is executed.</span>
+        </p>
+      </div>
+
+      <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-5">
+        {/* Directive selector (grouped) */}
+        <div className="space-y-5">
+          {(['general', 'industry'] as const).map((group) => (
+            <div key={group}>
+              <div className="text-[11px] font-mono uppercase tracking-widest text-white/40 mb-2">
+                {group === 'general' ? 'General Builder Directives' : 'Industry Workforce Directives'}
+              </div>
+              <div className="grid gap-2">
+                {directivesByGroup(group).map((d) => {
+                  const active = d.directiveId === directiveId
+                  return (
+                    <button
+                      key={d.directiveId}
+                      type="button"
+                      data-testid={`directive-${d.directiveId}`}
+                      onClick={() => selectDirective(d.directiveId)}
+                      className={`text-left rounded-xl border px-4 py-3 transition-colors ${active ? 'border-violet-400/50 bg-violet-500/[0.08]' : 'border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]'}`}
+                    >
+                      <div className="text-[13px] font-semibold text-white">{d.label}</div>
+                      <div className="text-[11px] text-white/50 mt-0.5">{d.description}</div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Agent map + run + log */}
+        <div className="rounded-2xl border border-white/[0.08] bg-[#0b0b0f] overflow-hidden flex flex-col">
+          <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between">
+            <span className="text-[11px] font-mono text-white/45">baseline-core@automations · {directive.directiveId}</span>
+            <span className="text-[11px] font-mono text-white/45" data-testid="console-tokens">~{tokenEstimate.toLocaleString()} tokens · {elapsed.toFixed(1)}s</span>
+          </div>
+
+          {/* Agent Map (changes per directive) */}
+          <div className="px-4 py-3 border-b border-white/[0.06]">
+            <div className="text-[10px] uppercase tracking-wider text-white/40 mb-2">Agent Map</div>
+            <div className="flex flex-wrap gap-1.5" data-testid="console-agent-map">
+              {directive.agentMap.map((a, i) => {
+                const thinking = running && i <= doneStep
+                const done = finished
+                return (
+                  <span key={a} data-testid="agent-node" className="text-[11px] rounded-md border px-2 py-1"
+                    style={{ borderColor: done ? 'rgba(16,185,129,0.4)' : thinking ? 'rgba(167,139,250,0.5)' : 'rgba(255,255,255,0.1)', color: done ? '#34d399' : thinking ? '#c4b5fd' : 'rgba(255,255,255,0.65)' }}>
+                    {a} · {done ? 'done' : thinking ? 'thinking' : 'idle'}
+                  </span>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Log */}
+          <div className="flex-1 px-4 py-3 font-mono text-[11px] min-h-[180px] space-y-1" data-testid="console-log">
+            {doneStep < 0 && !running && <div className="text-white/40">Kernel idling. Click Run Mission to start the simulation.</div>}
+            {directive.steps.map((s, i) => (i <= doneStep ? (
+              <div key={i} className="text-white/75"><span className="text-emerald-400">✓</span> {s}</div>
+            ) : null))}
+            {finished && (
+              <>
+                <div className="mt-2 text-amber-300/90" data-testid="console-human-gate">⛔ Human gate: {directive.humanGates.join('; ')}</div>
+                <div className="mt-1 text-violet-300/90" data-testid="console-proof">proof: {directive.proofSummary}</div>
+              </>
+            )}
+          </div>
+
+          {/* Controls + post-run CTA */}
+          <div className="px-4 py-3 border-t border-white/[0.06] flex items-center justify-between gap-3">
+            <button type="button" onClick={run} disabled={running} data-testid="console-run"
+              className="h-9 px-4 rounded-lg bg-white text-[#09090b] text-[13px] font-semibold hover:bg-white/90 disabled:opacity-50">
+              {running ? 'Running…' : 'Run Mission'}
+            </button>
+            {finished && (
+              <Link href={directive.ctaRoute} data-testid="console-cta"
+                className="h-9 px-4 rounded-lg bg-violet-500 text-white text-[13px] font-semibold hover:bg-violet-400 inline-flex items-center gap-1.5">
+                {directive.ctaLabel} <ArrowRight />
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
   )
 }
 
-function AlertIcon() {
+function LayerSection({ title, blurb, tiles }: { title: string; blurb: string; tiles: Array<{ label: string; href?: string; desc: string }> }) {
   return (
-    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 8v4M12 16h.01" />
-    </svg>
-  )
-}
-
-function FeatureIcon({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-      {children}
+    <div className="mb-10" data-testid={`layer-${title.replace(/\s+/g, '-').toLowerCase()}`}>
+      <h3 className="text-lg font-semibold tracking-tight">{title}</h3>
+      <p className="text-sm text-white/50 mt-1 mb-4">{blurb}</p>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {tiles.map((t) => {
+          const inner = (
+            <>
+              <div className="text-[13px] font-semibold text-white">{t.label}</div>
+              <div className="text-[11px] text-white/50 mt-1">{t.desc}</div>
+            </>
+          )
+          return t.href ? (
+            <Link key={t.label} href={t.href} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 hover:bg-white/[0.04] transition-colors block">{inner}</Link>
+          ) : (
+            <div key={t.label} className="rounded-xl border border-white/[0.06] bg-white/[0.015] p-4">{inner}</div>
+          )
+        })}
+      </div>
     </div>
   )
 }
 
-// Cost-of-chaos examples — concrete things a business owner already loses sleep over.
-const problems = [
-  'Leads that never get followed up.',
-  'Invoices that don\'t get chased.',
-  'Approvals that sit in someone\'s inbox for days.',
-  'Customer communication that\'s inconsistent across the team.',
-  'Repetitive work eating hours your team should spend with customers.',
-]
-
-// Outcome-led capabilities. Technology is the engine, not the headline.
-const features = [
-  {
-    title: 'Work that doesn\'t fall through the cracks',
-    desc: 'Every lead, invoice, approval, and follow-up has an owner and a deadline. Nothing waits for someone to remember.',
-    icon: (
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9 11l3 3L22 4" />
-        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
-      </svg>
-    ),
-  },
-  {
-    title: 'Consistent execution, every day',
-    desc: 'Your best process runs the same way whether it\'s a Monday or a holiday weekend. No drift, no exceptions, no guesswork.',
-    icon: (
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="22,12 18,12 15,21 9,3 6,12 2,12" />
-      </svg>
-    ),
-  },
-  {
-    title: 'Visibility into who did what',
-    desc: 'See every task that ran, who owned it, what it cost, and what came out the other side. Accountability built in.',
-    icon: (
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="3" rx="2" width="20" height="14" />
-        <path d="M8 21h8M12 17v4" />
-      </svg>
-    ),
-  },
-  {
-    title: 'Approval before anything risky',
-    desc: 'Define what needs a human signoff — a refund over $500, a contract update, a customer escalation — and the system pauses for you.',
-    icon: (
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
-        <polyline points="22,4 12,14.01 9,11" />
-      </svg>
-    ),
-  },
-  {
-    title: 'Costs you can actually see',
-    desc: 'Cost-per-task, cost-per-customer, cost-per-department. Know what each piece of your operation actually costs to run.',
-    icon: (
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
-      </svg>
-    ),
-  },
-  {
-    title: 'Separate workspaces for each part of the business',
-    desc: 'Locations, departments, clients, or properties — each one gets its own clean workspace. No spillover, no cross-contamination.',
-    icon: (
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="3" rx="2" width="20" height="14" />
-        <path d="M8 21h8M12 17v4" />
-      </svg>
-    ),
-  },
-]
-
-// "How It Works" — outcome (Install / Automate / Monitor) on the surface,
-// technology (AI Employees / Skills / Workflows / Baseline OS) introduced
-// only here, after the value is already understood.
-const steps = [
-  {
-    num: '01',
-    title: 'Install Systems',
-    desc: 'We map how your business actually runs today, then install the workflows, rules, and approval gates that make work happen on time and in order.',
-    icon: (
-      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
-      </svg>
-    ),
-  },
-  {
-    num: '02',
-    title: 'Automate Work',
-    desc: 'AI employees and automated workflows pick up the repetitive jobs — intake, follow-ups, dispatch, status updates, reporting — and run them every day without being asked.',
-    icon: (
-      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z" />
-      </svg>
-    ),
-  },
-  {
-    num: '03',
-    title: 'Monitor Results',
-    desc: 'One executive view — Baseline OS — shows what ran, what got stuck, what saved time, and what each part of the operation is costing you.',
-    icon: (
-      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="3" rx="2" width="20" height="14" />
-        <path d="M8 21h8M12 17v4" />
-      </svg>
-    ),
-  },
-]
-
-export default function LandingPage() {
+export default function Home() {
   return (
     <div className="min-h-screen bg-[#09090b] text-[#fafafa] antialiased overflow-x-hidden">
       {/* Global glow */}
@@ -157,480 +189,108 @@ export default function LandingPage() {
       <header className="relative z-10 border-b border-white/[0.06] backdrop-blur-xl bg-[#09090b]/70">
         <div className="mx-auto max-w-screen-xl px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 text-sm font-semibold tracking-tight">
-            <img
-              src="/brand/mc-logo-128.png"
-              alt="Baseline Automations"
-              width={28}
-              height={28}
-              className="w-7 h-7 rounded-md object-contain"
-            />
+            <img src="/brand/mc-logo-128.png" alt="Baseline Automations" width={28} height={28} className="w-7 h-7 rounded-md object-contain" />
             Baseline Automations
           </Link>
           <nav className="hidden md:flex items-center gap-6">
-            {/* Top nav surfaces the destinations Walt called out — Marketplace,
-                VisionOps, PropControl, Mission Control. Section-jump links
-                (Problem / How It Works / Features / Pricing) still live in
-                the page body. */}
+            <a href="#industries" className="text-sm text-white/65 hover:text-white transition-colors" data-testid="nav-industries">Industries</a>
+            <a href="#console" className="text-sm text-white/65 hover:text-white transition-colors" data-testid="nav-console">Console</a>
             <Link href="/marketplace" data-testid="nav-marketplace" className="text-sm text-white/65 hover:text-white transition-colors">Marketplace</Link>
-            <a href="https://rehab-vision.emergent.host" target="_blank" rel="noopener noreferrer" data-testid="nav-visionops" className="text-sm text-white/65 hover:text-white transition-colors">VisionOps</a>
-            <a href="https://propcontrolempire.com" target="_blank" rel="noopener noreferrer" data-testid="nav-propcontrol" className="text-sm text-white/65 hover:text-white transition-colors">PropControl</a>
             <Link href="/login" data-testid="nav-mission-control" className="text-sm text-white/65 hover:text-white transition-colors">Mission Control</Link>
-            <span className="text-white/15" aria-hidden>·</span>
-            <a href="#pricing" className="text-sm text-white/45 hover:text-white transition-colors" data-testid="nav-pricing">Pricing</a>
+            <Link href="/pricing" className="text-sm text-white/45 hover:text-white transition-colors" data-testid="nav-pricing">Pricing</Link>
           </nav>
           <div className="flex items-center gap-3">
-            <Link href="/login" data-testid="header-sign-in" className="text-sm text-white/60 hover:text-white transition-colors px-3 py-1.5">
-              Sign In
-            </Link>
-            <Link
-              href="/signup"
-              data-testid="header-start-free"
-              className="text-sm font-medium bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.1] rounded-lg px-3.5 py-1.5 transition-colors"
-            >
-              Start Free
-            </Link>
+            <Link href="/login" data-testid="header-sign-in" className="text-sm text-white/60 hover:text-white transition-colors px-3 py-1.5">Sign In</Link>
+            <Link href="/signup" data-testid="header-start-free" className="text-sm font-medium bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.1] rounded-lg px-3.5 py-1.5 transition-colors">Get Started</Link>
           </div>
         </div>
       </header>
 
-      {/* ─── HERO ─── outcome-first headline; technology mentioned only as the engine */}
-      <section className="relative z-10 mx-auto max-w-screen-xl px-6 pt-20 pb-24 md:pt-32 md:pb-36 text-center">
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/20 bg-violet-500/5 px-3.5 py-1 text-[13px] font-medium text-violet-300 mb-8">
-          AI Workforce OS
+      {/* ─── HERO ─── Workforce OS, templates as the hero ─── */}
+      <section className="relative z-10 mx-auto max-w-screen-xl px-6 pt-20 pb-12 md:pt-28 text-center">
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/20 bg-violet-500/5 px-3.5 py-1 text-[13px] font-medium text-violet-300 mb-8" data-testid="hero-badge">
+          Introducing Baseline Automations AI Workforce OS
         </div>
         <h1 className="mx-auto max-w-4xl text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.1]">
-          <span className="bg-gradient-to-b from-white via-white to-white/60 bg-clip-text text-transparent">
-            We install systems into your business so work gets done{' '}
-          </span>
-          <span className="bg-gradient-to-r from-violet-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">
-            faster, more consistently, and at a lower cost.
-          </span>
+          <span className="bg-gradient-to-b from-white via-white to-white/60 bg-clip-text text-transparent">Workforce OS</span>
         </h1>
-        <p className="mx-auto mt-6 max-w-2xl text-base md:text-lg text-white/55 leading-relaxed">
-          Powered by automation, workflows, AI employees, and operational systems managed through Baseline&nbsp;OS.
+        <p className="mx-auto mt-5 max-w-2xl text-lg md:text-xl text-white/70 leading-relaxed">
+          Install a complete AI workforce in minutes.
         </p>
-        <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <a
-            href="#how-it-works"
-            data-testid="hero-see-how-it-works"
-            className="h-11 px-6 rounded-lg bg-white text-[#09090b] text-sm font-semibold hover:bg-white/90 transition-colors flex items-center gap-2"
-          >
-            See How It Works
-            <ArrowRight />
+        <p className="mx-auto mt-3 max-w-2xl text-sm md:text-base text-white/50 leading-relaxed">
+          Choose your industry, install the workforce, connect your agents, and operate your company — runtimes, creative studio, knowledge, and orchestration in one OS.
+        </p>
+        <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <a href="#industries" data-testid="hero-choose-industry" className="h-11 px-6 rounded-lg bg-white text-[#09090b] text-sm font-semibold hover:bg-white/90 transition-colors flex items-center gap-2">
+            Choose your industry <ArrowRight />
           </a>
-          <Link
-            href="/signup"
-            data-testid="hero-start-free"
-            className="h-11 px-6 rounded-lg bg-white/[0.06] text-white/80 text-sm font-medium border border-white/[0.08] hover:bg-white/[0.1] hover:text-white transition-colors"
-          >
-            Start Free
-          </Link>
+          <Link href="/login" data-testid="hero-sign-in" className="h-11 px-6 rounded-lg bg-white/[0.06] text-white/80 text-sm font-medium border border-white/[0.08] hover:bg-white/[0.1] hover:text-white transition-colors">Sign In</Link>
         </div>
       </section>
 
-      {/* ─── PROBLEM ─── */}
-      <section id="problem" className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-32">
-        <div className="max-w-3xl mx-auto text-center mb-12">
-          <span className="inline-block text-xs font-mono uppercase tracking-widest text-white/40 mb-4">The Problem</span>
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight leading-tight">
-            Most businesses lose money because{' '}
-            <span className="bg-gradient-to-r from-orange-300 to-amber-300 bg-clip-text text-transparent">
-              work falls through the cracks.
-            </span>
-          </h2>
-          <p className="mt-5 text-white/45 max-w-xl mx-auto">
-            You hire good people, but the work still doesn&apos;t get done on time. Sound familiar?
-          </p>
+      {/* ─── INDUSTRIES (HERO) — what workforce do you want to install? ─── */}
+      <section id="industries" className="relative z-10 mx-auto max-w-screen-xl px-6 pb-20" data-testid="industries">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">What workforce do you want to install?</h2>
+          <p className="mt-2 text-white/55 text-sm">Production-ready workforce templates — each a full team of AI employees, workflows, and approvals.</p>
         </div>
-        <ul className="mx-auto max-w-2xl space-y-3">
-          {problems.map((p) => (
-            <li
-              key={p}
-              className="flex items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4"
-              data-testid="problem-item"
-            >
-              <div className="text-amber-300/80 mt-0.5">
-                <AlertIcon />
-              </div>
-              <p className="text-[15px] text-white/80 leading-relaxed">{p}</p>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {/* ─── SOLUTION ─── */}
-      <section className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-32">
-        <div className="max-w-3xl mx-auto text-center">
-          <span className="inline-block text-xs font-mono uppercase tracking-widest text-violet-300/80 mb-4">The Solution</span>
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight leading-tight">
-            We install systems that make sure the{' '}
-            <span className="bg-gradient-to-r from-violet-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">
-              right work gets done at the right time.
-            </span>
-          </h2>
-          <p className="mt-5 text-white/55 leading-relaxed max-w-2xl mx-auto">
-            Your team stops being the bottleneck. Repetitive work runs in the background. Critical decisions still come to you — only when they need to.
-          </p>
-        </div>
-      </section>
-
-      {/* ─── HOW IT WORKS — Install → Automate → Monitor ─── */}
-      <section
-        id="how-it-works"
-        className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-36"
-      >
-        <div className="text-center mb-14">
-          <span className="inline-block text-xs font-mono uppercase tracking-widest text-white/40 mb-3">How It Works</span>
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">
-            Three steps from chaos to{' '}
-            <span className="text-violet-400">running on rails</span>
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-12">
-          {steps.map((step, i) => (
-            <div key={step.num} className="relative" data-testid={`how-step-${step.num}`}>
-              {/* Connector line between steps (hidden on mobile) */}
-              {i < steps.length - 1 && (
-                <div className="hidden md:block absolute top-8 left-[60%] right-[-2.5rem] h-px bg-gradient-to-r from-white/10 to-transparent" />
-              )}
-              <div className="flex items-start gap-4">
-                <div className="flex flex-col items-center pt-1">
-                  <div className="w-14 h-14 rounded-full border border-white/[0.08] bg-white/[0.03] flex items-center justify-center text-white/70">
-                    {step.icon}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-xs font-mono text-violet-400/80 tracking-widest">
-                    STEP {step.num}
-                  </span>
-                  <h3 className="mt-1 text-lg font-semibold">{step.title}</h3>
-                  <p className="mt-2 text-sm text-white/50 leading-relaxed">{step.desc}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* The "engine" callout — AI is acknowledged as how, not what */}
-        <div className="mt-14 mx-auto max-w-3xl rounded-xl border border-white/[0.06] bg-white/[0.02] px-6 py-5 text-center">
-          <p className="text-sm text-white/55 leading-relaxed">
-            <span className="text-white/85 font-medium">Under the hood:</span>{' '}
-            AI employees, installable skills, supervised teams, defined workflows, and Baseline&nbsp;OS as the executive command center. You see outcomes; the engine handles the rest.
-          </p>
-        </div>
-      </section>
-
-      {/* ─── WHAT YOU GET (features) ─── */}
-      <section id="features" className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-36">
-        <div className="mb-14 text-center">
-          <span className="inline-block text-xs font-mono uppercase tracking-widest text-white/40 mb-3">What You Get</span>
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">
-            Operations that{' '}
-            <span className="text-violet-400">actually run themselves</span>
-          </h2>
-          <p className="mt-3 text-white/45 max-w-xl mx-auto">
-            Built for teams that depend on execution, not effort.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {features.map(f => (
-            <div
-              key={f.title}
-              data-testid="feature-card"
-              className="group rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 hover:border-violet-500/20 hover:bg-violet-500/[0.03] transition-colors"
-            >
-              <FeatureIcon>{f.icon}</FeatureIcon>
-              <h3 className="mt-4 text-sm font-semibold text-white">{f.title}</h3>
-              <p className="mt-2 text-sm text-white/50 leading-relaxed">{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ─── AI PRODUCT LAUNCH TEAM — founders / creators / non-technical ─── */}
-      <section
-        id="ai-product-launch-team"
-        className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-32"
-        data-testid="ai-product-launch-team"
-      >
-        <div className="max-w-3xl mx-auto text-center mb-10">
-          <span className="inline-block text-xs font-mono uppercase tracking-widest text-violet-300/80 mb-4">
-            For founders, creators &amp; non-technical operators
-          </span>
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight leading-tight">
-            AI Team to{' '}
-            <span className="bg-gradient-to-r from-violet-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">
-              Build Faster and Win Customers
-            </span>
-          </h2>
-          <p className="mt-5 text-white/55 leading-relaxed max-w-2xl mx-auto">
-            A full AI team that helps you launch faster at a lower cost. You decide, and your agents handle research, planning, building, testing, and marketing.
-          </p>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 mb-8" data-testid="ai-product-launch-explainer">
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
-            <h3 className="text-sm font-semibold text-white mb-2">What this team helps with</h3>
-            <p className="text-[13px] text-white/55 leading-relaxed">
-              Research, design, coding, marketing, and revenue systems in one place. Mission Control runs a multi-agent workflow — a team of AI employees such as Product Manager, Engineer, Designer, Data Scientist, QA Tester, SEO Strategist, and Growth Marketer — who work together to plan, build, test, and launch your app from scratch.
-            </p>
-          </div>
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
-            <h3 className="text-sm font-semibold text-white mb-2">Built for natural-language building</h3>
-            <p className="text-[13px] text-white/55 leading-relaxed">
-              You do not need technical experience to get started. If you can explain what you want, you can start building. For advanced users, export code, sync to GitHub, run locally, or deploy to your own infrastructure.
-            </p>
-          </div>
-        </div>
-
-        {/* Project types */}
-        <div className="mb-10" data-testid="ai-product-launch-project-types">
-          <p className="text-[11px] uppercase tracking-widest text-white/40 font-mono mb-3 text-center">Popular project types</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {[
-              { name: 'SaaS', desc: 'Subscription products with auth, billing, and real-time storage.' },
-              { name: 'Internal Tools', desc: 'Dashboards for business data, workflows, and operations.' },
-              { name: 'Personal Websites', desc: 'Portfolio, blog, creator, or lead-generation site.' },
-              { name: 'E-commerce', desc: 'Product pages that convert, with Stripe for secure payments.' },
-              { name: 'Automations', desc: 'Workflows that reduce repetitive work and connect tools.' },
-              { name: 'AI Agent Apps', desc: 'Custom AI employees, tools, dashboards, and workflows.' },
-            ].map((p) => (
-              <div key={p.name} data-testid="ai-product-launch-project-type" className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
-                <div className="text-sm font-semibold text-white">{p.name}</div>
-                <p className="mt-1 text-[12px] text-white/50 leading-relaxed">{p.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Capability strip — credits, Stripe, SEO, GitHub, multilingual */}
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-6 py-5" data-testid="ai-product-launch-capability-strip">
-          <h3 className="text-sm font-semibold text-white mb-3">From idea to revenue, in one supervised control plane</h3>
-          <ul className="grid sm:grid-cols-2 gap-2 text-[12.5px] text-white/65 leading-relaxed">
-            <li>· <strong className="text-white/85">Credits, not subscriptions.</strong> Mission Control uses a transparent credit system — research, build, test, SEO, and paid API usage all draw from the same balance. No monthly Mission Control fee, no setup fee.</li>
-            <li>· <strong className="text-white/85">SEO pages + launch content drafts.</strong> Helps you draft SEO landing pages, metadata, and growth content; reports on visibility signals rather than promising rankings.</li>
-            <li>· <strong className="text-white/85">Stripe payments wired with approval.</strong> Pricing changes and live checkouts wait for operator sign-off before customers see them.</li>
-            <li>· <strong className="text-white/85">Code ownership + GitHub sync.</strong> Export code or sync the project to GitHub anytime. After export, run it locally or host it on your own infrastructure.</li>
-            <li>· <strong className="text-white/85">Real integrations, not a demo.</strong> Connects to the tools, runtimes, APIs, and dev workflows you already use through the Credentials Manager.</li>
-            <li>· <strong className="text-white/85">Multilingual input.</strong> Ideate, chat, and build in your native language; the agents reply in kind.</li>
-          </ul>
-          <p className="mt-4 text-[11px] text-white/40 leading-relaxed" data-testid="ai-product-launch-truth-note">
-            What this isn&apos;t: an autonomous launch. Customer-facing pushes — production deploys, pricing changes, GitHub push to main, paid ad campaigns — wait for your approval. The team supervises and drafts; you decide.
-          </p>
-        </div>
-      </section>
-
-      {/* ─── VERTICALS — built for businesses that depend on execution ─── */}
-      <section className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-32">
-        <div className="text-center max-w-3xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">
-            Built for Businesses That{' '}
-            <span className="text-violet-400">Depend on Execution</span>
-          </h2>
-          <p className="mt-4 text-white/45">
-            If your business runs on follow-ups, dispatch, approvals, intake, and reporting — this is for you.
-          </p>
-        </div>
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-xs text-white/35 font-medium tracking-wide uppercase">
-          {[
-            'Property Management',
-            'Real Estate',
-            'Insurance',
-            'Mortgage',
-            'CPA',
-            'Law',
-            'General Contractors',
-            'Home Services',
-            'Marketing Agencies',
-            'AI Agencies',
-          ].map((label, i, arr) => (
-            <span key={label} className="flex items-center gap-x-6" data-testid="vertical-item">
-              <span>{label}</span>
-              {i < arr.length - 1 && <span className="w-1 h-1 rounded-full bg-white/20" aria-hidden />}
-            </span>
-          ))}
-        </div>
-      </section>
-
-      {/* ─── ROI / TESTIMONIAL — outcome-focused quote; same metrics ─── */}
-      <section className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-36">
-        <div className="relative rounded-2xl border border-white/[0.06] bg-gradient-to-br from-violet-500/[0.06] to-blue-500/[0.04] overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-transparent to-blue-500/10 opacity-40" />
-          <div className="relative px-8 py-14 md:px-16 md:py-20 text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 mb-6">
-              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="23,6 13.5,15.5 8.5,10.5 1,18" />
-                <polyline points="17,6 23,6 23,12" />
-              </svg>
-            </div>
-            <blockquote className="mx-auto max-w-2xl text-xl md:text-2xl font-light leading-relaxed text-white/85">
-              &ldquo;Baseline Automations helped us install systems that{' '}
-              <span className="text-white font-medium">eliminated bottlenecks, improved accountability, and gave our team back over 20 hours per week</span>{' '}
-              — across maintenance, intake, dispatch, and reporting.&rdquo;
-            </blockquote>
-            <div className="mt-8 grid grid-cols-3 gap-6 max-w-md mx-auto">
-              <div data-testid="metric-hours-saved">
-                <div className="text-2xl md:text-3xl font-bold text-white">20+</div>
-                <div className="text-xs text-white/40 mt-1 uppercase tracking-wide font-medium">Hours Saved / Week</div>
-              </div>
-              <div data-testid="metric-faster-dispatch">
-                <div className="text-2xl md:text-3xl font-bold text-white">3.2×</div>
-                <div className="text-xs text-white/40 mt-1 uppercase tracking-wide font-medium">Faster Dispatch</div>
-              </div>
-              <div data-testid="metric-cost-reduction">
-                <div className="text-2xl md:text-3xl font-bold text-white">40%</div>
-                <div className="text-xs text-white/40 mt-1 uppercase tracking-wide font-medium">Cost Reduction</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── TWO DEPLOYMENT MODES — honest about where it runs ─── */}
-      <section className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-32" data-testid="deployment-modes">
-        <div className="text-center mb-12 max-w-3xl mx-auto">
-          <span className="inline-block text-xs font-mono uppercase tracking-widest text-white/40 mb-3">Two Ways To Run It</span>
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">
-            Same workforce.{' '}
-            <span className="text-violet-400">Local or cloud.</span>
-          </h2>
-          <p className="mt-4 text-white/55 leading-relaxed">
-            Mission Control is the same product in both modes — only the host changes. Run it on your own machine for on-prem control, or in the cloud for shared team workspaces.
-          </p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 max-w-3xl mx-auto">
-          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-5" data-testid="mode-local">
-            <div className="inline-flex items-center rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] uppercase tracking-wider font-semibold text-emerald-300 mb-3">
-              Mode 1 · Local
-            </div>
-            <h3 className="text-base font-semibold text-white">Baseline OS</h3>
-            <p className="mt-2 text-sm text-white/55 leading-relaxed">
-              Self-host on a Mac mini, VPS, or workstation. Your runtimes, files, and memory stay on the box. No vendor lock-in.
-            </p>
-          </div>
-          <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-5" data-testid="mode-cloud">
-            <div className="inline-flex items-center rounded-full bg-violet-500/15 px-2.5 py-0.5 text-[10px] uppercase tracking-wider font-semibold text-violet-300 mb-3">
-              Mode 2 · Cloud
-            </div>
-            <h3 className="text-base font-semibold text-white">Mission Control</h3>
-            <p className="mt-2 text-sm text-white/55 leading-relaxed">
-              Run it as a hosted workspace your team shares. Connect runtimes from any machine. Start free, top up with credits when you need paid work.
-            </p>
-          </div>
-        </div>
-        <div className="mt-6 text-center">
-          <Link
-            href="/flight-deck"
-            data-testid="deployment-modes-flight-deck"
-            className="inline-flex items-center gap-2 text-sm text-white/65 hover:text-white transition-colors"
-          >
-            Or install the Flight Deck desktop terminal — works with both modes
-            <ArrowRight />
-          </Link>
-        </div>
-      </section>
-
-      {/* ─── PRICING TEASER — credit-pack model, honest about free vs paid ─── */}
-      <section id="pricing" className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-36">
-        <div className="text-center mb-14">
-          <span className="inline-block text-xs font-mono uppercase tracking-widest text-white/40 mb-3">Pricing</span>
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">
-            Free to start.{' '}
-            <span className="text-violet-400">Top up with credits when you need paid work.</span>
-          </h2>
-          <p className="mt-4 text-white/55 max-w-2xl mx-auto leading-relaxed">
-            Mission Control is free. Buy credit packs when your workforce runs paid work or when you unlock premium marketplace items. No subscription.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-3xl mx-auto">
-          {/* Starter Pack */}
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6" data-testid="pricing-card-pack-starter">
-            <span className="inline-block text-xs font-medium uppercase tracking-wider text-white/40 mb-2">Starter Pack</span>
-            <div className="text-3xl font-bold">$10</div>
-            <p className="mt-2 text-sm text-white/40">1,000 credits — try the workforce on one or two recurring jobs.</p>
-            <ul className="mt-5 space-y-2 text-sm text-white/55">
-              <li className="flex items-center gap-2"><CheckCircleIcon /> One-time purchase</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> Credits never expire</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> Buys premium skills, workflows, employees</li>
-            </ul>
-          </div>
-
-          {/* Power Pack — highlighted */}
-          <div className="relative rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6" data-testid="pricing-card-pack-power">
-            <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[11px] font-semibold uppercase tracking-wider text-violet-300 bg-violet-500/20 border border-violet-500/30 rounded-full px-3 py-0.5">
-              Most Popular
-            </span>
-            <span className="inline-block text-xs font-medium uppercase tracking-wider text-violet-300/80 mb-2">Power Pack</span>
-            <div className="mt-1 text-3xl font-bold">$25</div>
-            <p className="mt-2 text-sm text-white/40">2,750 credits (250 bonus) — sustains a small workforce on real workflows.</p>
-            <ul className="mt-5 space-y-2 text-sm text-white/55">
-              <li className="flex items-center gap-2"><CheckCircleIcon /> 10% bonus credits</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> Credits never expire</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> Paid AI/API usage at 2.5× markup</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> Unlocks all marketplace items</li>
-            </ul>
-          </div>
-
-          {/* Pro Pack */}
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6" data-testid="pricing-card-pack-pro">
-            <span className="inline-block text-xs font-medium uppercase tracking-wider text-white/40 mb-2">Pro Pack</span>
-            <div className="text-3xl font-bold">$50</div>
-            <p className="mt-2 text-sm text-white/40">6,000 credits (500 bonus) — for operators running multiple agents daily.</p>
-            <ul className="mt-5 space-y-2 text-sm text-white/55">
-              <li className="flex items-center gap-2"><CheckCircleIcon /> 10% bonus credits</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> Credits never expire</li>
-              <li className="flex items-center gap-2"><CheckCircleIcon /> Best per-credit price</li>
-            </ul>
-          </div>
-        </div>
-
-        <p className="mt-8 text-center text-xs text-white/40 max-w-xl mx-auto leading-relaxed" data-testid="pricing-credit-disclosure">
-          1 credit = $0.10 customer price. Paid AI / API usage debits credits at a 2.5× markup on raw provider cost.
-          Free workforce templates, demo employees, and free marketplace items debit nothing.
-        </p>
-
-        <div className="text-center mt-8">
-          <Link
-            href="/pricing"
-            data-testid="pricing-view-full"
-            className="inline-flex items-center gap-2 h-11 px-6 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors"
-          >
-            View Full Pricing
-            <ArrowRight />
-          </Link>
-        </div>
-      </section>
-
-      {/* ─── FINAL CTA — outcome-focused ─── */}
-      <section className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24 md:pb-36">
-        <div className="text-center rounded-2xl border border-white/[0.06] bg-white/[0.02] px-8 py-14 md:px-16 md:py-20">
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">
-            Ready to deploy your{' '}
-            <span className="text-violet-400">first AI employee?</span>
-          </h2>
-          <p className="mt-4 text-white/45 max-w-md mx-auto">
-            Set up in minutes. Mission Control is free to start — credits only when you run paid work.
-          </p>
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              href="/signup"
-              data-testid="footer-cta-start-free"
-              className="h-11 px-6 rounded-lg bg-white text-[#09090b] text-sm font-semibold hover:bg-white/90 transition-colors flex items-center gap-2"
-            >
-              Start Free
-              <ArrowRight />
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+          {INDUSTRIES.map((ind) => (
+            <Link key={ind.slug} href={`/signup?vertical=${ind.slug}`} data-testid={`industry-${ind.slug}`}
+              className="group rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 hover:-translate-y-0.5 hover:border-violet-400/40 transition-all">
+              <div className="text-[14px] font-semibold text-white">{ind.label}</div>
+              <div className="text-[11px] text-violet-300/70 mt-2 inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">Install <ArrowRight /></div>
             </Link>
-            <a
-              href="#how-it-works"
-              data-testid="footer-cta-learn-more"
-              className="h-11 px-6 rounded-lg bg-white/[0.06] text-white/80 text-sm font-medium border border-white/[0.08] hover:bg-white/[0.1] hover:text-white transition-colors"
-            >
-              See How It Works
-            </a>
-          </div>
+          ))}
         </div>
+      </section>
+
+      {/* ─── INTERACTIVE CONSOLE ─── */}
+      <WorkforceConsole />
+
+      {/* ─── LAYERS — Build / Operate / Scale / Knowledge / Creative ─── */}
+      <section className="relative z-10 mx-auto max-w-screen-xl px-6 pb-24">
+        <LayerSection title="Build" blurb="Compose the workforce and its tools."
+          tiles={[
+            { label: 'Claude Code Studio', desc: 'Unified creative operating system + video team.' },
+            { label: 'Higgsfield', desc: 'Creative supercomputer provider control center.' },
+            { label: 'Skills Marketplace', href: '/marketplace', desc: 'Premium skills + workflows for your workforce.' },
+            { label: 'Runtime Marketplace', href: '/login', desc: 'Connect Claude Code, Codex, Hermes, OpenClaw, OMP.' },
+            { label: 'Knowledge OS', desc: 'Obsidian / Notion / Pinecone / NotebookLM brain layers.' },
+          ]} />
+        <LayerSection title="Operate" blurb="Run the company day to day."
+          tiles={[
+            { label: 'Mission Control', href: '/login', desc: 'The cloud command center for your workforce.' },
+            { label: 'Workforce Orchestration', href: '/login', desc: 'Route tasks across specialized agent squads.' },
+            { label: 'Agent Directory', href: '/login', desc: 'Every AI employee, status, and assignment.' },
+            { label: 'Runtime Directory', href: '/login', desc: 'Connected runtimes + health.' },
+            { label: 'Activity Center', href: '/login', desc: 'Live, auditable workforce activity.' },
+          ]} />
+        <LayerSection title="Scale" blurb="Deploy beyond the browser."
+          tiles={[
+            { label: 'Flight Deck', href: '/flight-deck', desc: 'Desktop terminal connecting local runtimes.' },
+            { label: 'Deployment', href: '/flight-deck', desc: 'Ship to your own infrastructure.' },
+            { label: 'VPS Pairing', desc: 'Pair a production controller securely (no SSH in-app).' },
+            { label: 'Local Install', href: '/flight-deck', desc: 'Run the workforce on your hardware.' },
+            { label: 'Enterprise Rollout', href: '/pricing', desc: 'Org-wide deployment + guardrails.' },
+          ]} />
+        <LayerSection title="Knowledge Layer" blurb="The four-brain memory architecture."
+          tiles={[
+            { label: 'Obsidian', desc: 'Brain 1 — working memory + daily ops.' },
+            { label: 'Notion', desc: 'Brain 2 — structured business memory + SOPs.' },
+            { label: 'Pinecone', desc: 'Brain 3 — long-term semantic retrieval.' },
+            { label: 'NotebookLM', desc: 'Brain 4 — research synthesis + audio/video/slides.' },
+            { label: 'PI Agent', desc: 'Chief Memory Officer across the brain layers.' },
+          ]} />
+        <LayerSection title="Creative Layer" blurb="Provider-sovereign creative production — assets stay in Baseline OS."
+          tiles={[
+            { label: 'Claude Code Studio', desc: 'Canonical creative workspace + render queue + proof.' },
+            { label: 'Video Team', desc: '8 specialized creative agents.' },
+            { label: 'Higgsfield', desc: 'Image/video provider with agent orchestration.' },
+            { label: 'HyperFrames', desc: 'HTML-to-video rendering pipeline.' },
+            { label: 'Soul IDs', desc: 'Consent-gated identity models (high approval).' },
+            { label: 'Asset Library', desc: 'Every asset/proof owned by Baseline OS, not the provider.' },
+          ]} />
       </section>
 
       {/* ─── FOOTER ─── */}
@@ -649,24 +309,6 @@ export default function LandingPage() {
             <Link href="/pricing" data-testid="footer-link-pricing" className="hover:text-white/80 transition-colors">Pricing</Link>
             <Link href="/flight-deck" data-testid="footer-link-flight-deck" className="hover:text-white/80 transition-colors">Flight Deck</Link>
             <Link href="/help" data-testid="footer-link-help" className="hover:text-white/80 transition-colors">Help</Link>
-            <a
-              href="https://rehab-vision.emergent.host"
-              target="_blank"
-              rel="noopener noreferrer"
-              data-testid="footer-link-visionops"
-              className="hover:text-white/80 transition-colors"
-            >
-              VisionOps
-            </a>
-            <a
-              href="https://propcontrolempire.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              data-testid="footer-link-propcontrol"
-              className="hover:text-white/80 transition-colors"
-            >
-              PropControl
-            </a>
             <Link href="/login" data-testid="footer-link-mission-control" className="hover:text-white/80 transition-colors">Mission Control</Link>
           </div>
         </div>
