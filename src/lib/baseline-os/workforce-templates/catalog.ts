@@ -11,6 +11,8 @@
  *   "Property Management is the flagship proof."
  */
 
+import { EXTENDED_VERTICALS } from './extended-verticals'
+
 export type WorkforceRisk = 'low' | 'medium' | 'high' | 'blocked'
 
 export interface WorkforcePersona {
@@ -898,66 +900,32 @@ const AI_PRODUCT_LAUNCH: WorkforceTemplate = {
 // Coming soon — exposed in the catalog but installation refuses.
 // ───────────────────────────────────────────────────────────────────
 
-function comingSoon(slug: string, vertical: string, tagline: string): WorkforceTemplate {
-  return {
-    slug,
-    vertical,
-    headline: `${vertical} workforce — coming soon`,
-    tagline,
-    install_seconds: 0,
-    status: 'coming_soon',
-    personas: [],
-    workflows: [],
-    tools: [],
-    approval_summary: { auto: [], medium: [], high: [], blocked: [] },
-  }
-}
-
+// Phase 3 — Production Vertical Completion (2026-06-06):
+// The previous empty `coming_soon` shells were replaced with eight full,
+// installable verticals (see ./extended-verticals.ts). Per Walt's directive
+// "full standard or hidden, no exceptions" — there are NO empty shells in the
+// catalog anymore. Marketing Agency and AI Agency are separate verticals.
 export const WORKFORCE_TEMPLATES: Record<string, WorkforceTemplate> = {
   'property-management': PROPERTY_MGMT,
   insurance: INSURANCE,
   'ai-product-launch': AI_PRODUCT_LAUNCH,
-  'general-contractor': comingSoon(
-    'general-contractor',
-    'General Contractor',
-    'Punch lists, change orders, sub-trade coordination, and lien-waiver tracking.',
-  ),
-  'home-services': comingSoon(
-    'home-services',
-    'Home Services',
-    'Lead intake, quoting, technician routing, and recurring service reminders.',
-  ),
-  'real-estate': comingSoon(
-    'real-estate',
-    'Real Estate',
-    'Listing prep, transaction coordination, and post-close client nurture.',
-  ),
-  mortgage: comingSoon(
-    'mortgage',
-    'Mortgage',
-    'Pre-qual triage, doc collection, lender coordination, and closing readiness.',
-  ),
-  cpa: comingSoon(
-    'cpa',
-    'CPA',
-    'Client doc intake, deadline tracking, IRS notice triage, and engagement letters.',
-  ),
-  'law-firm': comingSoon(
-    'law-firm',
-    'Law Firm',
-    'Matter intake, deposition prep, deadline-watch, and client status updates.',
-  ),
-  agency: comingSoon(
-    'agency',
-    'Agency',
-    'Client briefs, deliverable QA, status reports, and renewal pipeline.',
-  ),
+  ...EXTENDED_VERTICALS,
 }
 
 export function getTemplate(slug: string): WorkforceTemplate | null {
   return WORKFORCE_TEMPLATES[slug] ?? null
 }
 
+/** Every template in the catalog (used by admin/audit surfaces). */
 export function listTemplates(): WorkforceTemplate[] {
   return Object.values(WORKFORCE_TEMPLATES)
+}
+
+/**
+ * Production-ready templates ONLY — what the customer-facing selector and
+ * landing page must use. Anything not at the full production bar (status !==
+ * 'ready') is excluded, never shown as a disabled/coming-soon shell.
+ */
+export function listReadyTemplates(): WorkforceTemplate[] {
+  return Object.values(WORKFORCE_TEMPLATES).filter((t) => t.status === 'ready')
 }

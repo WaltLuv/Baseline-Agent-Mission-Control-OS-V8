@@ -118,7 +118,7 @@ export const MARKETPLACE_BUNDLES: MarketplaceBundle[] = [
     aiEmployees: ['AI Bid Estimator', 'AI Project Scheduler', 'AI QC Inspector'],
     skills: ['cost-estimation', 'project-scheduling', 'subcontractor-matching', 'quality-inspection'],
     estimatedHoursSavedPerMonth: 50,
-    linkedTemplateId: 'gc',
+    linkedTemplateId: 'general-contractor',
   },
   {
     id: 'real-estate-agent-pack',

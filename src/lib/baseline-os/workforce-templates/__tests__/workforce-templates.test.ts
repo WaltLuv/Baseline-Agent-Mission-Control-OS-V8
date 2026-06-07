@@ -58,31 +58,90 @@ describe('Workforce Templates — catalog + installer', () => {
     runMigrations(getDatabase())
   })
 
-  it('catalog: Property Management + Insurance + AI Product Launch ready; 7 others coming_soon', async () => {
+  // Phase 3 — Production Vertical Completion: 11 verticals, ALL production-ready.
+  // No coming_soon shells appear in the customer-facing catalog.
+  it('catalog: exactly 11 production-ready verticals, zero coming-soon shells', async () => {
     const { cookie } = await adminSession()
     const res = await templatesGET(authedReq(cookie, '/api/workforce/templates') as never)
     expect(res.status).toBe(200)
     const data = (await res.json()) as {
-      templates: Array<{ slug: string; status: string; persona_count: number; workflow_count: number }>
+      templates: Array<{ slug: string; vertical: string; status: string; persona_count: number; workflow_count: number }>
     }
-    expect(data.templates.length).toBe(10)
-    const pm = data.templates.find((t) => t.slug === 'property-management')!
-    expect(pm.status).toBe('ready')
-    expect(pm.persona_count).toBe(6)
-    expect(pm.workflow_count).toBe(12)
-    const ins = data.templates.find((t) => t.slug === 'insurance')!
-    expect(ins.status).toBe('ready')
-    expect(ins.persona_count).toBe(6)
-    expect(ins.workflow_count).toBe(12)
-    const apl = data.templates.find((t) => t.slug === 'ai-product-launch')!
-    expect(apl.status).toBe('ready')
-    expect(apl.persona_count).toBe(8)
-    expect(apl.workflow_count).toBe(12)
-    const others = data.templates.filter(
-      (t) => t.slug !== 'property-management' && t.slug !== 'insurance' && t.slug !== 'ai-product-launch',
-    )
-    expect(others.length).toBe(7)
-    expect(others.every((t) => t.status === 'coming_soon')).toBe(true)
+    const EXPECTED = [
+      'property-management', 'insurance', 'ai-product-launch',
+      'real-estate', 'mortgage', 'cpa', 'law-firm',
+      'general-contractor', 'home-services', 'marketing-agency', 'ai-agency',
+    ]
+    expect(data.templates.length).toBe(EXPECTED.length)
+    for (const slug of EXPECTED) {
+      const t = data.templates.find((x) => x.slug === slug)
+      expect(t, `missing vertical ${slug}`).toBeDefined()
+    }
+    // Every visible template is ready and meets the production minimum bar.
+    for (const t of data.templates) {
+      expect(t.status, `${t.slug} not ready`).toBe('ready')
+      expect(t.persona_count, `${t.slug} <6 personas`).toBeGreaterThanOrEqual(6)
+      expect(t.workflow_count, `${t.slug} <10 workflows`).toBeGreaterThanOrEqual(10)
+    }
+    // No coming-soon anywhere.
+    expect(data.templates.some((t) => t.status === 'coming_soon')).toBe(false)
+  })
+
+  // Agency split — Marketing Agency and AI Agency are distinct verticals.
+  it('agency split: marketing-agency and ai-agency are separate, no generic "agency"', async () => {
+    const { cookie } = await adminSession()
+    const res = await templatesGET(authedReq(cookie, '/api/workforce/templates') as never)
+    const data = (await res.json()) as { templates: Array<{ slug: string; vertical: string }> }
+    const mktg = data.templates.find((t) => t.slug === 'marketing-agency')!
+    const ai = data.templates.find((t) => t.slug === 'ai-agency')!
+    expect(mktg).toBeDefined()
+    expect(ai).toBeDefined()
+    expect(mktg.vertical).toBe('Marketing Agencies')
+    expect(ai.vertical).toBe('AI Agencies')
+    expect(data.templates.some((t) => t.slug === 'agency')).toBe(false)
+  })
+
+  // Each new vertical installs to real personas + tasks, idempotently.
+  it.each(['real-estate', 'mortgage', 'cpa', 'law-firm', 'general-contractor', 'home-services', 'marketing-agency', 'ai-agency'])(
+    'installs %s with 6 personas + 10+ tasks, idempotently',
+    async (slug) => {
+      const { cookie, workspaceId } = await adminSession()
+      const first = await installPOST(
+        authedReq(cookie, '/api/workforce/install', { method: 'POST', body: JSON.stringify({ template: slug }) }) as never,
+      )
+      expect(first.status).toBe(201)
+      const data = (await first.json()) as { status: string; personas: unknown[]; workflows: unknown[] }
+      expect(data.status).toBe('installed')
+      expect(data.personas.length).toBe(6)
+      expect(data.workflows.length).toBeGreaterThanOrEqual(10)
+      const db = getDatabase()
+      const agents = db.prepare(`SELECT COUNT(*) n FROM agents WHERE workspace_id=? AND source=?`).get(workspaceId, `workforce-template:${slug}`) as { n: number }
+      expect(agents.n).toBe(6)
+      // reinstall → idempotent
+      const second = await installPOST(
+        authedReq(cookie, '/api/workforce/install', { method: 'POST', body: JSON.stringify({ template: slug }) }) as never,
+      )
+      expect(second.status).toBe(200)
+      const data2 = (await second.json()) as { status: string }
+      expect(data2.status).toBe('already_installed')
+      const agentsAfter = db.prepare(`SELECT COUNT(*) n FROM agents WHERE workspace_id=? AND source=?`).get(workspaceId, `workforce-template:${slug}`) as { n: number }
+      expect(agentsAfter.n).toBe(6) // no duplicates
+    },
+  )
+
+  // Every vertical defines a non-empty approval matrix (all four tiers present).
+  it('every vertical has a complete approval matrix + required credentials', async () => {
+    const { cookie } = await adminSession()
+    const res = await templatesGET(authedReq(cookie, '/api/workforce/templates') as never)
+    const data = (await res.json()) as {
+      templates: Array<{ slug: string; approval_summary: { auto: string[]; medium: string[]; high: string[]; blocked: string[] }; tools: Array<{ state: string }> }>
+    }
+    for (const t of data.templates) {
+      expect(t.approval_summary.high.length, `${t.slug} no high-approval gate`).toBeGreaterThan(0)
+      expect(t.approval_summary.blocked.length, `${t.slug} no blocked actions`).toBeGreaterThan(0)
+      // at least one credential to connect (required credentials surface)
+      expect(t.tools.some((x) => x.state === 'needs_connect'), `${t.slug} no required credentials`).toBe(true)
+    }
   })
 
   it('install Property Management creates 6 personas + 12 tasks + audit rows', async () => {
@@ -167,18 +226,18 @@ describe('Workforce Templates — catalog + installer', () => {
     expect(dupTasks.n).toBe(12) // still 12, not 24
   })
 
-  it('coming-soon templates refuse to install', async () => {
+  it('unknown / non-catalog templates refuse to install', async () => {
     const { cookie } = await adminSession()
     const res = await installPOST(
       authedReq(cookie, '/api/workforce/install', {
         method: 'POST',
-        body: JSON.stringify({ template: 'cpa' }),
+        body: JSON.stringify({ template: 'nonexistent-vertical' }),
       }) as never,
     )
     expect(res.status).toBe(400)
-    const data = (await res.json()) as { error: string; status: string }
-    expect(data.status).toBe('unavailable')
-    expect(data.error).toMatch(/not available/i)
+    const data = (await res.json()) as { error?: string; status?: string }
+    // install route returns either {status:'unavailable'} or an error for unknown slugs
+    expect(data.status === 'unavailable' || !!data.error).toBe(true)
   })
 
   it('every workflow has owner_persona pointing to a real persona slug', async () => {

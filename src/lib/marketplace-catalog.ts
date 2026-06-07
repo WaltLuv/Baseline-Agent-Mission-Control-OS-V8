@@ -246,7 +246,7 @@ export const BUNDLES: Bundle[] = [
     monthlyUsd: sumEmp(['agent-michael', 'agent-vito', 'agent-beth']),
     oneTimeUsd: sumSkill(['ai-social-calendar', 'pipeline-seo-audit', 'ai-proposal-gen', 'pipeline-cold-email', 'pipeline-lead-scoring']),
     estimatedHoursSavedPerMonth: 130,
-    linkedDemoTemplate: 'marketing',
+    linkedDemoTemplate: 'marketing-agency',
   },
   {
     slug: 'vision-voice-specialist',

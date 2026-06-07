@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
-import { listTemplates } from '@/lib/baseline-os/workforce-templates/catalog'
+import { listReadyTemplates } from '@/lib/baseline-os/workforce-templates/catalog'
 import { listInstalledTemplates, getInstallStatus } from '@/lib/baseline-os/workforce-templates/install'
 
 /**
  * GET /api/workforce/templates
- *   Returns the catalog (Property Management deep, others "coming soon")
- *   along with each template's installed state for the calling workspace.
+ *   Returns the production-ready catalog (11 verticals, all installable) with
+ *   each template's installed state for the calling workspace. Only ready
+ *   templates are surfaced — no empty/coming-soon shells (Walt P0).
  */
 export async function GET(request: NextRequest) {
   const auth = requireRole(request, 'viewer')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
   const workspaceId = auth.user.workspace_id ?? 1
   const installed = new Set(listInstalledTemplates(workspaceId))
-  const templates = listTemplates().map((t) => {
+  const templates = listReadyTemplates().map((t) => {
     const detail = installed.has(t.slug) ? getInstallStatus(workspaceId, t.slug) : { installed: false, meta: null }
     return {
       slug: t.slug,
