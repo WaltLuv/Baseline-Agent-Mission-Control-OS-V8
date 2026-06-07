@@ -21,7 +21,7 @@ export interface SkillProduct {
   type: 'skill'
   slug: string
   name: string
-  category: 'Property Management' | 'Pipeline Workflows' | 'AI Agents' | 'AI Intelligence' | 'Home Services'
+  category: 'Property Management' | 'Pipeline Workflows' | 'AI Agents' | 'AI Intelligence' | 'Home Services' | 'Creative'
   priceUsd: number               // one-time
   billing: 'one-time'
   difficulty: Difficulty
@@ -122,6 +122,12 @@ export const SKILLS: SkillProduct[] = [
   { type: 'skill', slug: 'cost-estimator', name: 'AI Cost Estimator', category: 'Home Services', priceUsd: 100, billing: 'one-time', difficulty: 'Standard', outcome: 'Generic cost estimator for any service line.', forWhom: 'Field service.', improvesWorkflow: 'Quoting', timeSaved: '~30 min per quote' },
   { type: 'skill', slug: 'home-roof-triage', name: 'Roof Repair vs Replace', category: 'Home Services', priceUsd: 125, billing: 'one-time', difficulty: 'Expert', outcome: 'Photo-based repair vs replace recommendation.', forWhom: 'Roofers.', improvesWorkflow: 'Estimating', timeSaved: '~1 hr per inspection' },
   { type: 'skill', slug: 'ai-scoping', name: 'AI Scope Generation', category: 'Home Services', priceUsd: 150, billing: 'one-time', difficulty: 'Expert', outcome: 'Full scope-of-work documents from a site visit.', forWhom: 'General contractors.', improvesWorkflow: 'Scope writing', timeSaved: '~2 hr per project' },
+
+  // Creative (4) — Higgsfield provider skills (pinned from skills-lock.json).
+  { type: 'skill', slug: 'higgsfield-generate', name: 'Higgsfield Generate', category: 'Creative', priceUsd: 0, billing: 'one-time', difficulty: 'Standard', outcome: 'Generate images/videos via Higgsfield (GPT Image 2, Seedance, Soul, Kling).', forWhom: 'Creative teams.', improvesWorkflow: 'Image/video generation', timeSaved: 'minutes per asset', integrations: ['Higgsfield'] },
+  { type: 'skill', slug: 'higgsfield-soul-id', name: 'Higgsfield Soul ID', category: 'Creative', priceUsd: 0, billing: 'one-time', difficulty: 'Advanced', outcome: 'Train a consented identity model for identity-faithful generation.', forWhom: 'Creators/brands.', improvesWorkflow: 'Character/identity creation', timeSaved: 'reusable identity', integrations: ['Higgsfield'] },
+  { type: 'skill', slug: 'higgsfield-marketplace-cards', name: 'Higgsfield Marketplace Cards', category: 'Creative', priceUsd: 0, billing: 'one-time', difficulty: 'Standard', outcome: 'Compliant marketplace listing image sets (main, secondary, A+).', forWhom: 'E-commerce sellers.', improvesWorkflow: 'Listing imagery', timeSaved: '~hours per listing set', integrations: ['Higgsfield'] },
+  { type: 'skill', slug: 'higgsfield-product-photoshoot', name: 'Higgsfield Product Photoshoot', category: 'Creative', priceUsd: 0, billing: 'one-time', difficulty: 'Standard', outcome: 'Brand-quality product images (studio, lifestyle, hero, ad creative).', forWhom: 'Brands/agencies.', improvesWorkflow: 'Product photography', timeSaved: '~a photoshoot', integrations: ['Higgsfield'] },
 ]
 
 // ---------- AI EMPLOYEES (23 total) ----------
@@ -270,6 +276,7 @@ export const SKILL_CATEGORIES = [
   'AI Agents',
   'AI Intelligence',
   'Home Services',
+  'Creative',
 ] as const
 
 export const EMPLOYEE_DIVISIONS = [

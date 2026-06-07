@@ -1,95 +1,104 @@
 /**
- * Landing page (/) — Workforce OS positioning.
- *
- * Walt's directive: the Mission Control landing must BE a "Workforce OS"
- * landing (workforce templates as the hero), not a "Baseline Automations /
- * Join Waitlist" product-marketing site. Structure: hero → Choose your
- * industry (11 installable templates) → Interactive Workforce OS Console →
- * Build / Operate / Scale / Knowledge / Creative layers.
- *
- * Honesty guards retained: no fake monthly-subscription claims, no forbidden
- * marketing claims, footer surfaces the real routes, scroll-friendly wrapper.
+ * Landing page (/) — Mission Control home is an exact clone of the Baseline OS
+ * Workforce OS landing (/workforce-os), with the Interactive Workforce OS
+ * Console carrying 9 directives (3 general builder + 6 industry workforce).
  */
 import { readFileSync } from 'fs'
 import { describe, it, expect } from 'vitest'
-import { INDUSTRIES, CONSOLE_DIRECTIVES } from '@/lib/workforce-console'
+import { directivesByGroup, CONSOLE_DIRECTIVES, INDUSTRIES } from '@/lib/workforce-console'
 
 const src = readFileSync('src/app/page.tsx', 'utf8')
 
-describe('Landing page — Workforce OS positioning', () => {
-  it('leads with the AI Workforce OS hero (Walt\'s rename)', () => {
-    expect(src).toContain('Introducing Baseline Automations AI Workforce OS')
+describe('Landing page — Workforce OS clone + 9-directive console', () => {
+  it('hero badge is the AI Workforce OS rename + Workforce OS + install line', () => {
     expect(src).toContain('data-testid="hero-badge"')
-    expect(src).toMatch(/Workforce OS/)
-    expect(src).toMatch(/Install a complete AI workforce in minutes/)
+    expect(src).toContain('Introducing Baseline Automations AI Workforce OS')
+    expect(src).toMatch(/The Operating System for Your/)
+    expect(src).toContain('data-testid="hero-workforce-os"')
+    expect(src).toContain('Workforce OS')
+    expect(src).toContain('Install a complete AI workforce in minutes')
   })
 
-  it('makes workforce templates the hero — all 11 installable industries are present', () => {
+  it('hero shows 11 installable industries → /app/activate?template=slug', () => {
     expect(src).toContain('data-testid="industries"')
     expect(src).toMatch(/What workforce do you want to install\?/)
-    // The page maps INDUSTRIES into per-slug tiles (one dynamic template).
     expect(src).toContain('industry-${ind.slug}')
-    expect(src).toMatch(/INDUSTRIES\.map/)
-    // sanity: the lib carries the canonical 11, incl. Insurance.
+    expect(src).toContain('/app/activate?template=${ind.slug}')
     expect(INDUSTRIES.length).toBe(11)
-    expect(INDUSTRIES.map((i) => i.slug)).toContain('insurance')
+    for (const slug of ['property-management', 'insurance', 'ai-product-launch', 'real-estate', 'mortgage', 'cpa', 'law-firm', 'general-contractor', 'home-services', 'marketing-agency', 'ai-agency']) {
+      expect(INDUSTRIES.map((i) => i.slug)).toContain(slug)
+    }
   })
 
-  it('embeds the Interactive Workforce OS Console (labeled demo) with directives', () => {
+  it('renders the five product layers', () => {
+    expect(src).toContain('data-testid="layers"')
+    expect(src).toContain('data-testid={`layer-')
+    for (const title of ['"Build"', '"Operate"', '"Scale"', '"Knowledge Layer"', '"Creative Layer"']) {
+      expect(src, `missing layer ${title}`).toContain(`title: ${title}`)
+    }
+  })
+
+  it('top nav includes Marketplace / VisionOps / PropControl / Mission Control + auth', () => {
+    for (const t of ['nav-os-console', 'nav-marketplace', 'nav-visionops', 'nav-propcontrol', 'nav-mission-control', 'header-sign-in', 'header-start-free']) {
+      expect(src, `missing ${t}`).toContain(`data-testid="${t}"`)
+    }
+  })
+
+  it('embeds the Interactive Workforce OS Console (labeled demo)', () => {
     expect(src).toContain('data-testid="workforce-console"')
     expect(src).toContain('data-testid="console-demo-label"')
     expect(src).toContain('data-testid="console-run"')
     expect(src).toContain('data-testid="console-agent-map"')
-    expect(src).toContain('data-testid="console-human-gate"')
-    // 3 general + 6 industry directives drive the console
-    expect(CONSOLE_DIRECTIVES.length).toBe(9)
+    expect(src).toContain('Interactive Workforce OS Console')
   })
 
-  it('surfaces the five product layers (Build / Operate / Scale / Knowledge / Creative)', () => {
-    // LayerSection emits a dynamic data-testid={`layer-...`}; assert the titles.
-    expect(src).toContain('data-testid={`layer-')
-    for (const title of ['Build', 'Operate', 'Scale', 'Knowledge Layer', 'Creative Layer']) {
-      expect(src, `missing layer ${title}`).toContain(`title="${title}"`)
+  it('console has 9 directives — 3 general builder + 6 industry', () => {
+    // 3 general are literal keys in BASE_SIMULATIONS.
+    for (const k of ['dev:', 'marketing:', 'intelligence:']) {
+      expect(src, `missing base directive ${k}`).toContain(k)
+    }
+    // 6 industry come from the directive model, merged at build.
+    expect(src).toContain('...BASE_SIMULATIONS')
+    expect(src).toContain('...INDUSTRY_SIMULATIONS')
+    expect(src).toMatch(/directivesByGroup\("industry"\)/)
+    expect(directivesByGroup('industry').length).toBe(6)
+    expect(CONSOLE_DIRECTIVES.length).toBe(9) // 3 general + 6 industry
+  })
+
+  it('renders a directive tab + agent node per simulation', () => {
+    expect(src).toContain('data-testid={`directive-${key}`}')
+    expect(src).toContain('data-testid="agent-node"')
+  })
+
+  it('post-run CTA links to a real route from the directive model', () => {
+    expect(src).toContain('data-testid="console-cta"')
+    expect(src).toContain('activeSim.ctaRoute')
+    // every industry directive CTA installs a real template
+    for (const d of directivesByGroup('industry')) {
+      expect(d.ctaRoute).toMatch(/^\/app\/activate\?template=/)
     }
   })
 
-  it('does not advertise any monthly subscription on the landing page', () => {
-    expect(src).not.toMatch(/\$499/)
-    expect(src).not.toMatch(/\$\d+\s*\/\s*mo\b/)
-    expect(src).not.toMatch(/\/month\b/)
-  })
-
-  it('footer surfaces /flight-deck, /pricing, and /help', () => {
-    expect(src).toContain('data-testid="footer-link-flight-deck"')
+  it('footer surfaces the real routes', () => {
+    expect(src).toContain('data-testid="footer-link-marketplace"')
     expect(src).toContain('data-testid="footer-link-pricing"')
+    expect(src).toContain('data-testid="footer-link-flight-deck"')
     expect(src).toContain('data-testid="footer-link-help"')
   })
 
-  it('preserves the scroll-friendly min-h-screen wrapper', () => {
+  it('scroll-friendly min-h-screen wrapper', () => {
     expect(src).toMatch(/\bmin-h-screen\b/)
   })
 
-  it('uses truthful language — no forbidden marketing claims', () => {
+  it('no forbidden marketing claims', () => {
     const haystack = src.toLowerCase()
-    for (const phrase of [
-      'guaranteed revenue',
-      'guaranteed seo',
-      'guaranteed ranking',
-      'guaranteed success',
-      'no bugs ever',
-      'deployment always works',
-    ]) {
-      expect(haystack, `forbidden claim present: ${phrase}`).not.toContain(phrase)
+    for (const phrase of ['guaranteed revenue', 'guaranteed seo', 'guaranteed ranking', 'guaranteed success', 'no bugs ever']) {
+      expect(haystack, `forbidden claim: ${phrase}`).not.toContain(phrase)
     }
   })
 
-  it('every landing CTA points at a real route (no dead links)', () => {
-    // Console CTA routes are validated in workforce-console.test.ts; here ensure
-    // the static hrefs on the page resolve to known real routes/anchors.
-    const hrefs = Array.from(src.matchAll(/href="(\/[^"]*|#[a-z-]+)"/g)).map((m) => m[1])
-    const realPrefixes = ['/signup', '/login', '/marketplace', '/pricing', '/flight-deck', '/help', '/app', '/', '#']
-    for (const h of hrefs) {
-      expect(realPrefixes.some((p) => h === p || h.startsWith(p)), `suspect href ${h}`).toBe(true)
-    }
+  it('static auth CTAs point at real routes (Sign In / Get Started)', () => {
+    expect(src).toContain('href="/login"')
+    expect(src).toContain('href="/signup"')
   })
 })

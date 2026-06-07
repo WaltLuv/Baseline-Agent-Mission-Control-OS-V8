@@ -54,6 +54,7 @@ import { AgentScannerPanel } from '@/components/panels/scanner-panel'
 import { ChatPagePanel } from '@/components/panels/chat-page-panel'
 import { TeamPanel } from '@/components/panels/team-panel'
 import { RuntimeKeysPanel } from '@/components/panels/runtime-keys-panel'
+import { HiggsfieldPanel } from '@/components/panels/higgsfield-panel'
 import { AgentGatewayPanel } from '@/components/panels/agent-gateway-panel'
 import { ChatPanel } from '@/components/chat/chat-panel'
 import { HelpPanel } from '@/components/help/help-panel'
@@ -531,7 +532,7 @@ const ESSENTIAL_PANELS = new Set([
   // essential mode, and the onboarding "Add Credit Fuel" CTA links to
   // /app/billing. Gating it behind Full mode dead-ended first-run customers
   // who needed to add credits. (Customer Zero finding, 2026-06-06.)
-  'overview', 'agents', 'tasks', 'chat', 'activity', 'logs', 'settings', 'help', 'value', 'billing',
+  'overview', 'agents', 'tasks', 'chat', 'activity', 'logs', 'settings', 'help', 'value', 'billing', 'creative', 'higgsfield',
 ])
 
 function ContentRouter({ tab }: { tab: string }) {
@@ -693,6 +694,9 @@ function ContentRouter({ tab }: { tab: string }) {
     case 'runtime-keys':
     case 'api-keys':
       return <RuntimeKeysPanel />
+    case 'creative':
+    case 'higgsfield':
+      return <HiggsfieldPanel />
     case 'agent-gateway':
     case 'mcp-gateway':
       return <AgentGatewayPanel />
