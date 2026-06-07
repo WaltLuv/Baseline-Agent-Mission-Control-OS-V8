@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomBytes } from 'node:crypto'
-import { requireRole } from '@/lib/auth'
+import { requireVerifiedEmail } from '@/lib/auth'
 import { getDatabase } from '@/lib/db'
 import { getSkillBySlug, getEmployeeBySlug, getBundleBySlug } from '@/lib/marketplace-catalog'
 import { createStripeCheckoutSession, isLiveStripeMode } from '@/lib/stripe-client'
@@ -53,8 +53,8 @@ interface PurchaseBody {
 // above; the webhook imports them too.
 
 export async function POST(request: NextRequest) {
-  const auth = requireRole(request, 'operator')
-  if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const auth = requireVerifiedEmail(request, 'operator')
+  if ('error' in auth) return NextResponse.json({ error: auth.error, code: auth.code }, { status: auth.status })
 
   const workspaceId = auth.user.workspace_id ?? 1
   const actorId = auth.user.id

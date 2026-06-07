@@ -9,7 +9,7 @@
 
 import { NextResponse } from 'next/server'
 import { randomBytes, createHash } from 'crypto'
-import { getUserFromRequest } from '@/lib/auth'
+import { getUserFromRequest, isEmailVerified } from '@/lib/auth'
 import { getDatabase, logAuditEvent } from '@/lib/db'
 import { resolveRole, hasMinRole, type WorkspaceRole } from '@/lib/memberships'
 import { sendEmail, getEmailProvider } from '@/lib/email'
@@ -33,6 +33,14 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
 
   const user = getUserFromRequest(request as Request)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // Email verification gate — inviting teammates is a sensitive action.
+  if (!isEmailVerified(user)) {
+    return NextResponse.json(
+      { error: 'Email verification required before inviting team members.', code: 'email_verification_required' },
+      { status: 403 },
+    )
+  }
 
   const role = resolveRole(user.id, workspaceId)
   if (!hasMinRole(role, 'admin')) {

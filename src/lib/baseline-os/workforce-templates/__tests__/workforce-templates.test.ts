@@ -40,6 +40,9 @@ async function adminSession(): Promise<{ cookie: string; workspaceId: number }> 
   const setCookie = res.headers.get('set-cookie') || ''
   const m = setCookie.match(/(?:mc-session|__Secure-mc-session)=([^;]+)/i)
   if (!m) throw new Error('no session cookie')
+  // Email-verify the user so the verification gate on /api/workforce/install
+  // (a sensitive action) admits this admin.
+  getDatabase().prepare('UPDATE users SET email_verified_at = unixepoch() WHERE email = ?').run(`wf_${ts}@acme.test`)
   return { cookie: `mc-session=${m[1]}`, workspaceId: data.workspace.id }
 }
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireRole } from '@/lib/auth'
+import { requireVerifiedEmail } from '@/lib/auth'
 import { getDatabase } from '@/lib/db'
 import { createPurchaseOrder, fulfillPurchaseOrder, getWorkspaceBalance } from '@/lib/billing'
 import { purchaseOrderLimiter } from '@/lib/rate-limit'
@@ -26,8 +26,8 @@ export async function POST(request: NextRequest) {
   const rl = purchaseOrderLimiter(request)
   if (rl) return rl
 
-  const auth = requireRole(request, 'operator')
-  if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const auth = requireVerifiedEmail(request, 'operator')
+  if ('error' in auth) return NextResponse.json({ error: auth.error, code: auth.code }, { status: auth.status })
 
   const workspaceId = auth.user.workspace_id ?? 1
   const db = getDatabase()

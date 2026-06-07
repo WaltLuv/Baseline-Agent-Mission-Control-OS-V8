@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireRole } from '@/lib/auth'
+import { requireVerifiedEmail } from '@/lib/auth'
 import { mutationLimiter } from '@/lib/rate-limit'
 import { installWorkforceTemplate } from '@/lib/baseline-os/workforce-templates/install'
 
@@ -17,8 +17,8 @@ import { installWorkforceTemplate } from '@/lib/baseline-os/workforce-templates/
 export async function POST(request: NextRequest) {
   const rl = mutationLimiter(request)
   if (rl) return rl
-  const auth = requireRole(request, 'admin')
-  if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const auth = requireVerifiedEmail(request, 'admin')
+  if ('error' in auth) return NextResponse.json({ error: auth.error, code: auth.code }, { status: auth.status })
   const workspaceId = auth.user.workspace_id ?? 1
 
   let body: { template?: string }

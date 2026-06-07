@@ -36,6 +36,8 @@ async function makeAdminSession(): Promise<{ cookie: string; workspaceId: number
   const setCookie = res.headers.get('set-cookie') || ''
   const m = setCookie.match(/(?:mc-session|__Secure-mc-session)=([^;]+)/i)
   if (!m) throw new Error('no session cookie')
+  // Verify the user so the email-gate on runtime-key mint lets the admin through.
+  getDatabase().prepare('UPDATE users SET email_verified_at = unixepoch() WHERE email = ?').run(`revoke_${ts}@acme.test`)
   return { cookie: `mc-session=${m[1]}`, workspaceId: data.workspace.id }
 }
 

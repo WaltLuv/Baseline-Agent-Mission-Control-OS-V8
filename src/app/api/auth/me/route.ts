@@ -52,6 +52,8 @@ export async function GET(request: Request) {
       role: user.role,
       provider: user.provider || 'local',
       email: user.email || null,
+      email_verified_at: user.email_verified_at ?? null,
+      email_verified: !!user.email_verified_at,
       avatar_url: user.avatar_url || null,
       workspace_id: user.workspace_id ?? 1,
       tenant_id: user.tenant_id ?? 1,

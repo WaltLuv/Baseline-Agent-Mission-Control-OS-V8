@@ -14,7 +14,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 
-import { requireRole } from '@/lib/auth'
+import { requireRole, requireVerifiedEmail } from '@/lib/auth'
 import { logAuditEvent } from '@/lib/db'
 import { getProvider } from '@/lib/credentials/catalog'
 import {
@@ -43,8 +43,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ provider_id: string }> },
 ) {
-  const auth = requireRole(request, 'admin')
-  if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const auth = requireVerifiedEmail(request, 'admin')
+  if ('error' in auth) return NextResponse.json({ error: auth.error, code: auth.code }, { status: auth.status })
 
   const { provider_id } = await params
   const provider = getProvider(provider_id)
@@ -104,8 +104,8 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ provider_id: string }> },
 ) {
-  const auth = requireRole(request, 'admin')
-  if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const auth = requireVerifiedEmail(request, 'admin')
+  if ('error' in auth) return NextResponse.json({ error: auth.error, code: auth.code }, { status: auth.status })
 
   const { provider_id } = await params
   if (!getProvider(provider_id)) {

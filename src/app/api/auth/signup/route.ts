@@ -4,6 +4,7 @@ import { getDatabase, logAuditEvent } from '@/lib/db'
 import { getMcSessionCookieName, getMcSessionCookieOptions, isRequestSecure } from '@/lib/session-cookie'
 import { selfRegisterLimiter } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
+import { sendVerificationEmail } from '@/lib/email-verification'
 import { getBusinessTemplate, BUSINESS_TEMPLATES } from '@/lib/business-templates'
 import { upsertMembership } from '@/lib/memberships'
 
@@ -157,6 +158,15 @@ export async function POST(request: Request) {
 
     const { token, expiresAt } = createSession(user.id, ipAddress, userAgent, workspaceId)
 
+    // Send the verification email (best-effort — the account exists and is
+    // logged-in but unverified; sensitive features stay locked until verified).
+    const origin = (process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin).replace(/\/$/, '')
+    try {
+      await sendVerificationEmail({ id: user.id, email: user.email ?? email }, origin, ipAddress)
+    } catch (e) {
+      logger.warn({ err: e, userId: user.id }, 'Failed to send verification email at signup')
+    }
+
     logAuditEvent({
       action: 'signup',
       actor: user.username,
@@ -180,7 +190,9 @@ export async function POST(request: Request) {
         tenant_id: defaultTenantId,
       },
       workspace: { id: workspaceId, slug, name: companyName },
-      next: '/onboarding',
+      // Land on the "verify your email" page — onboarding/activation unlocks
+      // after verification.
+      next: '/verify-email',
     })
 
     const isSecureRequest = isRequestSecure(request)

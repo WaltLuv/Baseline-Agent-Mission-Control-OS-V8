@@ -61,6 +61,8 @@ async function signupCustomer(suffix: string, vertical = 'pm'): Promise<{ user: 
   }))
   if (res.status !== 200) throw new Error(`signup failed: ${res.status} ${await res.text()}`)
   const data = await res.json()
+  // Email-verify so gated actions (e.g. team invites) admit this owner.
+  getDatabase().prepare('UPDATE users SET email_verified_at = unixepoch() WHERE id = ?').run(data.user.id)
   return { user: data.user, workspace: data.workspace, cookie: extractSessionCookie(res) || '' }
 }
 

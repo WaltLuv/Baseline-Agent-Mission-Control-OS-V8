@@ -2494,6 +2494,42 @@ const migrations: Migration[] = [
           ON orchestration_events(workspace_id, source, external_id);
       `)
     },
+  },
+  {
+    id: '069_email_verification',
+    up: (db) => {
+      // Account-trust: a user must verify their email before accessing
+      // monetized / sensitive features. New local signups start unverified
+      // (email_verified_at = NULL). Existing accounts are backfilled as
+      // verified so this migration never locks anyone out.
+      const userCols = db.prepare(`PRAGMA table_info(users)`).all() as Array<{ name: string }>
+      const has = (name: string) => userCols.some((c) => c.name === name)
+      if (!has('email_verified_at')) {
+        db.exec(`ALTER TABLE users ADD COLUMN email_verified_at INTEGER`)
+        // Backfill every existing user as already-verified (grandfathered).
+        db.exec(`UPDATE users SET email_verified_at = unixepoch() WHERE email_verified_at IS NULL`)
+      }
+
+      // Single-use, hashed, expiring verification tokens. Raw token is NEVER
+      // stored — only its SHA-256 hash. One unused token per user is the
+      // norm; resend rotates it.
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS email_verification_tokens (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          token_hash TEXT NOT NULL UNIQUE,
+          email TEXT NOT NULL,
+          expires_at INTEGER NOT NULL,
+          used_at INTEGER,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          created_ip TEXT,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_evt_user ON email_verification_tokens(user_id);
+        CREATE INDEX IF NOT EXISTS idx_evt_token_hash ON email_verification_tokens(token_hash);
+        CREATE INDEX IF NOT EXISTS idx_evt_created ON email_verification_tokens(user_id, created_at);
+      `)
+    },
   }
 ]
 

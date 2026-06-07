@@ -62,6 +62,8 @@ export interface User {
   tenant_id: number
   provider?: 'local' | 'google' | 'proxy'
   email?: string | null
+  /** Unix seconds when the user verified their email; null/undefined = unverified. */
+  email_verified_at?: number | null
   avatar_url?: string | null
   is_approved?: number
   created_at: number
@@ -90,6 +92,7 @@ interface SessionQueryRow {
   role: 'admin' | 'operator' | 'viewer'
   provider: 'local' | 'google' | null
   email: string | null
+  email_verified_at: number | null
   avatar_url: string | null
   is_approved: number
   workspace_id: number
@@ -107,6 +110,7 @@ interface UserQueryRow {
   role: 'admin' | 'operator' | 'viewer'
   provider: 'local' | 'google' | null
   email: string | null
+  email_verified_at: number | null
   avatar_url: string | null
   is_approved: number
   workspace_id: number
@@ -189,7 +193,7 @@ export function validateSession(token: string): (User & { sessionId: number }) |
   const tokenHash = hashSessionToken(token)
 
   const row = db.prepare(`
-    SELECT u.id, u.username, u.display_name, u.role, u.provider, u.email, u.avatar_url, u.is_approved,
+    SELECT u.id, u.username, u.display_name, u.role, u.provider, u.email, u.email_verified_at, u.avatar_url, u.is_approved,
            COALESCE(s.workspace_id, u.workspace_id, 1) as workspace_id,
            COALESCE(s.tenant_id, w.tenant_id, 1) as tenant_id,
            u.created_at, u.updated_at, u.last_login_at,
@@ -211,6 +215,7 @@ export function validateSession(token: string): (User & { sessionId: number }) |
     tenant_id: row.tenant_id || getDefaultWorkspaceContext().tenantId,
     provider: row.provider || 'local',
     email: row.email ?? null,
+    email_verified_at: row.email_verified_at ?? null,
     avatar_url: row.avatar_url ?? null,
     is_approved: typeof row.is_approved === 'number' ? row.is_approved : 1,
     created_at: row.created_at,
@@ -283,6 +288,7 @@ export function authenticateUser(username: string, password: string): User | nul
     tenant_id: resolveTenantForWorkspace(row.workspace_id || getDefaultWorkspaceContext().workspaceId),
     provider: row.provider || 'local',
     email: row.email ?? null,
+    email_verified_at: row.email_verified_at ?? null,
     avatar_url: row.avatar_url ?? null,
     is_approved: row.is_approved ?? 1,
     created_at: row.created_at,
@@ -295,7 +301,7 @@ export function getUserById(id: number): User | null {
   const db = getDatabase()
   const row = db.prepare(`
     SELECT u.id, u.username, u.display_name, u.role, u.workspace_id, COALESCE(w.tenant_id, 1) as tenant_id,
-           u.provider, u.email, u.avatar_url, u.is_approved, u.created_at, u.updated_at, u.last_login_at
+           u.provider, u.email, u.email_verified_at, u.avatar_url, u.is_approved, u.created_at, u.updated_at, u.last_login_at
     FROM users u
     LEFT JOIN workspaces w ON w.id = u.workspace_id
     WHERE u.id = ?
@@ -307,7 +313,7 @@ export function getAllUsers(): User[] {
   const db = getDatabase()
   return db.prepare(`
     SELECT u.id, u.username, u.display_name, u.role, u.workspace_id, COALESCE(w.tenant_id, 1) as tenant_id,
-           u.provider, u.email, u.avatar_url, u.is_approved, u.created_at, u.updated_at, u.last_login_at
+           u.provider, u.email, u.email_verified_at, u.avatar_url, u.is_approved, u.created_at, u.updated_at, u.last_login_at
     FROM users u
     LEFT JOIN workspaces w ON w.id = u.workspace_id
     ORDER BY u.created_at
@@ -319,16 +325,24 @@ export function createUser(
   password: string,
   displayName: string,
   role: User['role'] = 'operator',
-  options?: { provider?: 'local' | 'google'; provider_user_id?: string | null; email?: string | null; avatar_url?: string | null; is_approved?: 0 | 1; approved_by?: string | null; approved_at?: number | null; workspace_id?: number }
+  options?: { provider?: 'local' | 'google'; provider_user_id?: string | null; email?: string | null; avatar_url?: string | null; is_approved?: 0 | 1; approved_by?: string | null; approved_at?: number | null; workspace_id?: number; email_verified_at?: number | null }
 ): User {
   const db = getDatabase()
   if (password.length < 12) throw new Error('Password must be at least 12 characters')
   const passwordHash = hashPassword(password)
   const provider = options?.provider || 'local'
   const workspaceId = options?.workspace_id || getDefaultWorkspaceContext().workspaceId
+  // Google accounts arrive with a Google-verified email → trust it. Local
+  // signups start unverified (null) and must confirm via the email link.
+  const emailVerifiedAt =
+    options?.email_verified_at !== undefined
+      ? options.email_verified_at
+      : provider === 'google'
+        ? Math.floor(Date.now() / 1000)
+        : null
   const result = db.prepare(`
-    INSERT INTO users (username, display_name, password_hash, role, provider, provider_user_id, email, avatar_url, is_approved, approved_by, approved_at, workspace_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO users (username, display_name, password_hash, role, provider, provider_user_id, email, avatar_url, is_approved, approved_by, approved_at, workspace_id, email_verified_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     username,
     displayName,
@@ -342,6 +356,7 @@ export function createUser(
     options?.approved_by || null,
     options?.approved_at || null,
     workspaceId,
+    emailVerifiedAt,
   )
 
   return getUserById(Number(result.lastInsertRowid))!
@@ -644,5 +659,47 @@ export function requireRole(
     return { error: `Requires ${minRole} role or higher`, status: 403 }
   }
   return { user }
+}
+
+/**
+ * True when a user is allowed past the email-verification gate.
+ *
+ * Verified iff `email_verified_at` is set. Machine identities (no email —
+ * e.g. global API key or agent-scoped keys with id < 0) are NOT subject to
+ * email verification; they pass. A local-dev bypass is available ONLY when
+ * ALLOW_UNVERIFIED_DEV_LOGIN=true AND NODE_ENV !== 'production'.
+ */
+export function isEmailVerified(user: Pick<User, 'email' | 'email_verified_at' | 'id'>): boolean {
+  if (
+    process.env.ALLOW_UNVERIFIED_DEV_LOGIN === 'true' &&
+    process.env.NODE_ENV !== 'production'
+  ) {
+    return true
+  }
+  // No email on the identity → machine/API-key caller, not email-gated.
+  if (!user.email) return true
+  return !!user.email_verified_at
+}
+
+/**
+ * Centralized guard for monetized / sensitive routes. Requires the caller to
+ * (a) satisfy the role and (b) have a verified email. Returns the same shape
+ * as requireRole, plus a 403 `email_verification_required` when unverified so
+ * the client can route the user to the "Verify your email" page.
+ */
+export function requireVerifiedEmail(
+  request: Request,
+  minRole: User['role'],
+): { user: User; error?: never; status?: never; code?: never } | { user?: never; error: string; status: 401 | 403; code?: string } {
+  const auth = requireRole(request, minRole)
+  if ('error' in auth) return auth
+  if (!isEmailVerified(auth.user)) {
+    return {
+      error: 'Email verification required before using this feature.',
+      status: 403,
+      code: 'email_verification_required',
+    }
+  }
+  return { user: auth.user }
 }
 

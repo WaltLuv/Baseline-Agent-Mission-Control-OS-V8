@@ -4,7 +4,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 
-import { requireRole } from '@/lib/auth'
+import { requireRole, requireVerifiedEmail } from '@/lib/auth'
 import { createMission, listMissions } from '@/lib/orchestration/store'
 
 export async function GET(request: NextRequest) {
@@ -14,8 +14,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = requireRole(request, 'operator')
-  if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const auth = requireVerifiedEmail(request, 'operator')
+  if ('error' in auth) return NextResponse.json({ error: auth.error, code: auth.code }, { status: auth.status })
 
   const body = (await request.json().catch(() => ({}))) as {
     slug?: string

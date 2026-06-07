@@ -40,10 +40,13 @@ async function makeAdminSession(): Promise<{ cookie: string; workspaceId: number
     }),
   )
   expect(res.status).toBe(200)
-  const data = (await res.json()) as { workspace: { id: number } }
+  const data = (await res.json()) as { workspace: { id: number }; user?: { id: number } }
   const setCookie = res.headers.get('set-cookie') || ''
   const m = setCookie.match(/(?:mc-session|__Secure-mc-session)=([^;]+)/i)
   if (!m) throw new Error('no session cookie returned from signup')
+  // Mark the freshly-signed-up user verified so the email-verification gate on
+  // sensitive routes (runtime-key mint) lets this admin through.
+  getDatabase().prepare('UPDATE users SET email_verified_at = unixepoch() WHERE email = ?').run(`rk_${ts}@acme.test`)
   return { cookie: `mc-session=${m[1]}`, workspaceId: data.workspace.id }
 }
 

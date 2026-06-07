@@ -50,7 +50,8 @@ describe('POST /api/auth/signup — customer self-signup', () => {
     expect(data.user.email).toBe(email)
     expect(data.user.role).toBe('admin')
     expect(data.workspace.id).toBeGreaterThan(1) // not the default workspace
-    expect(data.next).toBe('/onboarding')
+    // Email-verification P0: new signups must verify before activation.
+    expect(data.next).toBe('/verify-email')
 
     // Session cookie set
     const setCookie = res.headers.get('set-cookie') || ''
