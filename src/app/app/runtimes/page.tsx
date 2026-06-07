@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { HermesVpsCard } from '@/components/runtimes/hermes-vps-card'
 
 // ─────────────────────────────────────────────────────────────────────
 // /app/runtimes — Remote Runtimes hub.
@@ -197,6 +198,9 @@ export default function RemoteRuntimesPage() {
             exact setup command so you can pair them manually. Nothing is faked.
           </p>
         </header>
+
+        {/* Hermes VPS — Primary Production Controller (secure pairing, no SSH) */}
+        <HermesVpsCard />
 
         {/* Detected on this host */}
         <section className="mb-12" data-testid="runtimes-detected">

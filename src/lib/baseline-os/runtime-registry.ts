@@ -391,3 +391,17 @@ export function getRuntimeByInternalId(workspaceId: number, internalId: number):
   if (!row) return null
   return toRecord(row)
 }
+
+/**
+ * Remove a runtime_registry row (workspace-scoped). Used by the "Revoke
+ * runtime" kill switch — paired with revoking the runtime's API keys so the
+ * VPS can no longer heartbeat. Returns true if a row was deleted.
+ */
+export function deleteRuntimeByInternalId(workspaceId: number, internalId: number): boolean {
+  const db = getDatabase()
+  ensureTable(db)
+  const info = db
+    .prepare(`DELETE FROM runtime_registry WHERE workspace_id = ? AND id = ?`)
+    .run(workspaceId, internalId)
+  return info.changes > 0
+}
