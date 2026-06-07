@@ -1,0 +1,186 @@
+{
+  "customer": {
+    "email": "casey.zero.1780793343574@acme.test"
+  },
+  "ledger": [
+    {
+      "step": "New signup",
+      "route": "/signup → /onboarding",
+      "status": "PASS",
+      "note": "account casey.zero.1780793343574@acme.test created, auto-logged-in, redirected to /onboarding",
+      "screenshot": "docs/audit/customer-zero/01-signup-filled.png"
+    },
+    {
+      "step": "Email verification",
+      "route": "n/a",
+      "status": "INFO",
+      "note": "No email-verification gate exists: signup creates a session and lands on /onboarding directly. (Frictionless by design; flagged in report.)",
+      "screenshot": ""
+    },
+    {
+      "step": "First login",
+      "route": "/login",
+      "status": "PASS",
+      "note": "cold login as casey.zero.1780793343574@acme.test via UI form → /app",
+      "screenshot": "docs/audit/customer-zero/02-login-page.png"
+    },
+    {
+      "step": "Choose template (signup wizard)",
+      "route": "/onboarding",
+      "status": "PASS",
+      "note": "9 verticals offered; selected first",
+      "screenshot": "docs/audit/customer-zero/03-onboarding-templates.png"
+    },
+    {
+      "step": "Workforce deployment",
+      "route": "/onboarding",
+      "status": "PASS",
+      "note": "AI workforce provisioned (employees + skills + starter task); \"Activate Workforce\" CTA shown",
+      "screenshot": "docs/audit/customer-zero/05-onboarding-deployed.png"
+    },
+    {
+      "step": "Activation Hub",
+      "route": "/app/activate",
+      "status": "PASS",
+      "note": "three-step hub renders with progress strip",
+      "screenshot": "docs/audit/customer-zero/06-activation-hub.png"
+    },
+    {
+      "step": "Workforce Templates (install)",
+      "route": "/app/activate",
+      "status": "PASS",
+      "note": "workforce installed (template predicate ticked server-side; install ran)",
+      "screenshot": "docs/audit/customer-zero/07-workforce-installed.png"
+    },
+    {
+      "step": "Connect runtime",
+      "route": "/app/activate + POST /api/runtime/handshake",
+      "status": "PASS",
+      "note": "runtime API key minted + connect command shown in UI · runtime host handshake → HTTP 200",
+      "screenshot": "docs/audit/customer-zero/08-runtime-connect.png"
+    },
+    {
+      "step": "Credentials page + API key setup",
+      "route": "/app/credentials",
+      "status": "PASS",
+      "note": "BYOK credential saved (encrypted; secret_preview set) → API key setup works",
+      "screenshot": "docs/audit/customer-zero/11-credentials-saved.png"
+    },
+    {
+      "step": "Runtimes page",
+      "route": "/app/runtimes",
+      "status": "PASS",
+      "note": "detected + registered (our handshake shows) + manual sections render",
+      "screenshot": "docs/audit/customer-zero/12-runtimes-page.png"
+    },
+    {
+      "step": "Hermes VPS pairing",
+      "route": "/app/runtimes",
+      "status": "INFO",
+      "note": "No dedicated VPS pairing UI yet (task #105, queued next). API + curl flow works: POST /api/onboarding/runtime-key {runtime:\"hermes-vps\"}.",
+      "screenshot": "docs/audit/customer-zero/12-runtimes-page.png"
+    },
+    {
+      "step": "Billing history",
+      "route": "/app/billing",
+      "status": "PASS",
+      "note": "billing panel renders (fuel meter + ledger tabs)",
+      "screenshot": "docs/audit/customer-zero/13-billing-page.png"
+    },
+    {
+      "step": "Credit purchase",
+      "route": "/app/billing",
+      "status": "INFO",
+      "note": "Credit purchase routes to Stripe checkout — requires live Stripe keys + a real/test card, not completable in this local sandbox. UI surface reached.",
+      "screenshot": ""
+    },
+    {
+      "step": "Marketplace",
+      "route": "/marketplace",
+      "status": "PASS",
+      "note": "marketplace catalog renders with credit-state pricing",
+      "screenshot": "docs/audit/customer-zero/14-marketplace-page.png"
+    },
+    {
+      "step": "Marketplace purchase",
+      "route": "/marketplace",
+      "status": "INFO",
+      "note": "Purchase requires a positive credit balance (fed by Stripe). With 0 credits the UI correctly shows \"Insufficient credits\"; full purchase needs the credit grant Stripe provides.",
+      "screenshot": ""
+    },
+    {
+      "step": "Flight Deck",
+      "route": "/flight-deck",
+      "status": "PASS",
+      "note": "Flight Deck (desktop terminal) landing renders",
+      "screenshot": "docs/audit/customer-zero/15-flight-deck.png"
+    },
+    {
+      "step": "Overview",
+      "route": "/app",
+      "status": "PASS",
+      "note": "overview shell renders; setup checklist auto-hidden (100% complete)",
+      "screenshot": "docs/audit/customer-zero/16-overview.png"
+    },
+    {
+      "step": "Daily Brief",
+      "route": "/app",
+      "status": "PASS",
+      "note": "Daily Brief / Executive Briefing panel present on overview",
+      "screenshot": ""
+    },
+    {
+      "step": "ROI",
+      "route": "/app/value",
+      "status": "PASS",
+      "note": "Value/ROI report panel renders",
+      "screenshot": "docs/audit/customer-zero/17-roi-value.png"
+    },
+    {
+      "step": "Orchestration",
+      "route": "/app/orchestration",
+      "status": "PASS",
+      "note": "Orchestration surface renders",
+      "screenshot": "docs/audit/customer-zero/18-orchestration.png"
+    },
+    {
+      "step": "Progress reaches 100%",
+      "route": "/api/help/checklist (overview bar source)",
+      "status": "PASS",
+      "note": "setup percent: 100% → 100%",
+      "screenshot": ""
+    },
+    {
+      "step": "Mirrored events",
+      "route": "/api/maestro/events",
+      "status": "INFO",
+      "note": "mirror endpoint HTTP 404 (mirror is opt-in)",
+      "screenshot": ""
+    }
+  ],
+  "consoleErrors": [
+    "Executing inline script violates the following Content Security Policy directive 'script-src 'self' 'nonce-tDWbqyQG8044ql8IT7ZN9w==' 'strict-dynamic' blob:'. Either the 'unsafe-inline' keyword, a hash ('sha256-rEimUxO1wcTcN27sS2BZKrFaIRIDPF9Ipx5CSWh/NNE='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked.",
+    "Executing inline script violates the following Content Security Policy directive 'script-src 'self' 'nonce-UjlPWr9X0sVhYwhH4oEeNw==' 'strict-dynamic' blob:'. Either the 'unsafe-inline' keyword, a hash ('sha256-rEimUxO1wcTcN27sS2BZKrFaIRIDPF9Ipx5CSWh/NNE='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked.",
+    "Executing inline script violates the following Content Security Policy directive 'script-src 'self' 'nonce-HkIwrxam9PiTEQcWYycDrg==' 'strict-dynamic' blob:'. Either the 'unsafe-inline' keyword, a hash ('sha256-rEimUxO1wcTcN27sS2BZKrFaIRIDPF9Ipx5CSWh/NNE='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked.",
+    "Failed to load resource: the server responded with a status of 400 (Bad Request)",
+    "Executing inline script violates the following Content Security Policy directive 'script-src 'self' 'nonce-V2lPyPldUh0unzQHRZNSaA==' 'strict-dynamic' blob:'. Either the 'unsafe-inline' keyword, a hash ('sha256-rEimUxO1wcTcN27sS2BZKrFaIRIDPF9Ipx5CSWh/NNE='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked.",
+    "Failed to load resource: the server responded with a status of 409 (Conflict)",
+    "Failed to load resource: the server responded with a status of 400 (Bad Request)",
+    "Failed to load resource: the server responded with a status of 400 (Bad Request)",
+    "Failed to load resource: the server responded with a status of 400 (Bad Request)",
+    "Failed to load resource: the server responded with a status of 400 (Bad Request)",
+    "Executing inline script violates the following Content Security Policy directive 'script-src 'self' 'nonce-8dwcOuiluU1QrEt+WGUmoA==' 'strict-dynamic' blob:'. Either the 'unsafe-inline' keyword, a hash ('sha256-rEimUxO1wcTcN27sS2BZKrFaIRIDPF9Ipx5CSWh/NNE='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked.",
+    "Executing inline script violates the following Content Security Policy directive 'script-src 'self' 'nonce-OwVLXi0gPdTtQbgrGoaRvQ==' 'strict-dynamic' blob:'. Either the 'unsafe-inline' keyword, a hash ('sha256-rEimUxO1wcTcN27sS2BZKrFaIRIDPF9Ipx5CSWh/NNE='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked.",
+    "Executing inline script violates the following Content Security Policy directive 'script-src 'self' 'nonce-4ouM8bnd+jtFBgRTeluVuw==' 'strict-dynamic' blob:'. Either the 'unsafe-inline' keyword, a hash ('sha256-rEimUxO1wcTcN27sS2BZKrFaIRIDPF9Ipx5CSWh/NNE='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked.",
+    "Executing inline script violates the following Content Security Policy directive 'script-src 'self' 'nonce-YQblFePEZflsY+pZmFhQrQ==' 'strict-dynamic' blob:'. Either the 'unsafe-inline' keyword, a hash ('sha256-rEimUxO1wcTcN27sS2BZKrFaIRIDPF9Ipx5CSWh/NNE='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked.",
+    "Executing inline script violates the following Content Security Policy directive 'script-src 'self' 'nonce-We6OJvn1s0VWldUdpOX23w==' 'strict-dynamic' blob:'. Either the 'unsafe-inline' keyword, a hash ('sha256-rEimUxO1wcTcN27sS2BZKrFaIRIDPF9Ipx5CSWh/NNE='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked.",
+    "Failed to load resource: the server responded with a status of 400 (Bad Request)",
+    "Executing inline script violates the following Content Security Policy directive 'script-src 'self' 'nonce-0MWLWDeerEVNBo44/puprw==' 'strict-dynamic' blob:'. Either the 'unsafe-inline' keyword, a hash ('sha256-rEimUxO1wcTcN27sS2BZKrFaIRIDPF9Ipx5CSWh/NNE='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked.",
+    "Executing inline script violates the following Content Security Policy directive 'script-src 'self' 'nonce-bdftQ6ZVaImNx0KYmCYxdw==' 'strict-dynamic' blob:'. Either the 'unsafe-inline' keyword, a hash ('sha256-rEimUxO1wcTcN27sS2BZKrFaIRIDPF9Ipx5CSWh/NNE='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked.",
+    "Executing inline script violates the following Content Security Policy directive 'script-src 'self' 'nonce-jvNBIJMb5Js2fCo8lAkcUA==' 'strict-dynamic' blob:'. Either the 'unsafe-inline' keyword, a hash ('sha256-rEimUxO1wcTcN27sS2BZKrFaIRIDPF9Ipx5CSWh/NNE='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked.",
+    "Failed to load resource: the server responded with a status of 400 (Bad Request)",
+    "Executing inline script violates the following Content Security Policy directive 'script-src 'self' 'nonce-wQGGLR6UpDIpBneNLiWY+A==' 'strict-dynamic' blob:'. Either the 'unsafe-inline' keyword, a hash ('sha256-rEimUxO1wcTcN27sS2BZKrFaIRIDPF9Ipx5CSWh/NNE='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked.",
+    "Failed to load resource: the server responded with a status of 400 (Bad Request)",
+    "Executing inline script violates the following Content Security Policy directive 'script-src 'self' 'nonce-tyyaeMSZGF/tCIC+hShyCA==' 'strict-dynamic' blob:'. Either the 'unsafe-inline' keyword, a hash ('sha256-rEimUxO1wcTcN27sS2BZKrFaIRIDPF9Ipx5CSWh/NNE='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked."
+  ]
+}

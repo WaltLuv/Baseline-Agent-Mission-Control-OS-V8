@@ -527,7 +527,11 @@ export default function Home() {
 }
 
 const ESSENTIAL_PANELS = new Set([
-  'overview', 'agents', 'tasks', 'chat', 'activity', 'logs', 'settings', 'help', 'value',
+  // 'billing' must always be reachable: a fresh workspace defaults to
+  // essential mode, and the onboarding "Add Credit Fuel" CTA links to
+  // /app/billing. Gating it behind Full mode dead-ended first-run customers
+  // who needed to add credits. (Customer Zero finding, 2026-06-06.)
+  'overview', 'agents', 'tasks', 'chat', 'activity', 'logs', 'settings', 'help', 'value', 'billing',
 ])
 
 function ContentRouter({ tab }: { tab: string }) {
