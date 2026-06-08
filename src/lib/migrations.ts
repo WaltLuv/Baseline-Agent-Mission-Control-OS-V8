@@ -2580,6 +2580,18 @@ const migrations: Migration[] = [
         CREATE INDEX IF NOT EXISTS idx_pipeline_stage ON pipeline_ideas(stage);
       `)
     },
+  },
+  {
+    // Workspace-scope the AI Org Chart so each customer only sees their own
+    // agents (no cross-workspace leakage). Existing rows default to workspace 1.
+    id: '072_org_chart_workspace_scope',
+    up: (db) => {
+      const cols = db.prepare(`PRAGMA table_info(org_agents)`).all() as { name: string }[]
+      if (!cols.some((c) => c.name === 'workspace_id')) {
+        db.exec(`ALTER TABLE org_agents ADD COLUMN workspace_id INTEGER NOT NULL DEFAULT 1;`)
+      }
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_org_agents_workspace ON org_agents(workspace_id);`)
+    },
   }
 ]
 

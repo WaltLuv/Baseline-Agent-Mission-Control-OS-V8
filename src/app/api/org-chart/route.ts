@@ -6,7 +6,10 @@ import {
 } from '@/lib/org-chart/store'
 
 /**
- * AI Org Chart CRUD API.
+ * AI Org Chart CRUD API — workspace-scoped.
+ *
+ * Every call is bound to the authenticated user's workspace, so a customer only
+ * ever reads/writes their own workforce. No cross-workspace leakage.
  *
  *   GET    /api/org-chart[?include_archived=1]   → { agents, hierarchy }
  *   POST   /api/org-chart   { name, role?, department?, ... }   → { agent }
@@ -16,31 +19,34 @@ import {
 export async function GET(request: NextRequest) {
   const auth = requireRole(request, 'viewer')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const ws = auth.user.workspace_id ?? 1
   const includeArchived = new URL(request.url).searchParams.get('include_archived') === '1'
-  const agents = listOrgAgents(includeArchived)
+  const agents = listOrgAgents(ws, includeArchived)
   return NextResponse.json({ agents, hierarchy: buildHierarchy(agents.filter((a) => !a.archived)) })
 }
 
 export async function POST(request: NextRequest) {
   const auth = requireRole(request, 'operator')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const ws = auth.user.workspace_id ?? 1
   const body = await request.json().catch(() => null)
   if (!body?.name) return NextResponse.json({ error: 'name required' }, { status: 400 })
-  const agent = createOrgAgent(body, Date.now())
+  const agent = createOrgAgent(ws, body, Date.now())
   return NextResponse.json({ agent }, { status: 201 })
 }
 
 export async function PATCH(request: NextRequest) {
   const auth = requireRole(request, 'operator')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const ws = auth.user.workspace_id ?? 1
   const body = await request.json().catch(() => null)
   if (body?.reorder && Array.isArray(body.reorder)) {
-    reorderOrgAgents(body.reorder, Date.now())
+    reorderOrgAgents(ws, body.reorder, Date.now())
     return NextResponse.json({ ok: true })
   }
   const id = new URL(request.url).searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
-  const agent = updateOrgAgent(id, body ?? {}, Date.now())
+  const agent = updateOrgAgent(ws, id, body ?? {}, Date.now())
   if (!agent) return NextResponse.json({ error: 'not found' }, { status: 404 })
   return NextResponse.json({ agent })
 }
@@ -48,12 +54,13 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const auth = requireRole(request, 'operator')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const ws = auth.user.workspace_id ?? 1
   const url = new URL(request.url)
   const id = url.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
   // Default is a soft archive. Hard delete (destructive) must be explicitly
   // confirmed by the caller with hard=1 — the UI gates this behind a confirm.
-  const ok = url.searchParams.get('hard') === '1' ? deleteOrgAgent(id) : archiveOrgAgent(id, Date.now())
+  const ok = url.searchParams.get('hard') === '1' ? deleteOrgAgent(ws, id) : archiveOrgAgent(ws, id, Date.now())
   return ok ? NextResponse.json({ ok: true }) : NextResponse.json({ error: 'not found' }, { status: 404 })
 }
 

@@ -18,19 +18,17 @@ const FORBIDDEN = /\bslim charles\b|\bslim voice\b|\bslim agent\b|rWyjfFeMZ6PxkH
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const e of readdirSync(dir)) {
-    if (SKIP.has(e)) continue
+    if (SKIP.has(e) || e === '__tests__') continue // tests reference the name to assert its absence
     const p = join(dir, e)
     if (statSync(p).isDirectory()) walk(p, out)
-    else if (TEXT.has(extname(p))) out.push(p)
+    else if (TEXT.has(extname(p)) && !p.includes('.test.')) out.push(p)
   }
   return out
 }
 
 describe('no Slim Charles in Mission Control', () => {
-  it('has zero Slim branding / private voice id / personal-assistant copy', () => {
-    const hits = walk('src')
-      .filter((f) => !f.endsWith('no-slim-charles.test.ts'))
-      .filter((f) => FORBIDDEN.test(readFileSync(f, 'utf8')))
+  it('has zero Slim branding / private voice id / personal-assistant copy in shipped code', () => {
+    const hits = walk('src').filter((f) => FORBIDDEN.test(readFileSync(f, 'utf8')))
     expect(hits, `Slim Charles must not appear in Mission Control: ${hits.join(', ')}`).toEqual([])
   })
 

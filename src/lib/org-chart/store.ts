@@ -1,10 +1,13 @@
 /**
- * AI Org Chart — CRUD store that unifies every AI agent/persona in one place.
+ * AI Org Chart — CRUD store for a workspace's AI workforce hierarchy.
  *
- * This is the "pull the best org-chart idea from a competitor, build it better"
- * surface: create / edit / update / archive (soft-delete with confirmation) /
- * reorder agents, assign department, manager, skills, memory access, runtime,
- * and permissions, and categorize personas. Backed by the real sqlite db.
+ * Customer-safe + workspace-scoped: EVERY read and write is bound to a
+ * `workspaceId`, so each customer only ever sees and mutates their own agents.
+ * No cross-workspace leakage, and no Walt-private agents are ever seeded here —
+ * the org chart only contains what a workspace explicitly creates.
+ *
+ * (Baseline OS runs the same module against the private/local instance, where
+ * Walt's own private org chart lives.)
  */
 import { getDatabase } from '@/lib/db'
 import { type OrgAgent, type OrgAgentInput } from '@/lib/org-chart/types'
@@ -12,7 +15,7 @@ import { type OrgAgent, type OrgAgentInput } from '@/lib/org-chart/types'
 export { type OrgAgent, type OrgAgentInput, type OrgNode, ORG_DEPARTMENTS, buildHierarchy } from '@/lib/org-chart/types'
 
 interface Row {
-  id: string; name: string; role: string; department: string; category: string
+  id: string; workspace_id: number; name: string; role: string; department: string; category: string
   manager_id: string | null; skills: string; memory_access: string; runtime: string
   permissions: string; archived: number; sort_order: number; created_at: number; updated_at: number
 }
@@ -27,16 +30,16 @@ function toAgent(r: Row): OrgAgent {
   }
 }
 
-export function listOrgAgents(includeArchived = false): OrgAgent[] {
-  const db = getDatabase()
-  const rows = db
-    .prepare(`SELECT * FROM org_agents ${includeArchived ? '' : 'WHERE archived = 0'} ORDER BY sort_order ASC, created_at ASC`)
-    .all() as Row[]
+export function listOrgAgents(workspaceId: number, includeArchived = false): OrgAgent[] {
+  const rows = getDatabase()
+    .prepare(`SELECT * FROM org_agents WHERE workspace_id = ? ${includeArchived ? '' : 'AND archived = 0'} ORDER BY sort_order ASC, created_at ASC`)
+    .all(workspaceId) as Row[]
   return rows.map(toAgent)
 }
 
-export function getOrgAgent(id: string): OrgAgent | null {
-  const r = getDatabase().prepare('SELECT * FROM org_agents WHERE id = ?').get(id) as Row | undefined
+/** Scoped fetch — returns null if the agent belongs to a different workspace. */
+export function getOrgAgent(workspaceId: number, id: string): OrgAgent | null {
+  const r = getDatabase().prepare('SELECT * FROM org_agents WHERE id = ? AND workspace_id = ?').get(id, workspaceId) as Row | undefined
   return r ? toAgent(r) : null
 }
 
@@ -47,53 +50,53 @@ function newId(now: number): string {
   return `org_${now.toString(36)}${counter.toString(36)}`
 }
 
-export function createOrgAgent(input: OrgAgentInput, now: number): OrgAgent {
+export function createOrgAgent(workspaceId: number, input: OrgAgentInput, now: number): OrgAgent {
   const db = getDatabase()
   const id = newId(now)
   db.prepare(`
-    INSERT INTO org_agents (id, name, role, department, category, manager_id, skills, memory_access, runtime, permissions, archived, sort_order, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
+    INSERT INTO org_agents (id, workspace_id, name, role, department, category, manager_id, skills, memory_access, runtime, permissions, archived, sort_order, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
   `).run(
-    id, input.name, input.role ?? '', input.department ?? '', input.category ?? '',
+    id, workspaceId, input.name, input.role ?? '', input.department ?? '', input.category ?? '',
     input.managerId ?? null, JSON.stringify(input.skills ?? []), JSON.stringify(input.memoryAccess ?? []),
     input.runtime ?? '', JSON.stringify(input.permissions ?? []), input.sortOrder ?? 0, now, now,
   )
-  return getOrgAgent(id)!
+  return getOrgAgent(workspaceId, id)!
 }
 
-export function updateOrgAgent(id: string, patch: Partial<OrgAgentInput>, now: number): OrgAgent | null {
-  const existing = getOrgAgent(id)
-  if (!existing) return null
+export function updateOrgAgent(workspaceId: number, id: string, patch: Partial<OrgAgentInput>, now: number): OrgAgent | null {
+  const existing = getOrgAgent(workspaceId, id)
+  if (!existing) return null // not found OR belongs to another workspace
   const merged = { ...existing, ...patch }
   getDatabase().prepare(`
     UPDATE org_agents SET name=?, role=?, department=?, category=?, manager_id=?, skills=?, memory_access=?, runtime=?, permissions=?, sort_order=?, updated_at=?
-    WHERE id=?
+    WHERE id=? AND workspace_id=?
   `).run(
     merged.name, merged.role, merged.department, merged.category, merged.managerId ?? null,
     JSON.stringify(merged.skills), JSON.stringify(merged.memoryAccess), merged.runtime,
-    JSON.stringify(merged.permissions), merged.sortOrder, now, id,
+    JSON.stringify(merged.permissions), merged.sortOrder, now, id, workspaceId,
   )
-  return getOrgAgent(id)
+  return getOrgAgent(workspaceId, id)
 }
 
 /** Soft-delete (archive) — destructive removal requires explicit confirmation at the API/UI layer. */
-export function archiveOrgAgent(id: string, now: number): boolean {
-  const res = getDatabase().prepare('UPDATE org_agents SET archived=1, updated_at=? WHERE id=?').run(now, id)
+export function archiveOrgAgent(workspaceId: number, id: string, now: number): boolean {
+  const res = getDatabase().prepare('UPDATE org_agents SET archived=1, updated_at=? WHERE id=? AND workspace_id=?').run(now, id, workspaceId)
   return res.changes > 0
 }
 
-/** Hard delete — only when the caller has confirmed. */
-export function deleteOrgAgent(id: string): boolean {
-  const res = getDatabase().prepare('DELETE FROM org_agents WHERE id=?').run(id)
-  // Re-parent any reports so the hierarchy doesn't dangle.
-  getDatabase().prepare('UPDATE org_agents SET manager_id=NULL WHERE manager_id=?').run(id)
-  return res.changes > 0
-}
-
-/** Persist a new ordering (drag/reorder). */
-export function reorderOrgAgents(orderedIds: string[], now: number): void {
+/** Hard delete — only when the caller has confirmed; scoped to the workspace. */
+export function deleteOrgAgent(workspaceId: number, id: string): boolean {
   const db = getDatabase()
-  const stmt = db.prepare('UPDATE org_agents SET sort_order=?, updated_at=? WHERE id=?')
-  db.transaction(() => orderedIds.forEach((id, i) => stmt.run(i, now, id)))()
+  const res = db.prepare('DELETE FROM org_agents WHERE id=? AND workspace_id=?').run(id, workspaceId)
+  // Re-parent any reports within the same workspace so the hierarchy doesn't dangle.
+  db.prepare('UPDATE org_agents SET manager_id=NULL WHERE manager_id=? AND workspace_id=?').run(id, workspaceId)
+  return res.changes > 0
 }
 
+/** Persist a new ordering (drag/reorder) — only affects this workspace's rows. */
+export function reorderOrgAgents(workspaceId: number, orderedIds: string[], now: number): void {
+  const db = getDatabase()
+  const stmt = db.prepare('UPDATE org_agents SET sort_order=?, updated_at=? WHERE id=? AND workspace_id=?')
+  db.transaction(() => orderedIds.forEach((id, i) => stmt.run(i, now, id, workspaceId)))()
+}
