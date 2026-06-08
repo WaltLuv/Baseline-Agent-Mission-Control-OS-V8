@@ -104,3 +104,4 @@ memory/test_credentials.md
 # MemPalace per-project files (issue #185)
 mempalace.yaml
 entities.json
+scripts/seed-walt-admin.cjs

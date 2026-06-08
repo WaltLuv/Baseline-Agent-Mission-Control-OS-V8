@@ -9,7 +9,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 interface Build { id: number; prompt: string; file: string | null; ts: number }
-interface Status { reachable: boolean; model: string; models: string[]; host: string; setup: string | null }
+interface Status {
+  readiness: 'ready' | 'setup-needed' | 'blocked'
+  message: string
+  primaryEngine: string | null
+  fallbackAvailable: boolean
+  claudeCode: { connected: boolean; authHint: string }
+  ollama: { running: boolean; host: string; model: string; setup: string | null; note: string; recommendedModels: { id: string; note: string }[] }
+}
 
 const PROJECT = 'agent-factory'
 
@@ -89,27 +96,32 @@ export function AgentFactoryPanel() {
     rec.start(); setListening(true)
   }, [listening, build])
 
-  const ready = status?.reachable
+  const ready = status?.readiness === 'ready'
 
   return (
     <div className="m-4 space-y-4" data-testid="agent-factory-panel">
       <div className="rounded-lg border border-border/60 bg-card/20 p-3">
         <h1 className="text-base font-semibold">Agent Factory</h1>
         <p className="text-xs text-muted-foreground mt-0.5 max-w-2xl">
-          Say or type <em>“build me a snake game”</em> and a local model writes a real, working app — free, private, on your machine.
+          Say or type <em>“build me a snake game”</em> — <strong>Agent Factory builds through Claude Code.</strong> Ollama can be used as an optional local fallback when configured.
         </p>
       </div>
 
-      {/* Honest local-model status */}
-      {status && !ready && (
-        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs" data-testid="factory-setup-needed">
-          <div className="font-semibold text-amber-300">Local model not running</div>
-          <p className="text-muted-foreground mt-1">{status.setup}</p>
-        </div>
-      )}
+      {/* Honest engine status — Claude Code is primary; Ollama is optional fallback */}
       {status && ready && (
         <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2 text-[11px] text-emerald-300" data-testid="factory-ready">
-          Local model ready · {status.model} · {status.host}
+          Ready · builds through Claude Code{status.fallbackAvailable ? ' · Ollama fallback available (optional)' : ''}
+        </div>
+      )}
+      {status && !ready && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs" data-testid="factory-setup-needed">
+          <div className="font-semibold text-amber-300">{status.readiness === 'blocked' ? 'Connect Claude Code runtime to build apps' : 'Connect Claude Code runtime (optional fallback available)'}</div>
+          <p className="text-muted-foreground mt-1">{status.message}</p>
+          {status.claudeCode?.authHint && <p className="text-muted-foreground/70 mt-1">Claude Code: {status.claudeCode.authHint}</p>}
+          <p className="text-muted-foreground/60 mt-1" data-testid="ollama-optional">
+            Optional fallback — Ollama {status.ollama?.running ? 'running' : 'not running'}. {status.ollama?.note}
+            {!status.ollama?.running && status.ollama?.setup ? ` ${status.ollama.setup}` : ''}
+          </p>
         </div>
       )}
 

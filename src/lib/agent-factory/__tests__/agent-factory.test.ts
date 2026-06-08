@@ -6,6 +6,7 @@ import { describe, it, expect } from 'vitest'
 import { existsSync, readFileSync } from 'fs'
 import { extractHtml, slugify, ollamaModelFromEnv, promptForFile, FACTORY_SYSTEM_PROMPT, OLLAMA_HOST } from '@/lib/agent-factory/build-helpers'
 import { safeProject, DEFAULT_PROJECT } from '@/lib/agent-factory/workspace'
+import { deriveFactoryStatus } from '@/lib/agent-factory/engine'
 
 describe('build helpers', () => {
   it('extracts HTML from a fenced response', () => {
@@ -49,11 +50,11 @@ describe('routes + UI exist and stay honest', () => {
     }
     expect(existsSync('src/app/api/agent-factory/preview/[...path]/route.ts')).toBe(true)
   })
-  it('build route streams from local Ollama (no cloud, no fake)', () => {
+  it('build route is Claude-Code-primary; Ollama only an optional fallback', () => {
     const src = read('src/app/api/agent-factory/build/route.ts')
-    expect(src).toContain('/api/chat')
-    expect(src).toContain('OLLAMA_HOST')
-    expect(src).toMatch(/local model not reachable/i)
+    expect(src).toContain('detectRuntime')           // checks Claude Code runtime
+    expect(src).toMatch(/Connect Claude Code runtime to build apps/i)
+    expect(src).toMatch(/optional local fallback/i)  // Ollama labeled optional
   })
   it('preview route blocks path traversal', () => {
     expect(read('src/app/api/agent-factory/preview/[...path]/route.ts')).toContain('forbidden')
@@ -66,6 +67,35 @@ describe('routes + UI exist and stay honest', () => {
     expect(src).toContain('factory-preview')
     expect(src).toContain('factory-gallery')
     expect(src).toContain('/api/agent-factory/preview/')
-    expect(src).toContain('factory-setup-needed') // honest local-model state
+    expect(src).toContain('factory-setup-needed')
+  })
+  it('panel copy: builds through Claude Code, Ollama optional (not required)', () => {
+    const src = read('src/components/agent-factory/agent-factory-panel.tsx')
+    expect(src).toMatch(/builds through Claude Code/i)
+    expect(src).toMatch(/optional local fallback/i)
+    expect(src).not.toMatch(/local model not running/i) // old Ollama-required copy gone
+  })
+})
+
+describe('Agent Factory engine priority (Claude Code primary, Ollama optional)', () => {
+  it('READY when Claude Code is connected — even if Ollama is down', () => {
+    const s = deriveFactoryStatus({ claudeCodeConnected: true, ollamaRunning: false })
+    expect(s.readiness).toBe('ready')
+    expect(s.primaryEngine).toBe('claude-code')
+    expect(s.message).toMatch(/Claude Code/)
+  })
+  it('Ollama running alone is SETUP-NEEDED (fallback), not READY', () => {
+    const s = deriveFactoryStatus({ claudeCodeConnected: false, ollamaRunning: true })
+    expect(s.readiness).toBe('setup-needed')
+    expect(s.fallbackAvailable).toBe(true)
+    expect(s.fallbackEngine).toBe('ollama')
+  })
+  it('BLOCKED only when neither Claude Code nor any fallback exists', () => {
+    const s = deriveFactoryStatus({})
+    expect(s.readiness).toBe('blocked')
+    expect(s.message).toMatch(/Connect Claude Code runtime/i)
+  })
+  it('Ollama missing never blocks the Claude Code path', () => {
+    expect(deriveFactoryStatus({ claudeCodeConnected: true }).readiness).toBe('ready')
   })
 })
