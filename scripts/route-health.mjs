@@ -17,8 +17,10 @@ const APP_ROUTES = [
   "/onboarding", "/app", "/app/activate", "/app/credentials", "/app/runtimes",
   "/app/billing", "/app/orchestration", "/app/value", "/app/personas",
   "/app/tasks", "/app/approvals", "/app/skills", "/app/creative", "/app/higgsfield",
+  // Customer-safe product modules (Slim Charles is intentionally NOT here — it's Baseline OS only)
+  "/app/org-chart", "/app/pipeline", "/app/agent-factory", "/app/provider-matrix",
   // Baseline OS → MC parity surfaces (honest-state, never 404)
-  "/app/codex", "/app/openclaw", "/app/hermes", "/app/hermes-manage", "/app/slim-voice",
+  "/app/codex", "/app/openclaw", "/app/hermes", "/app/hermes-manage",
   "/app/oh-my-pi", "/app/antigravity", "/app/gemini", "/app/free-claude", "/app/browser-use",
   "/app/ruflo", "/app/hyperframes", "/app/minimax", "/app/asset-library", "/app/proofs",
   "/app/knowledge-os", "/app/notebooklm", "/app/obsidian", "/app/notion", "/app/pinecone", "/app/pi-agent",
