@@ -1,6 +1,6 @@
 # Baseline OS → Mission Control — Feature Parity Matrix
 
-> Source of truth: `src/lib/parity/surfaces.ts`. Rule: every Baseline OS page/tab has a Mission Control route — fully working, cloud-equivalent, or an honest setup/connect state. Never missing, never a 404, never a fake-ready shell. Every surface is also a visible MC nav tab.
+> Source: src/lib/parity/surfaces.ts. Every Baseline OS page/tab has an MC route — working, cloud-equivalent, or honest setup/connect state. Never missing, never 404, never fake-ready. Every surface is a visible MC nav tab.
 
 | Baseline OS Feature | Baseline OS Route | Mission Control Route | Status | Fix Applied | Notes |
 |---|---|---|---|---|---|
@@ -39,14 +39,14 @@
 | Creative Provider Matrix | `/agents/claude-code-studio` | `/app/provider-matrix` | ✅ Live | Working MC panel/route | Creative |
 | MiniMax | `/minimax` | `/app/minimax` | ⚙️ Setup needed | Honest surface + setup path | Creative |
 | Video / Creative Studio | `/video-studio` | `/app/creative` | ✅ Live | Working MC panel/route | Creative |
-| Asset Library | `/agents/claude-code-studio` | `/app/asset-library` | ⚙️ Setup needed | Honest surface + setup path | Creative |
-| Knowledge OS | `/memory` | `/app/knowledge-os` | ⚙️ Setup needed | Honest surface + setup path | Knowledge |
+| Asset Library | `/agents/claude-code-studio` | `/app/asset-library` | ✅ Live | Working MC panel/route | Creative |
+| Knowledge OS | `/memory` | `/app/knowledge-os` | ✅ Live | Working MC panel/route | Knowledge |
 | Memory | `/memory` | `/app/memory` | ✅ Live | Working MC panel/route | Knowledge |
-| NotebookLM | `/agents/notebooklm` | `/app/notebooklm` | ⚙️ Setup needed | Honest surface + setup path | Knowledge |
+| NotebookLM | `/agents/notebooklm` | `/app/notebooklm` | ✅ Live | Working MC panel/route | Knowledge |
 | Obsidian | `/memory` | `/app/obsidian` | 🖥️ Connect Baseline OS | Honest surface + connect-Baseline-OS path | Knowledge |
 | Notion | `/notion` | `/app/notion` | ⚙️ Setup needed | Honest surface + setup path | Knowledge |
 | Pinecone | `/pinecone` | `/app/pinecone` | ⚙️ Setup needed | Honest surface + setup path | Knowledge |
-| PI Agent | `/agents/pi-runtime` | `/app/pi-agent` | ⚙️ Setup needed | Honest surface + setup path | Knowledge |
+| PI Agent | `/agents/pi-runtime` | `/app/pi-agent` | ✅ Live | Working MC panel/route | Knowledge |
 | Documents | `/documents` | `/app/documents` | ✅ Live | Working MC panel/route | Knowledge |
 | Library | `/library` | `/app/library` | ✅ Live | Working MC panel/route | Knowledge |
 | Skills | `/skills` | `/app/skills` | ✅ Live | Working MC panel/route | Platform |
@@ -59,4 +59,4 @@
 | Admin / Super Admin | `/admin` | `/app/super-admin` | ✅ Live | Working MC panel/route | Platform |
 | Help / Docs | `/guide` | `/help` | ✅ Live | Working MC panel/route | Platform |
 
-**Totals:** 54 surfaces · 33 live · 21 honest-state · **0 missing**.
+**Totals:** 54 surfaces · 37 live · 17 honest-state · **0 missing**.

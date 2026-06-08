@@ -57,6 +57,9 @@ import { RuntimeKeysPanel } from '@/components/panels/runtime-keys-panel'
 import { HiggsfieldPanel } from '@/components/panels/higgsfield-panel'
 import { FeatureSurfacePanel } from '@/components/panels/feature-surface-panel'
 import { ProviderMatrixPanel } from '@/components/panels/provider-matrix-panel'
+import { KnowledgeOsPanel } from '@/components/panels/knowledge-os-panel'
+import { NotebookLmPanel } from '@/components/panels/notebooklm-panel'
+import { AssetLibraryPanel } from '@/components/panels/asset-library-panel'
 import { AgentGatewayPanel } from '@/components/panels/agent-gateway-panel'
 import { ChatPanel } from '@/components/chat/chat-panel'
 import { HelpPanel } from '@/components/help/help-panel'
@@ -706,6 +709,13 @@ function ContentRouter({ tab }: { tab: string }) {
     case 'provider-matrix':
     case 'hyperframes':
       return <ProviderMatrixPanel />
+    case 'knowledge-os':
+    case 'pi-agent':
+      return <KnowledgeOsPanel />
+    case 'notebooklm':
+      return <NotebookLmPanel />
+    case 'asset-library':
+      return <AssetLibraryPanel />
     // Baseline OS → Mission Control parity surfaces. Each is a real route with
     // an honest state (Connect runtime / Connect Baseline OS / Setup needed) —
     // never missing, never a 404, never a fake-ready shell.
@@ -719,13 +729,9 @@ function ContentRouter({ tab }: { tab: string }) {
     case 'browser-use':
     case 'ruflo':
     case 'minimax':
-    case 'asset-library':
-    case 'knowledge-os':
-    case 'notebooklm':
     case 'obsidian':
     case 'notion':
     case 'pinecone':
-    case 'pi-agent':
     case 'hermes-manage':
     case 'slim-voice':
     case 'proofs':
