@@ -44,6 +44,10 @@ export const FEATURE_SURFACES: FeatureSurface[] = [
   { slug: 'activity', label: 'Activity', category: 'Workforce', baselineRoute: '/activity', mcRoute: '/app/activity', status: 'live', description: 'Live workforce activity feed.' },
   { slug: 'value', label: 'ROI / Value', category: 'Workforce', baselineRoute: '/', mcRoute: '/app/value', status: 'live', description: 'ROI + value reporting.' },
   { slug: 'goals', label: 'Goals', category: 'Workforce', baselineRoute: '/goals', mcRoute: '/app/goals', status: 'live', description: 'Goal tracking.' },
+  { slug: 'kanban', label: 'Kanban / Dispatcher', category: 'Workforce', baselineRoute: '/kanban', mcRoute: '/app/tasks', status: 'live', description: 'Task board / dispatcher.' },
+  { slug: 'daily-brief', label: 'Daily Brief', category: 'Workforce', baselineRoute: '/', mcRoute: '/briefing', status: 'live', description: 'Daily brief.' },
+  { slug: 'executive-briefing', label: 'Executive Briefing', category: 'Workforce', baselineRoute: '/', mcRoute: '/briefing', status: 'live', description: 'Executive briefing.' },
+  { slug: 'proofs', label: 'Proofs / Handoff', category: 'Workforce', baselineRoute: '/agents/claude-code-studio', mcRoute: '/app/proofs', status: 'setup_needed', description: 'Proof manifests + handoff packages.', enableHint: 'Proofs are produced by render/orchestration jobs in Claude Code Studio.', enableHref: '/app/creative' },
 
   // ── Agents & Runtimes ──────────────────────────────────────────────
   { slug: 'agents', label: 'Agents', category: 'Agents & Runtimes', baselineRoute: '/personas', mcRoute: '/app/agents', status: 'live', description: 'AI employee roster.' },
@@ -60,6 +64,8 @@ export const FEATURE_SURFACES: FeatureSurface[] = [
   { slug: 'free-claude', label: 'Free Claude Code', category: 'Agents & Runtimes', baselineRoute: '/agents/free-claude', mcRoute: '/app/free-claude', status: 'connect_baseline', description: 'Free Claude Code (local fcc-server).', enableHint: 'Local-only — connect Baseline OS / Flight Deck to enable.', enableHref: '/flight-deck' },
   { slug: 'browser-use', label: 'Browser Use', category: 'Agents & Runtimes', baselineRoute: '/browser', mcRoute: '/app/browser-use', status: 'connect_baseline', description: 'Browser automation runtime.', enableHint: 'Local-only — connect Baseline OS / Flight Deck to enable.', enableHref: '/flight-deck' },
   { slug: 'ruflo', label: 'Ruflo', category: 'Agents & Runtimes', baselineRoute: '/agents/ruflo', mcRoute: '/app/ruflo', status: 'connect_baseline', description: 'Ruflo MCP runtime.', enableHint: 'Local-only — connect Baseline OS / Flight Deck to enable.', enableHref: '/flight-deck' },
+  { slug: 'hermes-manage', label: 'Hermes Manage', category: 'Agents & Runtimes', baselineRoute: '/agents/hermes/control', mcRoute: '/app/hermes-manage', status: 'cloud_pairing', description: 'Manage Hermes runtime — control, goals, workspace.', enableHint: 'Pair a Hermes runtime to manage it.', enableHref: '/app/runtimes' },
+  { slug: 'slim-voice', label: 'Slim Voice Agent', category: 'Agents & Runtimes', baselineRoute: '/agents/hermes', mcRoute: '/app/slim-voice', status: 'connect_baseline', description: 'Slim voice agent (local voice runtime).', enableHint: 'Local-only — connect Baseline OS / Flight Deck to enable.', enableHref: '/flight-deck' },
 
   // ── Creative ───────────────────────────────────────────────────────
   { slug: 'creative', label: 'Claude Code Studio', category: 'Creative', baselineRoute: '/agents/claude-code-studio', mcRoute: '/app/creative', status: 'live', description: 'Unified creative operating system (provider matrix, render queue, proof).' },
@@ -88,6 +94,8 @@ export const FEATURE_SURFACES: FeatureSurface[] = [
   { slug: 'flight-deck', label: 'Flight Deck', category: 'Platform', baselineRoute: '/flight-deck', mcRoute: '/flight-deck', status: 'live', description: 'Desktop terminal / local pairing.' },
   { slug: 'seo', label: 'SEO', category: 'Platform', baselineRoute: '/seo', mcRoute: '/app/seo', status: 'live', description: 'SEO surface.' },
   { slug: 'settings', label: 'Settings / Admin', category: 'Platform', baselineRoute: '/settings', mcRoute: '/app/settings', status: 'live', description: 'Settings + admin.' },
+  { slug: 'admin', label: 'Admin / Super Admin', category: 'Platform', baselineRoute: '/admin', mcRoute: '/app/super-admin', status: 'live', description: 'Admin / super-admin console.' },
+  { slug: 'help', label: 'Help / Docs', category: 'Platform', baselineRoute: '/guide', mcRoute: '/help', status: 'live', description: 'Help + documentation.' },
 ]
 
 export const PARITY_STATUS_LABEL: Record<ParityStatus, string> = {

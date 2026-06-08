@@ -537,6 +537,7 @@ const ESSENTIAL_PANELS = new Set([
   // Baseline OS parity surfaces — always reachable (honest setup states).
   'codex', 'openclaw', 'hermes', 'oh-my-pi', 'antigravity', 'gemini', 'free-claude', 'browser-use', 'ruflo',
   'hyperframes', 'minimax', 'asset-library', 'knowledge-os', 'notebooklm', 'obsidian', 'notion', 'pinecone', 'pi-agent',
+  'hermes-manage', 'slim-voice', 'proofs',
 ])
 
 function ContentRouter({ tab }: { tab: string }) {
@@ -722,6 +723,9 @@ function ContentRouter({ tab }: { tab: string }) {
     case 'notion':
     case 'pinecone':
     case 'pi-agent':
+    case 'hermes-manage':
+    case 'slim-voice':
+    case 'proofs':
       return <FeatureSurfacePanel slug={tab} />
     case 'agent-gateway':
     case 'mcp-gateway':

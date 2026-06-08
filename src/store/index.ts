@@ -948,15 +948,18 @@ export const useMissionControl = create<MissionControlStore>()(
       set({ dashboardLayout: layout })
     },
 
-    // Interface Mode
-    interfaceMode: 'essential' as const,
+    // Interface Mode — default to FULL so every product surface (incl. all
+    // Baseline OS parity tabs) is visible. Essential mode is opt-in.
+    interfaceMode: 'full' as const,
     setInterfaceMode: (mode) => set({ interfaceMode: mode }),
 
     // UI State — sidebar & layout persistence
     activeTab: 'overview',
     sidebarExpanded: (() => {
-      if (typeof window === 'undefined') return false
-      try { return localStorage.getItem('mc-sidebar-expanded') === 'true' } catch { return false }
+      // Default EXPANDED so the labeled nav (incl. all Baseline OS parity tabs)
+      // is visible without hunting. Collapsing is opt-in + remembered.
+      if (typeof window === 'undefined') return true
+      try { return localStorage.getItem('mc-sidebar-expanded') !== 'false' } catch { return true }
     })(),
     collapsedGroups: (() => {
       if (typeof window === 'undefined') return [] as string[]

@@ -87,6 +87,71 @@ const navGroups: NavGroup[] = [
       { id: 'scanner', label: 'Scanner', icon: '🔍', priority: false },
     ],
   },
+  // ── Baseline OS → Mission Control parity surfaces ──────────────────
+  // Every Baseline OS page/tab is exposed here as a visible MC tab. Live
+  // surfaces open their real panel; not-yet-cloud surfaces open an honest
+  // setup/connect state (never a 404, never hidden). Source: src/lib/parity/surfaces.ts.
+  {
+    id: 'workforce-group',
+    label: 'WORKFORCE',
+    items: [
+      { id: 'activate', label: 'Activate / Workforces', icon: '🚀', priority: false },
+      { id: 'workforce', label: 'Workforce Templates', icon: '🏢', priority: false },
+      { id: 'orchestration', label: 'Orchestration', icon: '🎻', priority: false },
+      { id: 'approvals', label: 'Approvals', icon: '✅', priority: false },
+      { id: 'personas', label: 'Personas', icon: '🎭', priority: false },
+      { id: 'value', label: 'ROI / Value', icon: '📈', priority: false },
+      { id: 'goals', label: 'Goals', icon: '🎯', priority: false },
+      { id: 'proofs', label: 'Proofs / Handoff', icon: '📦', priority: false },
+    ],
+  },
+  {
+    id: 'runtimes-group',
+    label: 'AGENTS & RUNTIMES',
+    items: [
+      { id: 'runtimes', label: 'Runtimes', icon: '🖧', priority: false },
+      { id: 'claude-code', label: 'Claude Code', icon: '🤖', priority: false },
+      { id: 'codex', label: 'Codex', icon: '📘', priority: false },
+      { id: 'openclaw', label: 'OpenClaw', icon: '🦞', priority: false },
+      { id: 'hermes', label: 'Hermes', icon: '☿️', priority: false },
+      { id: 'hermes-manage', label: 'Hermes Manage', icon: '🛠️', priority: false },
+      { id: 'slim-voice', label: 'Slim Voice Agent', icon: '🎙️', priority: false },
+      { id: 'oh-my-pi', label: 'Oh My Pi (OMP)', icon: '🥧', priority: false },
+      { id: 'antigravity', label: 'Antigravity', icon: '🪐', priority: false },
+      { id: 'gemini', label: 'Gemini', icon: '♊', priority: false },
+      { id: 'free-claude', label: 'Free Claude Code', icon: '🆓', priority: false },
+      { id: 'browser-use', label: 'Browser Use', icon: '🌐', priority: false },
+      { id: 'ruflo', label: 'Ruflo', icon: '🔗', priority: false },
+      { id: 'maestro', label: 'Maestro', icon: '🎼', priority: false },
+    ],
+  },
+  {
+    id: 'creative-group',
+    label: 'CREATIVE',
+    items: [
+      { id: 'creative', label: 'Claude Code Studio', icon: '🎬', priority: false },
+      { id: 'higgsfield', label: 'Higgsfield', icon: '🌌', priority: false },
+      { id: 'hyperframes', label: 'HyperFrames', icon: '🎞️', priority: false },
+      { id: 'minimax', label: 'MiniMax', icon: '🎥', priority: false },
+      { id: 'asset-library', label: 'Asset Library', icon: '🗂️', priority: false },
+    ],
+  },
+  {
+    id: 'knowledge-group',
+    label: 'KNOWLEDGE',
+    items: [
+      { id: 'knowledge-os', label: 'Knowledge OS', icon: '🧠', priority: false },
+      { id: 'notebooklm', label: 'NotebookLM', icon: '📓', priority: false },
+      { id: 'obsidian', label: 'Obsidian', icon: '🔮', priority: false },
+      { id: 'notion', label: 'Notion', icon: '📝', priority: false },
+      { id: 'pinecone', label: 'Pinecone', icon: '🌲', priority: false },
+      { id: 'pi-agent', label: 'PI Agent', icon: '🧩', priority: false },
+      { id: 'documents', label: 'Documents', icon: '📄', priority: false },
+      { id: 'library', label: 'Library', icon: '📚', priority: false },
+      { id: 'seo', label: 'SEO', icon: '🔎', priority: false },
+      { id: 'credentials', label: 'Credentials', icon: '🔐', priority: false },
+    ],
+  },
 ]
 
 // Map nav item IDs to translation keys in the 'nav' namespace

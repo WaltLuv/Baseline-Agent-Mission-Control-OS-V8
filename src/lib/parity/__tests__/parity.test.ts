@@ -7,22 +7,32 @@ import { describe, it, expect } from 'vitest'
 import { FEATURE_SURFACES, nonLiveSurfaces, getSurface } from '@/lib/parity/surfaces'
 
 const routerSrc = readFileSync('src/app/app/[[...panel]]/page.tsx', 'utf8')
+const navSrc = readFileSync('src/components/layout/nav-rail.tsx', 'utf8')
 
 describe('MC ↔ Baseline OS parity', () => {
   it('parity matrix doc exists', () => {
-    expect(existsSync('docs/audit/MC_BASELINE_PARITY.md')).toBe(true)
+    expect(existsSync('docs/audit/BASELINE_TO_MISSION_CONTROL_PARITY.md')).toBe(true)
   })
 
   it('every major Baseline OS surface from Walt\'s audit list has an MC surface', () => {
     const slugs = new Set(FEATURE_SURFACES.map((s) => s.slug))
     for (const required of [
       'overview', 'activate', 'workforce', 'agents', 'personas', 'runtimes', 'claude-code',
-      'codex', 'openclaw', 'hermes', 'hermes-vps', 'oh-my-pi', 'antigravity', 'gemini', 'free-claude', 'browser-use', 'ruflo',
+      'codex', 'openclaw', 'hermes', 'hermes-manage', 'hermes-vps', 'slim-voice', 'oh-my-pi', 'antigravity', 'gemini', 'free-claude', 'browser-use', 'ruflo',
       'creative', 'higgsfield', 'hyperframes', 'minimax', 'video-studio', 'asset-library',
       'knowledge-os', 'memory', 'notebooklm', 'obsidian', 'notion', 'pinecone', 'pi-agent', 'documents', 'library',
-      'skills', 'marketplace', 'billing', 'credentials', 'flight-deck', 'orchestration', 'approvals', 'activity', 'value', 'goals', 'seo', 'settings',
+      'skills', 'marketplace', 'billing', 'credentials', 'flight-deck', 'orchestration', 'kanban', 'approvals', 'proofs',
+      'activity', 'value', 'daily-brief', 'executive-briefing', 'goals', 'seo', 'settings', 'admin', 'help',
     ]) {
       expect(slugs, `parity surface missing: ${required}`).toContain(required)
+    }
+  })
+
+  it('the MC nav exposes every panel-routed parity surface (no hidden nav)', () => {
+    const navExposed = FEATURE_SURFACES.filter((s) => s.mcRoute === `/app/${s.slug}` || s.mcRoute === '/app')
+    for (const s of navExposed) {
+      const id = s.slug === 'overview' ? 'overview' : s.slug
+      expect(navSrc, `nav missing tab for ${s.slug}`).toContain(`id: '${id}'`)
     }
   })
 

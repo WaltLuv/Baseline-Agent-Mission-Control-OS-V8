@@ -17,6 +17,11 @@ const APP_ROUTES = [
   "/onboarding", "/app", "/app/activate", "/app/credentials", "/app/runtimes",
   "/app/billing", "/app/orchestration", "/app/value", "/app/personas",
   "/app/tasks", "/app/approvals", "/app/skills", "/app/creative", "/app/higgsfield",
+  // Baseline OS → MC parity surfaces (honest-state, never 404)
+  "/app/codex", "/app/openclaw", "/app/hermes", "/app/hermes-manage", "/app/slim-voice",
+  "/app/oh-my-pi", "/app/antigravity", "/app/gemini", "/app/free-claude", "/app/browser-use",
+  "/app/ruflo", "/app/hyperframes", "/app/minimax", "/app/asset-library", "/app/proofs",
+  "/app/knowledge-os", "/app/notebooklm", "/app/obsidian", "/app/notion", "/app/pinecone", "/app/pi-agent",
 ];
 const CRASH_MARKERS = ["Something went wrong", "Application error", "Unhandled Runtime Error", "client-side exception"];
 
