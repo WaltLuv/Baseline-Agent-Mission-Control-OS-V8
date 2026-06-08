@@ -118,6 +118,7 @@ const navGroups: NavGroup[] = [
       { id: 'hermes', label: 'Hermes', icon: '☿️', priority: false },
       { id: 'hermes-manage', label: 'Hermes Manage', icon: '🛠️', priority: false },
       { id: 'slim-voice', label: 'Slim Charles', icon: '🎙️', priority: false },
+      { id: 'agent-factory', label: 'Agent Factory', icon: '🏗️', priority: false },
       { id: 'oh-my-pi', label: 'Oh My Pi (OMP)', icon: '🥧', priority: false },
       { id: 'antigravity', label: 'Antigravity', icon: '🪐', priority: false },
       { id: 'gemini', label: 'Gemini', icon: '♊', priority: false },

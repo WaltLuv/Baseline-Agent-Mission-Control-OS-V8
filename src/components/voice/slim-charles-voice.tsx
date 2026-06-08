@@ -97,7 +97,30 @@ export function SlimCharlesVoice() {
     setTranscript((t) => [...t, { role: 'user', text }])
     const build = parseBuildIntent(text)
     if (build) {
-      setTranscript((t) => [...t, { role: 'assistant', text: `Agent Factory engaged — drafting a brief for a ${build.kind}: "${build.title}". Routing to the build pipeline.` }])
+      setTranscript((t) => [...t, { role: 'assistant', text: `Agent Factory engaged — building a ${build.kind}: "${build.title}" on your machine…` }])
+      // Real build: stream from the local Agent Factory and report the result.
+      void (async () => {
+        try {
+          const res = await fetch('/api/agent-factory/build', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: text, project: 'agent-factory' }),
+          })
+          if (!res.body) return
+          const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = ''
+          for (;;) {
+            const { value, done } = await reader.read(); if (done) break
+            buf += dec.decode(value, { stream: true }); const lines = buf.split('\n'); buf = lines.pop() ?? ''
+            for (const line of lines) {
+              if (!line.trim()) continue
+              try {
+                const j = JSON.parse(line)
+                if (j.t === 'done') setTranscript((t) => [...t, { role: 'assistant', text: `Done — built ${j.file}. Open Agent Factory to view it.` }])
+                else if (j.t === 'error') setTranscript((t) => [...t, { role: 'assistant', text: `Build needs setup: ${j.m}` }])
+              } catch { /* partial */ }
+            }
+          }
+        } catch { setTranscript((t) => [...t, { role: 'assistant', text: 'Agent Factory unreachable — open the Agent Factory tab to check the local model.' }]) }
+      })()
       return
     }
     if (/^show me\b/i.test(text)) {

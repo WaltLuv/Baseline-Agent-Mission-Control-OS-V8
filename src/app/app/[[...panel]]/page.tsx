@@ -64,6 +64,7 @@ import { AgentGatewayPanel } from '@/components/panels/agent-gateway-panel'
 import { SlimCharlesPanel } from '@/components/panels/slim-charles-panel'
 import { OrgChartPanel } from '@/components/panels/org-chart-panel'
 import { PipelinePanel } from '@/components/panels/pipeline-panel'
+import { AgentFactoryPanel } from '@/components/agent-factory/agent-factory-panel'
 import { ChatPanel } from '@/components/chat/chat-panel'
 import { HelpPanel } from '@/components/help/help-panel'
 import { FirstRunTour } from '@/components/help/first-run-tour'
@@ -746,6 +747,9 @@ function ContentRouter({ tab }: { tab: string }) {
       return <OrgChartPanel />
     case 'pipeline':
       return <PipelinePanel />
+    case 'agent-factory':
+    case 'factory':
+      return <AgentFactoryPanel />
     case 'agent-gateway':
     case 'mcp-gateway':
       return <AgentGatewayPanel />
