@@ -68,7 +68,4 @@ describe('routes + UI exist and stay honest', () => {
     expect(src).toContain('/api/agent-factory/preview/')
     expect(src).toContain('factory-setup-needed') // honest local-model state
   })
-  it('Slim Charles voice triggers a real factory build on "build me…"', () => {
-    expect(read('src/components/voice/slim-charles-voice.tsx')).toContain('/api/agent-factory/build')
-  })
 })

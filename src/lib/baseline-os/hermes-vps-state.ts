@@ -13,7 +13,7 @@ import type { RuntimeProjection } from './runtime-registry'
 export const HERMES_VPS_KIND = 'hermes-vps' as const
 export const HERMES_VPS_NAME = 'Hermes VPS'
 export const HERMES_VPS_ROLE = 'Primary Production Controller'
-export const HERMES_VPS_WORKSPACE_HINT = '/opt/data/profiles/slim-charles'
+export const HERMES_VPS_WORKSPACE_HINT = '/opt/data/profiles/hermes'
 export const HERMES_VPS_CAPABILITIES = [
   'production-controller',
   'pipelines',

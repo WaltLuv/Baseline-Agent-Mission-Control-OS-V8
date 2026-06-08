@@ -135,7 +135,7 @@ describe('Shared agent memory', () => {
     }
   })
   it('covers the full agent roster (no isolated silos)', () => {
-    for (const id of ['slim', 'claude-code', 'codex', 'openclaw', 'antigravity', 'gemini', 'browser-use', 'notebooklm-agent', 'oh-my-pi', 'video-team', 'workforce']) {
+    for (const id of ['claude-code', 'codex', 'openclaw', 'antigravity', 'gemini', 'browser-use', 'notebooklm-agent', 'oh-my-pi', 'video-team', 'workforce']) {
       expect(MEMORY_AGENTS.map((m) => m.id)).toContain(id)
     }
   })

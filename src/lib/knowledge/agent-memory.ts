@@ -15,7 +15,6 @@ const ALL: BrainLayerId[] = ['obsidian', 'notion', 'pinecone', 'notebooklm']
 
 export const MEMORY_AGENTS: MemoryAgent[] = [
   { id: 'pi-agent', label: 'PI Agent', scopes: ALL }, // CMO — full access
-  { id: 'slim', label: 'Slim Voice Agent', scopes: ['obsidian', 'pinecone', 'notebooklm'] },
   { id: 'hermes', label: 'Hermes', scopes: ALL },
   { id: 'claude-code', label: 'Claude Code', scopes: ['obsidian', 'pinecone'] },
   { id: 'codex', label: 'Codex', scopes: ['obsidian', 'pinecone'] },

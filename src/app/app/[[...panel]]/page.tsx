@@ -61,7 +61,6 @@ import { KnowledgeOsPanel } from '@/components/panels/knowledge-os-panel'
 import { NotebookLmPanel } from '@/components/panels/notebooklm-panel'
 import { AssetLibraryPanel } from '@/components/panels/asset-library-panel'
 import { AgentGatewayPanel } from '@/components/panels/agent-gateway-panel'
-import { SlimCharlesPanel } from '@/components/panels/slim-charles-panel'
 import { OrgChartPanel } from '@/components/panels/org-chart-panel'
 import { PipelinePanel } from '@/components/panels/pipeline-panel'
 import { AgentFactoryPanel } from '@/components/agent-factory/agent-factory-panel'
@@ -545,7 +544,7 @@ const ESSENTIAL_PANELS = new Set([
   // Baseline OS parity surfaces — always reachable (honest setup states).
   'codex', 'openclaw', 'hermes', 'oh-my-pi', 'antigravity', 'gemini', 'free-claude', 'browser-use', 'ruflo',
   'hyperframes', 'minimax', 'asset-library', 'knowledge-os', 'notebooklm', 'obsidian', 'notion', 'pinecone', 'pi-agent',
-  'hermes-manage', 'slim-voice', 'proofs', 'provider-matrix',
+  'hermes-manage', 'proofs', 'provider-matrix',
 ])
 
 function ContentRouter({ tab }: { tab: string }) {
@@ -739,9 +738,6 @@ function ContentRouter({ tab }: { tab: string }) {
     case 'hermes-manage':
     case 'proofs':
       return <FeatureSurfacePanel slug={tab} />
-    case 'slim-voice':
-    case 'slim-charles':
-      return <SlimCharlesPanel />
     case 'org-chart':
     case 'ai-org-chart':
       return <OrgChartPanel />

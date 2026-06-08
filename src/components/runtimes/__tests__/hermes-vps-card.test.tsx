@@ -33,7 +33,7 @@ describe('HermesVpsCard', () => {
     render(<HermesVpsCard />)
     expect(await screen.findByTestId('hermes-vps-card')).toBeInTheDocument()
     expect(screen.getByText('Hermes VPS')).toBeInTheDocument()
-    expect(screen.getByTestId('hermes-vps-workspace-hint')).toHaveTextContent('/opt/data/profiles/slim-charles')
+    expect(screen.getByTestId('hermes-vps-workspace-hint')).toHaveTextContent('/opt/data/profiles/hermes')
     const caps = screen.getByTestId('hermes-vps-capabilities')
     expect(caps).toHaveTextContent('production-controller')
     expect(caps).toHaveTextContent('maintenance-pipelines')

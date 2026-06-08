@@ -18,7 +18,7 @@ describe('MC ↔ Baseline OS parity', () => {
     const slugs = new Set(FEATURE_SURFACES.map((s) => s.slug))
     for (const required of [
       'overview', 'activate', 'workforce', 'agents', 'personas', 'runtimes', 'claude-code',
-      'codex', 'openclaw', 'hermes', 'hermes-manage', 'hermes-vps', 'slim-voice', 'oh-my-pi', 'antigravity', 'gemini', 'free-claude', 'browser-use', 'ruflo',
+      'codex', 'openclaw', 'hermes', 'hermes-manage', 'hermes-vps', 'oh-my-pi', 'antigravity', 'gemini', 'free-claude', 'browser-use', 'ruflo',
       'creative', 'higgsfield', 'hyperframes', 'minimax', 'video-studio', 'asset-library',
       'knowledge-os', 'memory', 'notebooklm', 'obsidian', 'notion', 'pinecone', 'pi-agent', 'documents', 'library',
       'skills', 'marketplace', 'billing', 'credentials', 'flight-deck', 'orchestration', 'kanban', 'approvals', 'proofs',
