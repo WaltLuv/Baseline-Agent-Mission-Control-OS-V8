@@ -56,6 +56,7 @@ import { TeamPanel } from '@/components/panels/team-panel'
 import { RuntimeKeysPanel } from '@/components/panels/runtime-keys-panel'
 import { HiggsfieldPanel } from '@/components/panels/higgsfield-panel'
 import { FeatureSurfacePanel } from '@/components/panels/feature-surface-panel'
+import { ProviderMatrixPanel } from '@/components/panels/provider-matrix-panel'
 import { AgentGatewayPanel } from '@/components/panels/agent-gateway-panel'
 import { ChatPanel } from '@/components/chat/chat-panel'
 import { HelpPanel } from '@/components/help/help-panel'
@@ -537,7 +538,7 @@ const ESSENTIAL_PANELS = new Set([
   // Baseline OS parity surfaces — always reachable (honest setup states).
   'codex', 'openclaw', 'hermes', 'oh-my-pi', 'antigravity', 'gemini', 'free-claude', 'browser-use', 'ruflo',
   'hyperframes', 'minimax', 'asset-library', 'knowledge-os', 'notebooklm', 'obsidian', 'notion', 'pinecone', 'pi-agent',
-  'hermes-manage', 'slim-voice', 'proofs',
+  'hermes-manage', 'slim-voice', 'proofs', 'provider-matrix',
 ])
 
 function ContentRouter({ tab }: { tab: string }) {
@@ -702,6 +703,9 @@ function ContentRouter({ tab }: { tab: string }) {
     case 'creative':
     case 'higgsfield':
       return <HiggsfieldPanel />
+    case 'provider-matrix':
+    case 'hyperframes':
+      return <ProviderMatrixPanel />
     // Baseline OS → Mission Control parity surfaces. Each is a real route with
     // an honest state (Connect runtime / Connect Baseline OS / Setup needed) —
     // never missing, never a 404, never a fake-ready shell.
@@ -714,7 +718,6 @@ function ContentRouter({ tab }: { tab: string }) {
     case 'free-claude':
     case 'browser-use':
     case 'ruflo':
-    case 'hyperframes':
     case 'minimax':
     case 'asset-library':
     case 'knowledge-os':

@@ -130,6 +130,7 @@ const navGroups: NavGroup[] = [
     label: 'CREATIVE',
     items: [
       { id: 'creative', label: 'Claude Code Studio', icon: '🎬', priority: false },
+      { id: 'provider-matrix', label: 'Provider Matrix', icon: '🎛️', priority: false },
       { id: 'higgsfield', label: 'Higgsfield', icon: '🌌', priority: false },
       { id: 'hyperframes', label: 'HyperFrames', icon: '🎞️', priority: false },
       { id: 'minimax', label: 'MiniMax', icon: '🎥', priority: false },

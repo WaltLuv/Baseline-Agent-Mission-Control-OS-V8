@@ -1,6 +1,6 @@
 # Baseline OS → Mission Control — Feature Parity Matrix
 
-> Source of truth: `src/lib/parity/surfaces.ts`. Rule: every Baseline OS page/tab has a Mission Control route — fully working, cloud-equivalent, or an honest setup/connect state. Never missing, never a 404, never a fake-ready shell. Every surface below is also exposed as a visible MC nav tab.
+> Source of truth: `src/lib/parity/surfaces.ts`. Rule: every Baseline OS page/tab has a Mission Control route — fully working, cloud-equivalent, or an honest setup/connect state. Never missing, never a 404, never a fake-ready shell. Every surface is also a visible MC nav tab.
 
 | Baseline OS Feature | Baseline OS Route | Mission Control Route | Status | Fix Applied | Notes |
 |---|---|---|---|---|---|
@@ -35,7 +35,8 @@
 | Slim Voice Agent | `/agents/hermes` | `/app/slim-voice` | 🖥️ Connect Baseline OS | Honest surface + connect-Baseline-OS path | Agents & Runtimes |
 | Claude Code Studio | `/agents/claude-code-studio` | `/app/creative` | ✅ Live | Working MC panel/route | Creative |
 | Higgsfield | `/higgsfield` | `/app/higgsfield` | ✅ Live | Working MC panel/route | Creative |
-| HyperFrames | `/hyperframes` | `/app/hyperframes` | ⚙️ Setup needed | Honest surface + setup path | Creative |
+| HyperFrames | `/hyperframes` | `/app/hyperframes` | ✅ Live | Working MC panel/route | Creative |
+| Creative Provider Matrix | `/agents/claude-code-studio` | `/app/provider-matrix` | ✅ Live | Working MC panel/route | Creative |
 | MiniMax | `/minimax` | `/app/minimax` | ⚙️ Setup needed | Honest surface + setup path | Creative |
 | Video / Creative Studio | `/video-studio` | `/app/creative` | ✅ Live | Working MC panel/route | Creative |
 | Asset Library | `/agents/claude-code-studio` | `/app/asset-library` | ⚙️ Setup needed | Honest surface + setup path | Creative |
@@ -58,4 +59,4 @@
 | Admin / Super Admin | `/admin` | `/app/super-admin` | ✅ Live | Working MC panel/route | Platform |
 | Help / Docs | `/guide` | `/help` | ✅ Live | Working MC panel/route | Platform |
 
-**Totals:** 53 surfaces · 31 live · 22 honest-state (setup/pair/connect) · **0 missing**.
+**Totals:** 54 surfaces · 33 live · 21 honest-state · **0 missing**.
