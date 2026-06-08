@@ -2530,6 +2530,56 @@ const migrations: Migration[] = [
         CREATE INDEX IF NOT EXISTS idx_evt_created ON email_verification_tokens(user_id, created_at);
       `)
     },
+  },
+  {
+    // AI Org Chart — a CRUD registry that unifies every AI agent/persona in one
+    // place with a customizable hierarchy (department, manager, skills, memory
+    // access, runtime, permissions, ordering).
+    id: '070_org_chart',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS org_agents (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT '',
+          department TEXT NOT NULL DEFAULT '',
+          category TEXT NOT NULL DEFAULT '',
+          manager_id TEXT,
+          skills TEXT NOT NULL DEFAULT '[]',
+          memory_access TEXT NOT NULL DEFAULT '[]',
+          runtime TEXT NOT NULL DEFAULT '',
+          permissions TEXT NOT NULL DEFAULT '[]',
+          archived INTEGER NOT NULL DEFAULT 0,
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+        );
+        CREATE INDEX IF NOT EXISTS idx_org_agents_manager ON org_agents(manager_id);
+        CREATE INDEX IF NOT EXISTS idx_org_agents_dept ON org_agents(department);
+      `)
+    },
+  },
+  {
+    // Pipeline — Idea → Plan → Route → Approve → Build → Test → Ship → Proof.
+    id: '071_pipeline_ideas',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS pipeline_ideas (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          detail TEXT NOT NULL DEFAULT '',
+          stage TEXT NOT NULL DEFAULT 'idea',
+          routed_to TEXT NOT NULL DEFAULT '',
+          approved INTEGER NOT NULL DEFAULT 0,
+          approved_by TEXT,
+          proof TEXT NOT NULL DEFAULT '',
+          artifact TEXT NOT NULL DEFAULT '',
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+        );
+        CREATE INDEX IF NOT EXISTS idx_pipeline_stage ON pipeline_ideas(stage);
+      `)
+    },
   }
 ]
 

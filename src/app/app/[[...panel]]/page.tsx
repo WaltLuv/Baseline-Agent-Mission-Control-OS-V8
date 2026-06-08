@@ -61,6 +61,9 @@ import { KnowledgeOsPanel } from '@/components/panels/knowledge-os-panel'
 import { NotebookLmPanel } from '@/components/panels/notebooklm-panel'
 import { AssetLibraryPanel } from '@/components/panels/asset-library-panel'
 import { AgentGatewayPanel } from '@/components/panels/agent-gateway-panel'
+import { SlimCharlesPanel } from '@/components/panels/slim-charles-panel'
+import { OrgChartPanel } from '@/components/panels/org-chart-panel'
+import { PipelinePanel } from '@/components/panels/pipeline-panel'
 import { ChatPanel } from '@/components/chat/chat-panel'
 import { HelpPanel } from '@/components/help/help-panel'
 import { FirstRunTour } from '@/components/help/first-run-tour'
@@ -733,9 +736,16 @@ function ContentRouter({ tab }: { tab: string }) {
     case 'notion':
     case 'pinecone':
     case 'hermes-manage':
-    case 'slim-voice':
     case 'proofs':
       return <FeatureSurfacePanel slug={tab} />
+    case 'slim-voice':
+    case 'slim-charles':
+      return <SlimCharlesPanel />
+    case 'org-chart':
+    case 'ai-org-chart':
+      return <OrgChartPanel />
+    case 'pipeline':
+      return <PipelinePanel />
     case 'agent-gateway':
     case 'mcp-gateway':
       return <AgentGatewayPanel />

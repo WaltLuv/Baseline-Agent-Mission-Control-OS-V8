@@ -18,6 +18,16 @@ type Runtime = { name: string; version?: string; last_seen?: number | null; stat
 const FRESH_FG: Record<RuntimeFreshness, string> = { connected: '#34d399', stale: '#fbbf24', disconnected: '#f87171' }
 const HEALTH_FG: Record<HealthState, string> = { ok: '#34d399', degraded: '#fbbf24', down: '#f87171', unknown: '#9ca3af' }
 
+/** Module-scoped so it isn't recreated each render (react-hooks/static-components). */
+function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-xl border border-border bg-card p-5" data-testid={`flightdeck-${id}`}>
+      <h2 className="text-sm font-semibold mb-3">{title}</h2>
+      {children}
+    </section>
+  )
+}
+
 export function FlightDeckDeploymentCenter() {
   const [runtimes, setRuntimes] = useState<Runtime[]>([])
   const [health, setHealth] = useState<Record<string, HealthState>>({})
@@ -79,13 +89,6 @@ export function FlightDeckDeploymentCenter() {
     a.href = url; a.download = 'customer-handoff-report.json'; a.click()
     URL.revokeObjectURL(url)
   }
-
-  const Section = ({ id, title, children }: { id: string; title: string; children: React.ReactNode }) => (
-    <section className="rounded-xl border border-border bg-card p-5" data-testid={`flightdeck-${id}`}>
-      <h2 className="text-sm font-semibold mb-3">{title}</h2>
-      {children}
-    </section>
-  )
 
   return (
     <div className="space-y-5 mt-8" data-testid="flightdeck-deployment-center">

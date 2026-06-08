@@ -100,6 +100,32 @@ export const config = {
     autoSync: process.env.GNAP_AUTO_SYNC !== 'false',
     remoteUrl: process.env.GNAP_REMOTE_URL || '',
   },
+  // Configurable paths — every path is env-driven with a sane default derived
+  // from the data dir / home dir. Nothing here is hardcoded to a machine; set
+  // the matching env var to relocate any of these (surfaced in Settings → Paths).
+  paths: {
+    repo: process.env.MC_REPO_PATH || process.cwd(),
+    vault: process.env.MC_VAULT_PATH || path.join(configuredDataDir, 'vault'),
+    obsidianVault: process.env.MC_OBSIDIAN_VAULT_PATH || process.env.OBSIDIAN_VAULT_PATH || path.join(configuredDataDir, 'obsidian'),
+    assets: process.env.MC_ASSETS_PATH || path.join(configuredDataDir, 'assets'),
+    output: process.env.MC_OUTPUT_PATH || path.join(configuredDataDir, 'output'),
+    runtimes: process.env.MC_RUNTIMES_PATH || path.join(configuredDataDir, 'runtimes'),
+    skills: process.env.MC_SKILLS_PATH || path.join(os.homedir(), '.claude', 'skills'),
+    hermes: process.env.MC_HERMES_PATH || process.env.HERMES_HOME || path.join(os.homedir(), '.hermes'),
+    notebookLmImport: process.env.MC_NOTEBOOKLM_IMPORT_PATH || path.join(configuredDataDir, 'notebooklm-import'),
+  },
+  // External service configuration — env-driven, never committed.
+  integrations: {
+    pinecone: {
+      apiKey: process.env.PINECONE_API_KEY || '',
+      index: process.env.PINECONE_INDEX || '',
+      environment: process.env.PINECONE_ENVIRONMENT || '',
+    },
+    notion: {
+      apiKey: process.env.NOTION_API_KEY || '',
+      databaseId: process.env.NOTION_DATABASE_ID || '',
+    },
+  },
   // Data retention (days). 0 = keep forever. Negative values are clamped to 0.
   retention: {
     activities: clampInt(Number(process.env.MC_RETAIN_ACTIVITIES_DAYS || '90'), 0, 3650, 90),
