@@ -76,6 +76,50 @@ describe('Workforce OS console directives', () => {
     }
   })
 
+  it('has 13 total directives (3 general + 6 industry + 4 ops)', () => {
+    expect(CONSOLE_DIRECTIVES.length).toBe(13)
+    expect(directivesByGroup('general').length).toBe(3)
+    expect(directivesByGroup('industry').length).toBe(6)
+    expect(directivesByGroup('ops').length).toBe(4)
+  })
+
+  it('adds the four ops directives: VisionOps, VoiceOps, PropControl, Market Swarm', () => {
+    const ops = directivesByGroup('ops').map((d) => d.directiveId)
+    for (const id of ['visionops', 'voiceops', 'propcontrol', 'market-swarm']) {
+      expect(ops, `missing ops directive ${id}`).toContain(id)
+    }
+    // each ops directive has a distinct agent map, sim log, human gate, and proof step
+    for (const d of directivesByGroup('ops')) {
+      expect(d.agentMap.length).toBeGreaterThan(0)
+      expect(d.steps.length).toBeGreaterThan(2)
+      expect(d.humanGates.length).toBeGreaterThan(0)
+      expect(d.steps.some((s) => /proof package/i.test(s))).toBe(true)
+    }
+    expect(getDirective('visionops')!.agentMap).toContain('Image Analyst')
+    expect(getDirective('voiceops')!.agentMap).toContain('Intent Detector')
+    expect(getDirective('propcontrol')!.agentMap).toContain('Work Order Manager')
+  })
+
+  it('Market Swarm mentions 100 Kimi 2.5 agents, distressed/motivated/off-market, dedupe, scoring, and gates outreach', () => {
+    const sw = getDirective('market-swarm')!
+    const blob = (sw.description + ' ' + sw.steps.join(' ')).toLowerCase()
+    expect(blob).toMatch(/100/)
+    expect(blob).toMatch(/kimi 2\.5/)
+    expect(blob).toMatch(/distressed/)
+    expect(blob).toMatch(/motivated seller/)
+    expect(blob).toMatch(/off-market/)
+    expect(blob).toMatch(/dedup/)
+    expect(blob).toMatch(/scor/)
+    expect(sw.humanGates.join(' ').toLowerCase()).toMatch(/outreach|export|spend|owner/)
+  })
+
+  it('every ops directive CTA is a real route (no dead links)', () => {
+    for (const d of directivesByGroup('ops')) {
+      const base = d.ctaRoute.split('?')[0]
+      expect(REAL_BASE_ROUTES, `${d.directiveId} cta base ${base} not a real route`).toContain(base)
+    }
+  })
+
   it('the 11 installable industries are present (hero choose-your-workforce)', () => {
     expect(INDUSTRIES.length).toBe(11)
     for (const slug of ['property-management', 'insurance', 'real-estate', 'mortgage', 'cpa', 'law-firm', 'general-contractor', 'home-services', 'marketing-agency', 'ai-agency', 'ai-product-launch']) {

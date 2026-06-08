@@ -153,6 +153,8 @@ const navGroups: NavGroup[] = [
       { id: 'library', label: 'Library', icon: '📚', priority: false },
       { id: 'seo', label: 'SEO', icon: '🔎', priority: false },
       { id: 'credentials', label: 'Credentials', icon: '🔐', priority: false },
+      { id: 'production-unlock', label: 'Production Unlock', icon: '🔓', priority: false },
+      { id: 'gstack-import', label: 'GStack Import', icon: '📥', priority: false },
     ],
   },
 ]

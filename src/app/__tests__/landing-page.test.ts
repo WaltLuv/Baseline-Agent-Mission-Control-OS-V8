@@ -1,7 +1,7 @@
 /**
  * Landing page (/) — Mission Control home is an exact clone of the Baseline OS
  * Workforce OS landing (/workforce-os), with the Interactive Workforce OS
- * Console carrying 9 directives (3 general builder + 6 industry workforce).
+ * Console carrying 13 directives (3 general builder + 6 industry + 4 ops).
  */
 import { readFileSync } from 'fs'
 import { describe, it, expect } from 'vitest'
@@ -52,17 +52,20 @@ describe('Landing page — Workforce OS clone + 9-directive console', () => {
     expect(src).toContain('Interactive Workforce OS Console')
   })
 
-  it('console has 9 directives — 3 general builder + 6 industry', () => {
+  it('console has 13 directives — 3 general builder + 6 industry + 4 ops', () => {
     // 3 general are literal keys in BASE_SIMULATIONS.
     for (const k of ['dev:', 'marketing:', 'intelligence:']) {
       expect(src, `missing base directive ${k}`).toContain(k)
     }
-    // 6 industry come from the directive model, merged at build.
+    // 6 industry + 4 ops come from the directive model, merged at build.
     expect(src).toContain('...BASE_SIMULATIONS')
     expect(src).toContain('...INDUSTRY_SIMULATIONS')
+    expect(src).toContain('...OPS_SIMULATIONS')
     expect(src).toMatch(/directivesByGroup\("industry"\)/)
+    expect(src).toMatch(/directivesByGroup\("ops"\)/)
     expect(directivesByGroup('industry').length).toBe(6)
-    expect(CONSOLE_DIRECTIVES.length).toBe(9) // 3 general + 6 industry
+    expect(directivesByGroup('ops').length).toBe(4)
+    expect(CONSOLE_DIRECTIVES.length).toBe(13) // 3 general + 6 industry + 4 ops
   })
 
   it('renders a directive tab + agent node per simulation', () => {

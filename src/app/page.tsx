@@ -145,8 +145,13 @@ const INDUSTRY_SIMULATIONS: Record<string, Sim> = Object.fromEntries(
   directivesByGroup("industry").map((d) => [d.directiveId, buildIndustrySim(d)]),
 );
 
-// 9 directives total: 3 general + 6 industry.
-const SIMULATIONS: Record<string, Sim> = { ...BASE_SIMULATIONS, ...INDUSTRY_SIMULATIONS };
+// Ops simulation directives (VisionOps / VoiceOps / PropControl / Market Swarm).
+const OPS_SIMULATIONS: Record<string, Sim> = Object.fromEntries(
+  directivesByGroup("ops").map((d) => [d.directiveId, buildIndustrySim(d)]),
+);
+
+// 13 directives total: 3 general + 6 industry + 4 ops.
+const SIMULATIONS: Record<string, Sim> = { ...BASE_SIMULATIONS, ...INDUSTRY_SIMULATIONS, ...OPS_SIMULATIONS };
 
 // ── Product layers (Build / Operate / Scale / Knowledge / Creative) ──
 interface LayerTile { label: string; href?: string; desc: string }

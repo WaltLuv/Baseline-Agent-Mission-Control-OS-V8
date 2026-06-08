@@ -12,7 +12,7 @@
  * proofSummary, ctaRoute, templateSlug).
  */
 
-export type DirectiveGroup = "general" | "industry";
+export type DirectiveGroup = "general" | "industry" | "ops";
 
 export interface ConsoleDirective {
   directiveId: string;
@@ -243,6 +243,104 @@ export const CONSOLE_DIRECTIVES: ConsoleDirective[] = [
     proofSummary: "Estimate checklist + subcontractor bid requests + material quote tracker + schedule placeholder.",
     ctaRoute: "/app/activate?template=general-contractor",
     ctaLabel: "Install General Contractor Workforce",
+  },
+
+  // ── Ops simulation directives (VisionOps / VoiceOps / PropControl / Swarm) ─
+  {
+    directiveId: "visionops",
+    group: "ops",
+    label: "VisionOps: Field Media → AI Inspection → Owner-Ready Proof",
+    description: "Review uploaded photos/videos, identify field issues, generate inspection notes, and package visual proof for review.",
+    verticalId: null,
+    templateSlug: null,
+    agentMap: ["Vision Intake", "Image Analyst", "Inspection Writer", "Proof Packager", "Approval Coordinator"],
+    steps: [
+      "Received field media upload",
+      "Classified media type and property context",
+      "Detected visible maintenance/inspection issues",
+      "Drafted inspection notes",
+      "Created visual proof package",
+      "Routed exceptions for human review",
+      "Logged proof package",
+    ],
+    humanGates: ["Manager approval before owner/client-facing inspection report is sent"],
+    toolEvents: ["vision:classify", "vision:detect", "proof:package"],
+    proofSummary: "Inspection notes + annotated media + visual proof package for owner review.",
+    ctaRoute: "/app/orchestration",
+    ctaLabel: "Open Orchestration",
+  },
+  {
+    directiveId: "voiceops",
+    group: "ops",
+    label: "VoiceOps: Inbound Call → Intent Detection → Dispatch/Escalation",
+    description: "Simulate an AI voice intake call that identifies intent, verifies context, and routes maintenance, leasing, support, or emergency requests.",
+    verticalId: null,
+    templateSlug: null,
+    agentMap: ["Voice Intake", "Intent Detector", "Identity Verifier", "Emergency Router", "Dispatcher"],
+    steps: [
+      "Received inbound call",
+      "Detected caller intent",
+      "Verified caller/property context",
+      "Classified urgency",
+      "Created maintenance/support/leasing task",
+      "Escalated emergency path if needed",
+      "Logged proof package",
+    ],
+    humanGates: ["Human approval before emergency transfer, external dispatch, or customer-facing follow-up"],
+    toolEvents: ["voice:transcribe", "intent:classify", "task:create"],
+    proofSummary: "Call transcript + detected intent + routed task + escalation decision log.",
+    ctaRoute: "/app/orchestration",
+    ctaLabel: "Open Orchestration",
+  },
+  {
+    directiveId: "propcontrol",
+    group: "ops",
+    label: "PropControl: Maintenance Signal → Work Order → Owner Approval",
+    description: "Convert a property issue into a tracked work order, assign the right operator/vendor, and gate owner approval before spend.",
+    verticalId: "property-management",
+    templateSlug: "property-management",
+    agentMap: ["Property Context", "Work Order Manager", "Vendor Matcher", "Owner Approval", "Follow-Up Tracker"],
+    steps: [
+      "Captured property issue",
+      "Matched property/unit context",
+      "Created work order draft",
+      "Suggested vendor assignment",
+      "Estimated approval threshold",
+      "Routed owner approval checkpoint",
+      "Queued follow-up reminder",
+      "Logged proof package",
+    ],
+    humanGates: ["Owner approval before spend/vendor dispatch above threshold"],
+    toolEvents: ["workorder:create", "vendor:match", "threshold:estimate"],
+    proofSummary: "Work order + vendor match + owner approval request + follow-up reminder.",
+    ctaRoute: "/app/activate?template=property-management",
+    ctaLabel: "Install Property Management Workforce",
+  },
+  {
+    directiveId: "market-swarm",
+    group: "ops",
+    label: "PropControl Market Swarm: 100 Kimi Agents → Distressed Property Leads",
+    description: "Coordinate a 100-agent property research swarm of Kimi 2.5 scout agents to search for distressed properties, motivated sellers, off-market leads, or any property lead type the user requests.",
+    verticalId: "property-management",
+    templateSlug: "property-management",
+    agentMap: ["Swarm Commander", "Kimi Scout Agents", "Lead Verifier", "Property Research Analyst", "Deal Scoring Analyst", "CRM Export Coordinator"],
+    steps: [
+      "Received property lead directive",
+      "Split target market into micro-search zones",
+      "Dispatched 100 Kimi 2.5 scout agents",
+      "Queried public/property lead sources for distressed properties, motivated sellers, and off-market leads",
+      "Deduped candidate leads",
+      "Scored distress/motivation indicators (lead scoring)",
+      "Flagged highest-probability opportunities",
+      "Prepared CRM/export packet",
+      "Routed approval before outreach",
+      "Logged proof package",
+    ],
+    humanGates: ["Human approval before outreach, skip tracing, paid data spend, CRM export, or contacting property owners"],
+    toolEvents: ["swarm:dispatch:100", "leads:dedupe", "leads:score", "crm:export"],
+    proofSummary: "Deduped + scored distressed/motivated-seller/off-market lead set + CRM export packet (approval-gated before outreach/spend).",
+    ctaRoute: "/app/orchestration",
+    ctaLabel: "Open Orchestration",
   },
 ];
 

@@ -91,9 +91,11 @@ export const FEATURE_SURFACES: FeatureSurface[] = [
 
   // ── Platform ───────────────────────────────────────────────────────
   { slug: 'skills', label: 'Skills', category: 'Platform', baselineRoute: '/skills', mcRoute: '/app/skills', status: 'live', description: 'Skills fleet.' },
+  { slug: 'gstack-import', label: 'GStack Import', category: 'Platform', baselineRoute: '/skills', mcRoute: '/app/gstack-import', status: 'live', description: 'Import the first-25 GStack growth-stack skills or upload a manifest (classified, priced, approval-tiered).' },
   { slug: 'marketplace', label: 'Marketplace', category: 'Platform', baselineRoute: '/skills', mcRoute: '/marketplace', status: 'live', description: 'Skills + workforce marketplace.' },
   { slug: 'billing', label: 'Billing / Credits', category: 'Platform', baselineRoute: '/settings', mcRoute: '/app/billing', status: 'live', description: 'Credits + billing.' },
   { slug: 'credentials', label: 'Credentials / API Keys', category: 'Platform', baselineRoute: '/settings/api-keys', mcRoute: '/app/credentials', status: 'live', description: 'Credentials manager.' },
+  { slug: 'production-unlock', label: 'Production Unlock Center', category: 'Platform', baselineRoute: '/production-unlock', mcRoute: '/app/production-unlock', status: 'live', description: 'Every external system needed for production — status, env vars, test, unlocks, readiness meter.' },
   { slug: 'flight-deck', label: 'Flight Deck', category: 'Platform', baselineRoute: '/flight-deck', mcRoute: '/flight-deck', status: 'live', description: 'Desktop terminal / local pairing.' },
   { slug: 'seo', label: 'SEO', category: 'Platform', baselineRoute: '/seo', mcRoute: '/app/seo', status: 'live', description: 'SEO surface.' },
   { slug: 'settings', label: 'Settings / Admin', category: 'Platform', baselineRoute: '/settings', mcRoute: '/app/settings', status: 'live', description: 'Settings + admin.' },
