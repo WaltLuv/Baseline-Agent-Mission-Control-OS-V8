@@ -29,9 +29,9 @@ export function deriveItemState(opts: {
   if (opts.purchased) return { kind: 'purchased' }
   if (opts.pricingType === 'free' || opts.priceCredits === 0) return { kind: 'free' }
   if (opts.pricingType === 'included') return { kind: 'included' }
-  if (opts.balance < opts.priceCredits) {
-    return { kind: 'insufficient_credits', required: opts.priceCredits, balance: opts.balance }
-  }
+  // Always show the PRICE. We never surface "Insufficient credits" in the
+  // catalog — customers want to see prices, not a balance gate. Balance is
+  // handled at checkout, not by hiding the price. (Walt)
   return { kind: 'credits', priceCredits: opts.priceCredits }
 }
 

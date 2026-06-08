@@ -45,6 +45,14 @@ export function ActivationHub() {
     fetch('/api/auth/me', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
+        // Activation requires a verified email — otherwise install/runtime/invite
+        // all 403 on the email gate and the page silently dead-ends at 0/3.
+        // Send unverified users to verify first (the verify page literally tells
+        // them to verify "before activating your workforce").
+        if (d?.user?.email && d.user.email_verified === false) {
+          router.replace('/verify-email')
+          return
+        }
         if (d?.user?.workspace_id) setWorkspaceId(d.user.workspace_id as number)
       })
       .catch(() => {})

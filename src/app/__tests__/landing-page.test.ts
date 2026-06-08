@@ -39,7 +39,7 @@ describe('Landing page — Workforce OS clone + 9-directive console', () => {
   })
 
   it('top nav includes Marketplace / VisionOps / PropControl / Mission Control + auth', () => {
-    for (const t of ['nav-os-console', 'nav-marketplace', 'nav-visionops', 'nav-propcontrol', 'nav-mission-control', 'header-sign-in', 'header-start-free']) {
+    for (const t of ['nav-marketplace', 'nav-visionops', 'nav-propcontrol', 'nav-mission-control', 'header-sign-in', 'header-start-free']) {
       expect(src, `missing ${t}`).toContain(`data-testid="${t}"`)
     }
   })

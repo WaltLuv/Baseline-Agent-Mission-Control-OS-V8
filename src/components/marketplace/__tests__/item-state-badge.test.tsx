@@ -24,13 +24,12 @@ describe('deriveItemState', () => {
     expect(s.kind).toBe('included')
   })
 
-  it('returns "insufficient_credits" with required + balance when balance is low', () => {
+  it('ALWAYS shows the price even when balance is low (no "Insufficient credits" in the catalog)', () => {
+    // Walt: customers want to see prices, not a balance gate. Balance is handled
+    // at checkout, never by hiding the price in the catalog.
     const s = deriveItemState({ priceCredits: 500, pricingType: 'credits', purchased: false, balance: 100 })
-    expect(s.kind).toBe('insufficient_credits')
-    if (s.kind === 'insufficient_credits') {
-      expect(s.required).toBe(500)
-      expect(s.balance).toBe(100)
-    }
+    expect(s.kind).toBe('credits')
+    if (s.kind === 'credits') expect(s.priceCredits).toBe(500)
   })
 
   it('returns "credits" with the price when balance covers it', () => {
