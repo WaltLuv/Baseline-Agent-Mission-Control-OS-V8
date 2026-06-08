@@ -72,10 +72,12 @@
 | 55 | Local server readiness | Complete | :5173 live | Complete | :3000 live | dev servers | — | — | this pass | Both running, migrations applied |
 | 56 | Production Unlock Center | Complete | `/production-unlock` | Complete | `/app/production-unlock` | `/__os_config` (BL); `/api/credentials/catalog` + `/api/credentials/[id]/test` (MC) | sqlite (encrypted) / local config | production-unlock.test (both) | 3944902, dde4ba8 | Status/env vars/test/unlocks/readiness per integration; honest setup-needed |
 | 57 | AI Agent Workforce Setup | n/a (in `/workforce-os`) | `/workforce-os` | Complete | `/app/agent-workforce-setup` | static | — | agent-workforce-setup.test | (this pass) | Offers + 5-pillar model + 9-step build process + build/spec repos (customer-safe) |
+| 58 | Imported skills (audited sources) | Complete | `/imported-skills` | Complete | `/app/gstack-import` (Imported section) + `/api/gstack/import` | static catalog | — | imported-skills.test (both) | (this pass) | 12 skills distilled from NotebookLM/Presentation/YouTube/Publish/Morning-Brief/Business-Insight/Memory/Pinecone sources; forbidden-name-free; credentialed ones setup-needed |
+| 59 | Local secrets externalized | Complete | `~/.claude-os/.env` (0600) + sidecar loader | n/a (MC uses encrypted sqlite store) | — | vite.config.ts env loader | env file | — | 1987e39 | OpenAI/Pinecone/ElevenLabs moved out of config.json (now `${VAR}` refs, 0600); not in git. Walt-only: set OpenAI spend cap; Pinecone needs PINECONE_INDEX_HOST |
 
 ## Counts
-- Total requirements audited: **57**
-- Complete (incl. private/blank-canvas): **41**
+- Total requirements audited: **59**
+- Complete (incl. private/blank-canvas): **43**
 - Complete (local) / external-credential pending: **12**
 - Blocked by external credential / no public API: **4** (Stripe, Notion, Pinecone, Google OAuth-on-BL)
 - Needs Walt decision: **0**
@@ -98,3 +100,19 @@ Everything else is wired by Claude Code and needs no Walt CLI action.
 - GStack first-25 import (MC `/app/gstack-import` + `/api/gstack/import`).
 - AI Agent Workforce Setup surfaced in MC (`/app/agent-workforce-setup`).
 - Commits: MC `3944902`; BL `dde4ba8`; + this matrix/Workforce-Setup commit.
+
+## Downloads-sources integration pass (audit result)
+Audited 15 sources from `~/Downloads`. Outcome per source:
+- **Business-Insight-Skill** → imported as `business-insight` skill (binary `.skill` not unpacked; function distilled from the JSX/HTML dashboard).
+- **NotebookLMSkill.md** → `notebooklm-automation` skill (Brain Layer 4).
+- **SKILL.md** (NotebookLM→PPTX) → `notebooklm-powerpoint` skill.
+- **Presentation Builder.md** → `presentation-builder` skill (Studio / Agent Factory).
+- **YouTube.md** → `youtube-production` skill (Studio / Video team).
+- **publish-to-github-vercel.md** → `publish-github-vercel` skill (walt-only approval; a forbidden author name in the source was dropped).
+- **morning brief** → `morning-brief` skill (Daily/Exec Brief; a forbidden name reference in the source was dropped).
+- **🧠 Memory System OS** → `memory-recall`, `memory-wrap-up`, `memory-strategy` skills (PI Agent / Pinecone).
+- **Claude + Pinecone 2.0 Memory.txt** → `pinecone-memory-architecture` skill; informed the secret-externalization (#59) and PINECONE_INDEX_HOST gap.
+- **NotebookLM AntiGravity.txt** → `notebooklm-antigravity` skill.
+- **Pi Agent Setup.md + oh-my-pi-main** → PI Agent (#44) and Oh My Pi runtime (#23) surfaces already exist; setup distilled, no new surface needed (kept distinct, per rule).
+- **agent-os 2** → audited; its features (voice, Hermes, Agent Factory, Free Claude, Notebook, SEO, phone/Jarvis voice, Paperclip→Org Chart) are ALREADY present in Baseline OS — not re-ported (would duplicate a second Next.js app); product name stays Baseline OS (no "Claude OS").
+- **EMAI Command Center OS + Update Pack** → Obsidian-vault content packs; map to existing Obsidian/Knowledge OS/Morning Brief surfaces. Not auto-imported into the user's vault (no destructive writes); represented via Morning Brief + memory skills. Vault import remains a user-data action.

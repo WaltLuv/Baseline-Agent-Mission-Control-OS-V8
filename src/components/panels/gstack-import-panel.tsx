@@ -19,6 +19,7 @@ import {
   GSTACK_FIRST_25_COUNT,
   type GStackSkill,
 } from '@/lib/gstack/manifest'
+import { IMPORTED_SKILLS, importedSkillsByCategory, IMPORTED_SKILLS_COUNT } from '@/lib/imported-skills'
 
 const LS_KEY = 'gstack-imported-slugs'
 
@@ -118,7 +119,45 @@ export function GStackImportPanel() {
         </div>
       </div>
 
-      {/* Bundled manifest preview, classified */}
+      {/* Imported from audited sources */}
+      <div className="rounded-lg border border-border bg-card p-4" data-testid="imported-skills">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-foreground">Imported from sources · {IMPORTED_SKILLS_COUNT}</h2>
+          <a href="/marketplace" className="text-xs text-muted-foreground hover:text-foreground">Open Marketplace →</a>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Skills distilled from the audited folders/files (NotebookLM, Presentation Builder, YouTube,
+          Publish-to-GitHub/Vercel, Morning Brief, Business Insight, Memory System, Pinecone 2.0).
+          Credentialed skills stay setup-needed until connected.
+        </p>
+        <div className="mt-3 space-y-3">
+          {Object.entries(importedSkillsByCategory()).filter(([, v]) => v.length > 0).map(([cat, skills]) => (
+            <div key={cat}>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60 mb-1">{cat} · {skills.length}</p>
+              <div className="grid gap-2 lg:grid-cols-2">
+                {skills.map((s) => (
+                  <div key={s.slug} className="rounded-md border border-border bg-background p-3" data-testid={`imported-skill-${s.slug}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium text-foreground">{s.name}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-foreground/80">{s.pricing === 'free' ? 'Free' : `$${s.priceUsd}`}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">{s.summary}</p>
+                    <p className="text-[10px] text-muted-foreground/70 mt-1">Wires into: {s.wiresInto.join(', ')}</p>
+                    <p className="text-[10px] text-muted-foreground/70 mt-0.5">Proof: {s.proofExpectations}</p>
+                    {s.requiredCredentials.length > 0 && (
+                      <p className="text-[10px] text-amber-400 mt-1" data-testid={`imported-setup-${s.slug}`}>
+                        Setup needed: {s.requiredCredentials.join(', ')}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Bundled GStack manifest preview, classified */}
       <div className="space-y-4">
         {categories.map(([cat, skills]) => (
           <div key={cat}>

@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { requireRole } from '@/lib/auth'
 import { GSTACK_MANIFEST, classifyManifest, validateGStackManifest, GSTACK_FIRST_25_COUNT } from '@/lib/gstack/manifest'
+import { IMPORTED_SKILLS, IMPORTED_SKILLS_COUNT } from '@/lib/imported-skills'
 
 export async function GET(request: NextRequest) {
   const auth = requireRole(request, 'viewer')
@@ -22,6 +23,7 @@ export async function GET(request: NextRequest) {
     count: GSTACK_FIRST_25_COUNT,
     skills: GSTACK_MANIFEST,
     byCategory: classifyManifest(),
+    importedFromSources: { count: IMPORTED_SKILLS_COUNT, skills: IMPORTED_SKILLS },
   })
 }
 
