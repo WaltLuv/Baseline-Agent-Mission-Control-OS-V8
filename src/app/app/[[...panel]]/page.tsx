@@ -66,6 +66,7 @@ import { PipelinePanel } from '@/components/panels/pipeline-panel'
 import { AgentFactoryPanel } from '@/components/agent-factory/agent-factory-panel'
 import { ProductionUnlockPanel } from '@/components/panels/production-unlock-panel'
 import { GStackImportPanel } from '@/components/panels/gstack-import-panel'
+import { AgentWorkforceSetupPanel } from '@/components/panels/agent-workforce-setup-panel'
 import { ChatPanel } from '@/components/chat/chat-panel'
 import { HelpPanel } from '@/components/help/help-panel'
 import { FirstRunTour } from '@/components/help/first-run-tour'
@@ -546,7 +547,7 @@ const ESSENTIAL_PANELS = new Set([
   // Baseline OS parity surfaces — always reachable (honest setup states).
   'codex', 'openclaw', 'hermes', 'oh-my-pi', 'antigravity', 'gemini', 'free-claude', 'browser-use', 'ruflo',
   'hyperframes', 'minimax', 'asset-library', 'knowledge-os', 'notebooklm', 'obsidian', 'notion', 'pinecone', 'pi-agent',
-  'hermes-manage', 'proofs', 'provider-matrix', 'production-unlock', 'gstack-import',
+  'hermes-manage', 'proofs', 'provider-matrix', 'production-unlock', 'gstack-import', 'agent-workforce-setup',
 ])
 
 function ContentRouter({ tab }: { tab: string }) {
@@ -754,6 +755,9 @@ function ContentRouter({ tab }: { tab: string }) {
     case 'gstack-import':
     case 'gstack':
       return <GStackImportPanel />
+    case 'agent-workforce-setup':
+    case 'workforce-setup':
+      return <AgentWorkforceSetupPanel />
     case 'agent-gateway':
     case 'mcp-gateway':
       return <AgentGatewayPanel />

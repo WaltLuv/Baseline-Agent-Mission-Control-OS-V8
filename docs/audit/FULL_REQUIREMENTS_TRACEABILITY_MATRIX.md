@@ -17,7 +17,7 @@
 |---|---|---|---|---|---|---|---|---|---|---|
 | 1 | Workforce OS landing | Complete | `/workforce-os` | Complete | `/` (home) | static | — | landing-page.test, homepage-scroll | 5328efe… | — |
 | 2 | 11 vertical templates | Complete | `/workforce-os` | Complete | `/app/activate` | `/api/workforce/templates` | sqlite | route-health, activation | prior | — |
-| 3 | 9 console directives | Complete | `/` console | Complete | `/` console | static sim | — | landing-page | prior | — |
+| 3 | 13 console directives (3 general + 6 industry + 4 ops) | Complete | `/workforce-os` console | Complete | `/` console | static sim | — | workforce-console.test (both), landing-page | 3944902, dde4ba8 | VisionOps/VoiceOps/PropControl/Market Swarm added |
 | 4 | Activation / setup (11 installs) | Complete | `/setup` | Complete | `/app/activate` | `/api/workforce/*` | sqlite | route-health | prior | — |
 | 5 | Mission Control nav parity | n/a | — | Complete | nav-rail | — | — | parity.test (nav coverage) | prior | — |
 | 6 | BL ↔ MC feature parity | Complete | sidebar | Complete | nav-rail + `FEATURE_SURFACES` | — | — | parity.test | prior | — |
@@ -26,7 +26,7 @@
 | 9 | Higgsfield CRUD/uploads/documents | Complete (local)/ext-cred | `/higgsfield`, `/documents` | Complete (local)/ext-cred | `/app/higgsfield`, `/app/documents` | documents-store, `/api/documents` | sqlite + blobs | documents tests | prior | Cloud asset push needs provider creds |
 | 10 | Creative Provider Matrix | Complete | (in studio) | Complete | `/app/provider-matrix` | provider-matrix lib | — | provider tests | prior | — |
 | 11 | HyperFrames pipeline | Complete (local)/ext-cred | `/hyperedit`,`/video-studio` | Complete (local)/ext-cred | `/app/hyperframes` | hyperframes-pipeline | — | hyperframes tests | prior | Render runtime pairing for full encode |
-| 12 | Agent Factory (build me X) | Complete | `/agents/free-claude` → Factory tab; `/agents/slim-charles` → Build tab | Complete (local)/ext-cred | `/app/agent-factory` | `/api/agent-factory/*` (MC); `/__ollama_chat` (BL) | output dir / localStorage | agent-factory.test (MC), slim-charles.test (BL) | 743bf4e, 8309753 | Needs local Ollama running to generate (free, on-device) |
+| 12 | Agent Factory (build me X) | Complete | `/agents/free-claude` → Factory tab; `/agents/slim-charles` → Build tab | Complete | `/app/agent-factory` | `/api/agent-factory/*` (MC); `/__ollama_chat` (BL) | output dir / localStorage | agent-factory.test (MC), slim-charles.test (BL), production-unlock.test | 743bf4e, 8309753, 3944902 | Primary engine = Claude Code (READY when CLI connected); Ollama optional fallback, never required |
 | 13 | AI Org Chart | Complete (private) | `/org-chart` | Complete (blank canvas, workspace-scoped) | `/app/org-chart` | `/api/org-chart` (MC) | sqlite `org_agents.workspace_id` (MC); localStorage (BL) | org-chart.test (MC isolation), slim-charles.test (BL) | fb92ccf, 6a97d7a | — |
 | 14 | Pipeline | Complete (private) | (operator) | Complete (workspace-scoped) | `/app/pipeline` | `/api/pipeline-ideas` | sqlite `pipeline_ideas.workspace_id` | pipeline.test (gate + isolation) | 26ee32d | — |
 | 15 | Slim Charles (PRIVATE) | Complete | `/agents/slim-charles` | **Absent by design** | — (guard test) | `/__hermes_chat` | localStorage | slim-charles.test (BL), no-slim-charles.test (MC) | 6a97d7a, 1d27e6d | MC must never expose Slim |
@@ -43,7 +43,7 @@
 | 26 | Skills | Complete | `/skills` | Complete | `/app/skills` | `/api/skills` | sqlite | skill tests | prior | — |
 | 27 | Skills Library | Complete | `/skills` | Complete | `/app/library` | skill-registry | sqlite | skill-registry | prior | — |
 | 28 | Skills Marketplace | Complete | (skills) | Complete | `/marketplace` | marketplace-catalog | sqlite | marketplace-credits | prior | Prices shown; no "insufficient credits" |
-| 29 | GStack first 25 | Needs Walt decision | — | Needs Walt decision | — | — | — | — | — | Source list/manifest for the 25 GStack skills not yet provided |
+| 29 | GStack first 25 | Complete | (import path via skills) | Complete | `/app/gstack-import` | `/api/gstack/import` | localStorage registry + manifest | gstack/manifest.test | 3944902 | Bundled first-25 classified manifest + validator + upload UI; live execution of credentialed skills stays setup-needed |
 | 30 | API Keys / Credentials | Complete | `/settings` | Complete | `/app/credentials` | `/api/credentials/catalog` | sqlite (encrypted) | credentials tests | prior | Values entered by Walt |
 | 31 | Billing / credits | Complete (local)/ext-cred | — | Complete (local)/ext-cred | `/app/billing` | `/api/billing/*` | sqlite | billing tests | prior | Stripe keys (#32) |
 | 32 | Stripe | Blocked: ext-cred | — | Blocked: ext-cred | `/app/billing` | `/api/billing` | sqlite | — | prior | Live charges require Walt's Stripe secret + webhook secret |
@@ -70,13 +70,15 @@
 | 53 | Token/security cleanup | Complete | — | Complete | — | scanForSecrets | — | scan-credentials.test | prior | Secret scan clean (only fake fixtures in scanner tests) |
 | 54 | Route health | Complete | 27/27 200 | Complete | 44/44 OK | route-health.mjs | — | route-health.test | this pass | — |
 | 55 | Local server readiness | Complete | :5173 live | Complete | :3000 live | dev servers | — | — | this pass | Both running, migrations applied |
+| 56 | Production Unlock Center | Complete | `/production-unlock` | Complete | `/app/production-unlock` | `/__os_config` (BL); `/api/credentials/catalog` + `/api/credentials/[id]/test` (MC) | sqlite (encrypted) / local config | production-unlock.test (both) | 3944902, dde4ba8 | Status/env vars/test/unlocks/readiness per integration; honest setup-needed |
+| 57 | AI Agent Workforce Setup | n/a (in `/workforce-os`) | `/workforce-os` | Complete | `/app/agent-workforce-setup` | static | — | agent-workforce-setup.test | (this pass) | Offers + 5-pillar model + 9-step build process + build/spec repos (customer-safe) |
 
 ## Counts
-- Total requirements audited: **55**
-- Complete (incl. private/blank-canvas): **38**
+- Total requirements audited: **57**
+- Complete (incl. private/blank-canvas): **41**
 - Complete (local) / external-credential pending: **12**
 - Blocked by external credential / no public API: **4** (Stripe, Notion, Pinecone, Google OAuth-on-BL)
-- Needs Walt decision: **1** (GStack first 25 — source manifest needed)
+- Needs Walt decision: **0**
 - **Missing: 0**
 
 ## What truly requires Walt (external credentials / decisions)
@@ -85,7 +87,14 @@
 - **Notion** API key + database id; **Pinecone** API key + index host.
 - **ElevenLabs / GPT-Realtime / Gemini Live** key for Slim's spoken realtime voice.
 - **Higgsfield / NotebookLM** account access (NotebookLM has no public write API → import/preview is the correct end-state).
-- **Ollama** running locally for Agent Factory generation (free, on-device — Walt just opens the Ollama app).
-- **GStack first 25**: provide the source list/manifest so the skills can be seeded.
+- **Ollama** is an OPTIONAL local fallback for Agent Factory; the primary engine is Claude Code (no Ollama required).
+- **GStack first 25**: DONE — bundled first-25 classified manifest ships with an import path + manifest upload; no Walt action needed to seed.
 
 Everything else is wired by Claude Code and needs no Walt CLI action.
+
+## This pass (Production Unlock + GStack + ops directives + Workforce Setup)
+- 13 console directives in both apps (added VisionOps / VoiceOps / PropControl / 100-Agent Market Swarm).
+- Production Unlock Center in both apps (MC `/app/production-unlock`, BL `/production-unlock`).
+- GStack first-25 import (MC `/app/gstack-import` + `/api/gstack/import`).
+- AI Agent Workforce Setup surfaced in MC (`/app/agent-workforce-setup`).
+- Commits: MC `3944902`; BL `dde4ba8`; + this matrix/Workforce-Setup commit.

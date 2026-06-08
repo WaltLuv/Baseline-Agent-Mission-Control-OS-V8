@@ -92,6 +92,7 @@ export const FEATURE_SURFACES: FeatureSurface[] = [
   // ── Platform ───────────────────────────────────────────────────────
   { slug: 'skills', label: 'Skills', category: 'Platform', baselineRoute: '/skills', mcRoute: '/app/skills', status: 'live', description: 'Skills fleet.' },
   { slug: 'gstack-import', label: 'GStack Import', category: 'Platform', baselineRoute: '/skills', mcRoute: '/app/gstack-import', status: 'live', description: 'Import the first-25 GStack growth-stack skills or upload a manifest (classified, priced, approval-tiered).' },
+  { slug: 'agent-workforce-setup', label: 'AI Agent Workforce Setup', category: 'Workforce', baselineRoute: '/workforce-os', mcRoute: '/app/agent-workforce-setup', status: 'live', description: 'The spec/sales/factory system — offers, 5-pillar model, build process, and build/spec repos.' },
   { slug: 'marketplace', label: 'Marketplace', category: 'Platform', baselineRoute: '/skills', mcRoute: '/marketplace', status: 'live', description: 'Skills + workforce marketplace.' },
   { slug: 'billing', label: 'Billing / Credits', category: 'Platform', baselineRoute: '/settings', mcRoute: '/app/billing', status: 'live', description: 'Credits + billing.' },
   { slug: 'credentials', label: 'Credentials / API Keys', category: 'Platform', baselineRoute: '/settings/api-keys', mcRoute: '/app/credentials', status: 'live', description: 'Credentials manager.' },
