@@ -2592,6 +2592,18 @@ const migrations: Migration[] = [
       }
       db.exec(`CREATE INDEX IF NOT EXISTS idx_org_agents_workspace ON org_agents(workspace_id);`)
     },
+  },
+  {
+    // Workspace-scope the Pipeline so each customer only sees their own ideas,
+    // plans, approvals, shipped artifacts, and proofs. Existing rows → ws 1.
+    id: '073_pipeline_workspace_scope',
+    up: (db) => {
+      const cols = db.prepare(`PRAGMA table_info(pipeline_ideas)`).all() as { name: string }[]
+      if (!cols.some((c) => c.name === 'workspace_id')) {
+        db.exec(`ALTER TABLE pipeline_ideas ADD COLUMN workspace_id INTEGER NOT NULL DEFAULT 1;`)
+      }
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_pipeline_workspace ON pipeline_ideas(workspace_id);`)
+    },
   }
 ]
 
