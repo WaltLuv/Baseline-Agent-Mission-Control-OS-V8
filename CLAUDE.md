@@ -1,4 +1,47 @@
-# Mission Control
+# Baseline Mission Control — CLAUDE.md
+*Last updated: 2026-06-08 · Owner: Walter Thornton*
+
+> Folder-level operating manual. Read this before touching code. Detailed
+> reference (interfaces, conventions, schema) continues below the A–F header.
+> This repo (`mc-v8`) is separate from Baseline OS (`~/code/claude-os`) — two
+> independent folders/repos, never merged.
+
+## A · What this folder is
+`mc-v8` is **Baseline Mission Control** — the customer-facing / cloud orchestration
+platform. Each customer gets a workspace to build and run their AI workforce:
+templates, agents, org chart, pipeline, approvals, billing, marketplace. Same major
+product modules as Baseline OS, but every surface is **workspace-scoped** to customer
+data. Stage: **active build, runs locally.**
+
+## B · The Goal
+- **Why it exists:** give customers a self-serve cockpit to deploy and orchestrate an AI workforce.
+- **Done looks like:** every module visible, routed, workspace-scoped, tested, pushed — no fake-ready states.
+- **Out of scope:** Walt-private identities — **no Slim Charles**, no Walt voice ID, no personal NotebookLM/Obsidian/Notion/Pinecone/memory. Those are Baseline-OS-only.
+
+## C · Stack
+- **Stack:** Next.js 16, React 19, TypeScript 5, SQLite (better-sqlite3), Tailwind CSS 3, Zustand, pnpm
+- **Run locally:** `pnpm dev` → http://127.0.0.1:3000
+- **Quality gate:** `pnpm test:all` (lint · typecheck · test · build · e2e)
+- **Key files:** `src/app/` (routes + API), `src/lib/` (core/db), `src/nav-rail.tsx` (nav)
+
+## D · Decisions
+- `2026-06` — Workspace-scoped data on every module; no cross-tenant leakage (Org Chart, Pipeline isolation enforced).
+- `2026-06` — Slim Charles & Walt-private data removed from MC; same modules exist, scope/ownership differ.
+- Conventional Commits; **no AI attribution trailers**; **pnpm only**; no icon libraries (raw text/emoji).
+
+## E · Memory Map
+- `memory/PRD.md` — full product requirements (large, frozen reference)
+- `memory/CHANGELOG.md` — running change log
+- `memory/test_credentials.md` — local/test credential notes
+- `docs/audit/FULL_REQUIREMENTS_TRACEABILITY_MATRIX.md` — requirement → status → route → proof
+- `docs/audit/MC_BASELINE_PARITY.md` — OS ↔ MC feature parity
+
+## F · References
+- **Repo:** https://github.com/WaltLuv/Baseline-Agent-Mission-Control-OS-V8.git
+- **Local URL:** http://127.0.0.1:3000
+- **Sibling (private/local twin, separate repo):** `~/code/claude-os` (Baseline OS)
+
+---
 
 Open-source dashboard for AI agent orchestration. Manage agent fleets, track tasks, monitor costs, and orchestrate workflows.
 
