@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { FlightDeckDeploymentCenter } from '@/components/flight-deck/deployment-center'
 
 // ─────────────────────────────────────────────────────────────────────
 // Baseline Flight Deck — public download / build page.
@@ -405,6 +406,12 @@ pnpm run mc -- flightdeck doctor`}</CopyBlock>
               Sign in
             </Link>
           </div>
+        </section>
+
+        <section className="mx-auto max-w-screen-lg px-6 pb-12" data-testid="flightdeck-control-tower">
+          <h2 className="text-lg font-semibold text-white mb-1">Deployment Control Tower</h2>
+          <p className="text-sm text-white/50 mb-4">Pair · Runtimes · Infrastructure · Updates · Health · Proof · Done-For-You. Live state only — nothing here is faked.</p>
+          <FlightDeckDeploymentCenter />
         </section>
       </main>
 
