@@ -165,6 +165,30 @@ export function DynamicWorkflowDemo() {
     }
     setRun(initial)
 
+    // Platform integration: every mission run is a graph-first, replayable
+    // mission (Replay + Proof + Agent Activity + Graphify + Knowledge OS).
+    void (async () => {
+      let files: string[] = []
+      try {
+        const r = await fetch(`/api/graphify?q=${encodeURIComponent(template.prompt)}`)
+        const j = await r.json()
+        files = (j.results ?? []).map((n: { path: string }) => n.path).slice(0, 6)
+      } catch { /* graph optional */ }
+      const now = Date.now()
+      const events = [
+        { ts: now, kind: 'trigger', label: template.label },
+        ...(files.length ? [{ ts: now, kind: 'tool_call', agent: 'PI Agent', label: 'Graphify query (graph-first)', detail: `${files.length} files` }] : []),
+        ...template.agents.map((a) => ({ ts: now, kind: 'agent_start', agent: a.name, label: a.role })),
+        ...template.verification.map((v) => ({ ts: now, kind: 'approval', label: v.question, detail: v.verdict })),
+        ...template.deliverables.map((d) => ({ ts: now, kind: 'output', label: d })),
+        { ts: now, kind: 'proof', label: `proof package · ${template.id}` },
+      ]
+      fetch('/api/replay', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trigger: template.label, mission: template.prompt, events }),
+      }).catch(() => {})
+    })()
+
     // Schedule deterministic stage transitions for the demo.
     let cumulative = 0
     STAGE_ORDER.forEach((s, idx) => {

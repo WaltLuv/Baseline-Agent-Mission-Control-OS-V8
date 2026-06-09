@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
 
 // Use vi.hoisted() so mock variables are available inside vi.mock() factories
 const { mockBroadcast, mockRun, mockGet, mockPrepare } = vi.hoisted(() => {
@@ -47,8 +47,16 @@ vi.mock('@/lib/event-bus', () => ({
   eventBus: { broadcast: mockBroadcast, on: vi.fn(), emit: vi.fn(), setMaxListeners: vi.fn() },
 }))
 
-// Import after mocks — the real db_helpers will use our mocked getDatabase
-import { db_helpers } from '@/lib/db'
+// Import after mocks — the real db_helpers will use our mocked getDatabase.
+// Loaded via beforeAll + vi.resetModules() so this file's better-sqlite3 mock
+// ALWAYS applies, even when an earlier test file already imported @/lib/db with
+// the real native binding (singleThread pool shares the in-process module/native
+// state, which otherwise made these mock assertions order-dependent and flaky).
+let db_helpers: typeof import('@/lib/db')['db_helpers']
+beforeAll(async () => {
+  vi.resetModules()
+  db_helpers = (await import('@/lib/db')).db_helpers
+})
 
 describe('parseMentions', () => {
   it('extracts multiple mentions', () => {
