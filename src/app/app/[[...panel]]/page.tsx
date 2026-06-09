@@ -76,6 +76,7 @@ import { OrchestrationHQPanel } from '@/components/panels/orchestration-hq-panel
 import { CommsConnectPanel } from '@/components/panels/comms-connect-panel'
 import { MaintenancePanel } from '@/components/panels/maintenance-panel'
 import { OwnerApprovalsPanel } from '@/components/panels/owner-approvals-panel'
+import { KanbanGalleryPanel } from '@/components/panels/kanban-gallery-panel'
 import { ChatPanel } from '@/components/chat/chat-panel'
 import { HelpPanel } from '@/components/help/help-panel'
 import { FirstRunTour } from '@/components/help/first-run-tour'
@@ -556,7 +557,7 @@ const ESSENTIAL_PANELS = new Set([
   // Baseline OS parity surfaces — always reachable (honest setup states).
   'codex', 'openclaw', 'hermes', 'oh-my-pi', 'antigravity', 'gemini', 'free-claude', 'browser-use', 'ruflo',
   'hyperframes', 'minimax', 'asset-library', 'knowledge-os', 'notebooklm', 'obsidian', 'notion', 'pinecone', 'pi-agent',
-  'hermes-manage', 'proofs', 'provider-matrix', 'production-unlock', 'gstack-import', 'agent-workforce-setup', 'graphify', 'video-studio', 'replay', 'orchestration', 'comms', 'maintenance', 'approvals',
+  'hermes-manage', 'proofs', 'provider-matrix', 'production-unlock', 'gstack-import', 'agent-workforce-setup', 'graphify', 'video-studio', 'replay', 'orchestration', 'comms', 'maintenance', 'approvals', 'kanban-gallery',
 ])
 
 function ContentRouter({ tab }: { tab: string }) {
@@ -783,6 +784,9 @@ function ContentRouter({ tab }: { tab: string }) {
       return <MaintenancePanel />
     case 'approvals':
       return <OwnerApprovalsPanel />
+    case 'kanban-gallery':
+    case 'kanban-2':
+      return <KanbanGalleryPanel />
     case 'agent-gateway':
     case 'mcp-gateway':
       return <AgentGatewayPanel />

@@ -2695,6 +2695,45 @@ const migrations: Migration[] = [
         CREATE INDEX IF NOT EXISTS idx_owner_approvals_ws ON owner_approvals(workspace_id, status);
       `)
     },
+  },
+  {
+    // Self-Driving Kanban 2.0 — execution pipeline cards. Additive (does NOT
+    // touch the existing tasks/board). Workspace-scoped.
+    id: '076_kanban_drive_cards',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS kanban_cards (
+          id TEXT PRIMARY KEY,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          project_name TEXT NOT NULL DEFAULT '',
+          idea TEXT NOT NULL DEFAULT '',
+          current_stage TEXT NOT NULL DEFAULT 'Input',
+          current_floor INTEGER NOT NULL DEFAULT 1,
+          payload_spec TEXT NOT NULL DEFAULT '{}',
+          plan TEXT NOT NULL DEFAULT '{}',
+          approval_status TEXT NOT NULL DEFAULT 'pending',
+          approved_by TEXT,
+          approved_at INTEGER,
+          telegram_message_id TEXT,
+          model_router TEXT NOT NULL DEFAULT '',
+          implementation_agent TEXT NOT NULL DEFAULT '',
+          self_checker_agent TEXT NOT NULL DEFAULT '',
+          self_checker_logs TEXT NOT NULL DEFAULT '',
+          attempts INTEGER NOT NULL DEFAULT 0,
+          artifact TEXT NOT NULL DEFAULT '',
+          live_preview_path TEXT,
+          shipped_gallery_path TEXT,
+          obsidian_vault_path TEXT,
+          replay_id TEXT,
+          proof_package_id TEXT,
+          graph_context_id TEXT,
+          template_slug TEXT,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_kanban_cards_ws ON kanban_cards(workspace_id, current_stage);
+      `)
+    },
   }
 ]
 
