@@ -145,6 +145,7 @@ const navGroups: NavGroup[] = [
     label: 'KNOWLEDGE',
     items: [
       { id: 'knowledge-os', label: 'Knowledge OS', icon: '🧠', priority: false },
+      { id: 'graphify', label: 'Graphify', icon: '🕸️', priority: false },
       { id: 'notebooklm', label: 'NotebookLM', icon: '📓', priority: false },
       { id: 'obsidian', label: 'Obsidian', icon: '🔮', priority: false },
       { id: 'notion', label: 'Notion', icon: '📝', priority: false },

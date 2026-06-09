@@ -6,6 +6,15 @@
 > This repo (`mc-v8`) is separate from Baseline OS (`~/code/claude-os`) — two
 > independent folders/repos, never merged.
 
+## ⚡ Graph-first rule (Graphify = structural brain)
+> Do NOT autonomously scan or read the entire repository. When you need context,
+> FIRST consult the Graphify knowledge graph to locate the exact files, routes,
+> APIs, and dependencies, then open ONLY those files. Query it via
+> `GET /api/graphify?q=<question>` (or `src/lib/graphify/graph.ts` `queryGraph`);
+> the graph caches to `graphify-out/graph.json` and rebuilds via `?refresh=1`.
+> Use broad grep only when the graph is missing, stale, or insufficient. Secrets
+> (.env/keys/tokens) are excluded from the graph by the builder.
+
 ## A · What this folder is
 `mc-v8` is **Baseline Mission Control** — the customer-facing / cloud orchestration
 platform. Each customer gets a workspace to build and run their AI workforce:
