@@ -18,7 +18,7 @@ Still ❌ persisting replay: **Org Chart generation, Creative OS actions, Agent 
 
 ### Graphify
 ✅: agent pages (structural panel), Gemini Flow (graph-first), Video Studio.
-🟡: OS `/__agent_run` injects; **MC execution paths do NOT (deep injection still open)**.
+✅: OS `/__agent_run` injects; **MC `POST /api/hermes/tasks` now injects graph-first too (closed 2026-06-09)**.
 ❌: Pipeline, Maestro, Hermes task path (MC).
 
 ### Org Chart
