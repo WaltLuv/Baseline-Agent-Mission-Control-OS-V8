@@ -43,6 +43,15 @@ function formatWhen(unix: number | null): string {
 
 type Filter = 'all' | 'hired' | 'available'
 
+// Real list pricing — per AI-employee, per month. Tiered by role seniority.
+// These agents are NOT free; this surfaces the actual price.
+function personaPriceMonthly(p: Persona): number {
+  const r = `${p.role} ${p.name}`.toLowerCase()
+  if (/\b(ceo|cfo|chief|director|senior cpa|pipeline cfo)\b/.test(r)) return 249
+  if (/\b(lead|manager|officer|intelligence|analyst|specialist|coordinator|account)\b/.test(r)) return 129
+  return 79
+}
+
 export default function PersonasPage() {
   const [payload, setPayload] = useState<Payload | null>(null)
   const [loading, setLoading] = useState(true)
@@ -184,7 +193,9 @@ export default function PersonasPage() {
                             Available
                           </span>
                         )}
-                        <span className="ml-auto text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">Free</span>
+                        <span className="ml-auto text-right text-[11px] font-semibold text-cyan-300" data-testid={`persona-price-${p.slug}`}>
+                          ${personaPriceMonthly(p)}<span className="text-[9px] font-normal text-white/45">/mo</span>
+                        </span>
                       </div>
                       <p className="text-xs text-white/55">{p.role}</p>
                       <p className="mt-2 text-xs text-white/65 leading-relaxed">{p.outcome}</p>

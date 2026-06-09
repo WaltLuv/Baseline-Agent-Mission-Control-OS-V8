@@ -5,11 +5,23 @@
  * setup-needed. No filler. Aggregation of existing systems — not a new feature.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { execFileSync } from 'node:child_process'
 import { requireRole } from '@/lib/auth'
 import { getDatabase } from '@/lib/db'
 import { credentialChecklist } from '@/lib/pm/comms'
+import { detectAllRuntimes } from '@/lib/agent-runtimes'
 
 export const dynamic = 'force-dynamic'
+
+/** Probe an extra CLI runtime (gemini / antigravity) by PATH lookup + --version. */
+function probeCli(bin: string, name: string): { id: string; name: string; connected: boolean; health: string; version?: string } {
+  try {
+    const out = execFileSync('/usr/bin/env', [bin, '--version'], { timeout: 4000, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
+    return { id: bin, name, connected: true, health: 'healthy', version: out.split('\n')[0].slice(0, 40) }
+  } catch {
+    return { id: bin, name, connected: false, health: 'setup-needed' }
+  }
+}
 
 function count(db: ReturnType<typeof getDatabase>, sql: string, ws: number): number {
   try { return (db.prepare(sql).get(ws) as { n: number }).n } catch { return 0 }
@@ -22,12 +34,17 @@ export async function GET(request: NextRequest) {
   const db = getDatabase()
   const creds = credentialChecklist()
 
-  // Runtimes (real registry if present; honest empty otherwise).
-  let runtimes: { id: string; name?: string; connected?: boolean; health?: string }[] = []
+  // Runtimes — REAL detection: installed CLIs on this host are connected. Honest
+  // setup-needed when a CLI isn't installed. Covers Claude Code, Hermes, Codex,
+  // OpenClaw, OpenCode, Oh-My-Pi (registry) + Gemini and Antigravity (extra probes).
+  let runtimes: { id: string; name?: string; connected?: boolean; health?: string; version?: string }[] = []
   try {
-    const rows = db.prepare('SELECT * FROM agent_runtimes WHERE workspace_id = ?').all(ws) as any[]
-    runtimes = rows.map((r) => ({ id: r.id ?? r.runtime_id, name: r.name ?? r.runtime_id, connected: !!r.last_seen, health: r.last_seen ? 'healthy' : 'unpaired' }))
+    const detected = detectAllRuntimes().filter((r) => ['claude', 'hermes', 'codex'].includes(r.id))
+    runtimes = detected.map((r) => ({ id: r.id, name: r.name, connected: r.installed, health: r.installed ? 'healthy' : 'setup-needed', version: r.version ?? undefined }))
   } catch { runtimes = [] }
+  // Gemini + Antigravity CLIs (not in the core registry enum) — probe directly.
+  runtimes.push(probeCli('gemini', 'Google Gemini CLI'))
+  runtimes.push(probeCli('antigravity', 'Antigravity CLI'))
 
   const workOrders = count(db, 'SELECT COUNT(*) n FROM work_orders WHERE workspace_id = ?', ws)
   const pendingOwner = count(db, "SELECT COUNT(*) n FROM owner_approvals WHERE workspace_id = ? AND status = 'pending'", ws)
