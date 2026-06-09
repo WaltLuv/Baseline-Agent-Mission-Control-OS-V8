@@ -69,6 +69,7 @@ import { GStackImportPanel } from '@/components/panels/gstack-import-panel'
 import { AgentWorkforceSetupPanel } from '@/components/panels/agent-workforce-setup-panel'
 import { GraphifyPanel } from '@/components/panels/graphify-panel'
 import { VideoStudioPanel } from '@/components/panels/video-studio-panel'
+import { GeminiFlowPanel } from '@/components/panels/gemini-flow-panel'
 import { ChatPanel } from '@/components/chat/chat-panel'
 import { HelpPanel } from '@/components/help/help-panel'
 import { FirstRunTour } from '@/components/help/first-run-tour'
@@ -732,7 +733,6 @@ function ContentRouter({ tab }: { tab: string }) {
     case 'hermes':
     case 'oh-my-pi':
     case 'antigravity':
-    case 'gemini':
     case 'free-claude':
     case 'browser-use':
     case 'ruflo':
@@ -764,6 +764,8 @@ function ContentRouter({ tab }: { tab: string }) {
       return <GraphifyPanel />
     case 'video-studio':
       return <VideoStudioPanel />
+    case 'gemini':
+      return <GeminiFlowPanel />
     case 'agent-gateway':
     case 'mcp-gateway':
       return <AgentGatewayPanel />
