@@ -23,9 +23,9 @@ import {
   Layers,
 } from "lucide-react";
 import confetti from "canvas-confetti";
-import { directivesByGroup, INDUSTRIES, type ConsoleDirective } from "@/lib/workforce-console";
+import { directivesByGroup, type ConsoleDirective } from "@/lib/workforce-console";
+import { MissionControlHero } from "@/components/marketing/mission-control-hero";
 
-const workforceDashboard = "/workforce-dashboard.png";
 
 // Simulation types
 type AgentState = "idle" | "thinking" | "communicating" | "success" | "error";
@@ -393,54 +393,72 @@ export default function Home() {
         <div className="max-w-7xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-indigo-500/20 bg-indigo-950/20 text-xs font-semibold text-indigo-300 mb-8 shadow-inner" data-testid="hero-badge">
             <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Introducing Baseline Automations AI Workforce OS</span>
+            <span>AI Workforce Operating System for Property Management</span>
           </div>
-          <div className="text-sm font-bold uppercase tracking-[0.3em] text-cyan-300/80 mb-4" data-testid="hero-workforce-os">Workforce OS</div>
+          <div className="text-sm font-bold uppercase tracking-[0.3em] text-cyan-300/80 mb-4" data-testid="hero-workforce-os">Mission Control · Property Operations</div>
           <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight text-white mb-6 leading-[1.1] max-w-5xl mx-auto">
-            The Operating System for Your{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-indigo-400 drop-shadow-[0_2px_10px_rgba(6,182,212,0.15)]">AI Workforce</span>
+            The AI Workforce Command Center for{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-indigo-400 drop-shadow-[0_2px_10px_rgba(6,182,212,0.15)]">Property Management</span>
           </h1>
           <p className="text-lg sm:text-xl md:text-2xl text-white font-semibold max-w-3xl mx-auto mb-3" data-testid="hero-install-line">
-            Install a complete AI workforce in minutes.
+            Triage maintenance, coordinate vendors, route owner approvals — with proof.
           </p>
           <p className="text-base sm:text-lg text-gray-400 max-w-3xl mx-auto mb-10 leading-relaxed">
-            Coordinate, monitor, and scale specialized AI agent squads. Manage complex projects locally with enterprise-grade human guardrails, global semantic memory, and native API toolsets.
+            Coordinate maintenance, vendors, owner approvals, tenant communication, and workforce operations from a single control center — and replay every workflow with a full proof package.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
-            <a href="#simulator" className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 rounded-2xl text-sm font-bold text-black bg-white hover:bg-gray-100 transition-all active:scale-[0.97] shadow-xl shadow-white/5 gap-2"><Play className="w-4 h-4 fill-current" /> Try Live Console Demo</a>
-            <a href="#architecture" className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 rounded-2xl text-sm font-bold text-gray-300 bg-white/5 border border-white/[0.08] hover:bg-white/10 transition-all active:scale-[0.97]">View System Architecture</a>
+            <a href="/app/activate?template=property-management" data-testid="cta-install-pm" className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 rounded-2xl text-sm font-bold text-black bg-white hover:bg-gray-100 transition-all active:scale-[0.97] shadow-xl shadow-white/5 gap-2"><ArrowRight className="w-4 h-4" /> Install Property Management Workforce</a>
+            <a href="#pm-workflow" data-testid="cta-watch-demo" className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 rounded-2xl text-sm font-bold text-gray-300 bg-white/5 border border-white/[0.08] hover:bg-white/10 transition-all active:scale-[0.97] gap-2"><Play className="w-4 h-4 fill-current" /> Watch Live Maintenance Demo</a>
           </div>
-          <div className="relative max-w-5xl mx-auto rounded-2xl border border-white/[0.08] bg-[#0A0A0F] p-2 sm:p-3 shadow-[0_20px_50px_rgba(0,0,0,0.8)] group overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-500 opacity-60"></div>
-            <div className="absolute top-[-100px] left-[50%] -translate-x-[50%] w-[600px] h-[300px] rounded-full bg-indigo-500/10 filter blur-[80px] pointer-events-none group-hover:bg-cyan-500/10 transition-colors duration-500"></div>
-            <div className="relative rounded-xl overflow-hidden aspect-[16/15] sm:aspect-[16/10] border border-white/[0.05] bg-[#0c0c12]">
-              <img src={workforceDashboard} alt="Baseline Automations Orchestration Dashboard Console" className="w-full h-full object-cover select-none pointer-events-none scale-[1.01] hover:scale-[1.03] transition-transform duration-700 ease-out" />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0F]/30 via-transparent to-transparent"></div>
-            </div>
-          </div>
-          <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto border border-white/[0.06] rounded-2xl p-6 bg-white/[0.01] backdrop-blur-sm divide-y-2 md:divide-y-0 md:divide-x divide-white/[0.06]">
-            <div className="text-center px-4 py-2 md:py-0"><span className="block text-2xl md:text-3xl font-extrabold text-white">1.2M+</span><span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mt-1 block">Tasks Completed</span></div>
-            <div className="text-center px-4 py-2 md:py-0"><span className="block text-2xl md:text-3xl font-extrabold text-cyan-400">99.8%</span><span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mt-1 block">Automation Accuracy</span></div>
-            <div className="text-center px-4 py-2 md:py-0"><span className="block text-2xl md:text-3xl font-extrabold text-white">&lt; 15s</span><span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mt-1 block">Avg. Task Resolution</span></div>
-            <div className="text-center px-4 py-2 md:py-0"><span className="block text-2xl md:text-3xl font-extrabold text-indigo-400">$45K+</span><span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mt-1 block">Avg. Saved / Month</span></div>
+          <div className="relative max-w-5xl mx-auto rounded-2xl border border-white/[0.08] bg-[#0A0A0F] p-2 sm:p-3 shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-500 opacity-60 z-30"></div>
+            <MissionControlHero />
           </div>
         </div>
       </section>
 
-      {/* Industries — install a complete workforce (the hero choice) */}
-      <section id="industries" className="py-20 px-4 sm:px-6 lg:px-8 relative z-10" data-testid="industries">
+      {/* Property Management Workflow — the first thing after the hero */}
+      <section id="pm-workflow" className="py-20 px-4 sm:px-6 lg:px-8 relative z-10" data-testid="pm-workflow">
         <div className="max-w-7xl mx-auto">
           <div className="text-center max-w-3xl mx-auto mb-12">
-            <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-4">What workforce do you want to install?</h2>
-            <p className="text-gray-400">Production-ready workforce templates — each a full team of AI employees, workflows, and approvals. Free to start.</p>
+            <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-4">One workflow, fully supervised — with proof</h2>
+            <p className="text-gray-400">Every maintenance request flows through the same accountable pipeline. Owner approval gates the spend; proof and replay cover you.</p>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {INDUSTRIES.map((ind) => (
-              <a key={ind.slug} href={`/app/activate?template=${ind.slug}`} data-testid={`industry-${ind.slug}`}
-                className="group rounded-2xl border border-white/[0.06] bg-white/[0.01] hover:bg-white/[0.03] hover:border-cyan-500/30 transition-all p-5 active:scale-[0.98]">
-                <div className="text-base font-bold text-white">{ind.label}</div>
-                <div className="text-[11px] text-cyan-400/70 mt-3 inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">Install workforce <ArrowRight className="w-3 h-3" /></div>
-              </a>
+          <div className="flex flex-wrap items-stretch justify-center gap-2">
+            {[
+              { k: "Maintenance Request", c: "#43E5FF" }, { k: "AI Triage", c: "#43E5FF" }, { k: "Vendor Match", c: "#7C5CFF" },
+              { k: "Owner Approval", c: "#C9A227" }, { k: "Dispatch", c: "#7C5CFF" }, { k: "Proof Package", c: "#34d399" }, { k: "Replay", c: "#34d399" },
+            ].map((s, i, arr) => (
+              <div key={s.k} className="flex items-center">
+                <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm font-semibold text-white" style={{ boxShadow: `inset 0 0 0 1px ${s.c}22` }} data-testid={`pm-step-${i}`}>
+                  <span className="mr-2 inline-block h-2 w-2 rounded-full" style={{ background: s.c, boxShadow: `0 0 8px ${s.c}` }} />{s.k}
+                </div>
+                {i < arr.length - 1 && <ArrowRight className="mx-1 h-4 w-4 text-white/30" />}
+              </div>
+            ))}
+          </div>
+          <div className="mt-8 text-center">
+            <a href="/app/maintenance" className="inline-flex items-center gap-2 rounded-2xl bg-white px-7 py-3.5 text-sm font-bold text-black hover:bg-gray-100 active:scale-[0.97]"><Play className="h-4 w-4 fill-current" /> Run the maintenance workflow</a>
+          </div>
+        </div>
+      </section>
+
+      {/* Flight Deck preview — the supervisor layer */}
+      <section id="flight-deck" className="py-20 px-4 sm:px-6 lg:px-8 relative z-10 border-t border-white/[0.05]" data-testid="flight-deck-preview">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center max-w-3xl mx-auto mb-10">
+            <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-4">Flight Deck — your control tower</h2>
+            <p className="text-gray-400">The supervisor layer over your AI workforce: runtimes, cost, approvals, deployments, and health in one view.</p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {[
+              { t: "Runtime Registry", d: "What's connected" }, { t: "Cost Monitoring", d: "Spend per action" }, { t: "Approval Center", d: "Owner gates" },
+              { t: "Deployments", d: "Workforce status" }, { t: "Health Monitoring", d: "Live telemetry" },
+            ].map((c) => (
+              <div key={c.t} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                <div className="text-sm font-bold text-white">{c.t}</div>
+                <div className="text-[11px] text-gray-400 mt-1">{c.d}</div>
+              </div>
             ))}
           </div>
         </div>

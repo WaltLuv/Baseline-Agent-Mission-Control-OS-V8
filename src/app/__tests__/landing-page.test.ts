@@ -10,24 +10,26 @@ import { directivesByGroup, CONSOLE_DIRECTIVES, INDUSTRIES } from '@/lib/workfor
 const src = readFileSync('src/app/page.tsx', 'utf8')
 
 describe('Landing page — Workforce OS clone + 9-directive console', () => {
-  it('hero badge is the AI Workforce OS rename + Workforce OS + install line', () => {
+  it('hero is the property-management command center (launch reorg)', () => {
     expect(src).toContain('data-testid="hero-badge"')
-    expect(src).toContain('Introducing Baseline Automations AI Workforce OS')
-    expect(src).toMatch(/The Operating System for Your/)
-    expect(src).toContain('data-testid="hero-workforce-os"')
-    expect(src).toContain('Workforce OS')
-    expect(src).toContain('Install a complete AI workforce in minutes')
+    expect(src).toContain('AI Workforce Operating System for Property Management')
+    expect(src).toMatch(/The AI Workforce Command Center for/)
+    expect(src).toContain('Property Management')
+    expect(src).toContain('data-testid="cta-install-pm"') // Install Property Management Workforce
+    expect(src).toContain('data-testid="cta-watch-demo"') // Watch Live Maintenance Demo
+    // launch reorg removed the broad vertical install grid + fake stats
+    expect(src).not.toMatch(/What workforce do you want to install\?/)
+    expect(src).not.toContain('Tasks Completed')
   })
 
-  it('hero shows 11 installable industries → /app/activate?template=slug', () => {
-    expect(src).toContain('data-testid="industries"')
-    expect(src).toMatch(/What workforce do you want to install\?/)
-    expect(src).toContain('industry-${ind.slug}')
-    expect(src).toContain('/app/activate?template=${ind.slug}')
+  it('PM workflow is the first section after the hero (Maintenance→…→Replay)', () => {
+    expect(src).toContain('data-testid="pm-workflow"')
+    expect(src).toContain('Owner Approval')
+    expect(src).toContain('Proof Package')
+    expect(src).toContain('data-testid="flight-deck-preview"')
+    // breadth still exists in the lib (shown in the console, not the homepage grid)
     expect(INDUSTRIES.length).toBe(11)
-    for (const slug of ['property-management', 'insurance', 'ai-product-launch', 'real-estate', 'mortgage', 'cpa', 'law-firm', 'general-contractor', 'home-services', 'marketing-agency', 'ai-agency']) {
-      expect(INDUSTRIES.map((i) => i.slug)).toContain(slug)
-    }
+    expect(INDUSTRIES.map((i) => i.slug)).toContain('property-management')
   })
 
   it('renders the five product layers', () => {

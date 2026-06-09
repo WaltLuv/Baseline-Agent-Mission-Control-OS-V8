@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" role="img" aria-label="Mission Control — AI Workforce Command Center for Property Management">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="80%">
+      <stop offset="0%" stop-color="#0c1530"/><stop offset="55%" stop-color="#080a16"/><stop offset="100%" stop-color="#04050b"/>
+    </radialGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#43E5FF"/><stop offset="100%" stop-color="#7C5CFF"/>
+    </linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <g stroke="#1b2440" stroke-width="1" opacity="0.5">
+    <path d="M0 600 L1600 600"/><path d="M0 680 L1600 680"/><path d="M0 760 L1600 760"/>
+    <path d="M300 540 L100 900"/><path d="M650 540 L520 900"/><path d="M950 540 L1080 900"/><path d="M1300 540 L1500 900"/>
+  </g>
+  <g filter="url(#glow)" fill="none" stroke="url(#cyan)" stroke-width="2" opacity="0.85">
+    <circle cx="800" cy="320" r="60"/><circle cx="520" cy="240" r="34"/><circle cx="1080" cy="240" r="34"/>
+    <circle cx="380" cy="400" r="26"/><circle cx="1220" cy="400" r="26"/>
+    <path d="M560 250 L745 305 M1040 250 L855 305 M404 388 L745 332 M1196 388 L855 332"/>
+  </g>
+  <g fill="#43E5FF" opacity="0.9"><circle cx="800" cy="320" r="6"/><circle cx="520" cy="240" r="4"/><circle cx="1080" cy="240" r="4"/></g>
+  <text x="800" y="120" text-anchor="middle" fill="#E8DCC0" font-family="Inter,Arial,sans-serif" font-size="58" font-weight="800">The AI Workforce Command Center</text>
+  <text x="800" y="180" text-anchor="middle" fill="#43E5FF" font-family="Inter,Arial,sans-serif" font-size="40" font-weight="700">for Property Management</text>
+  <g font-family="Inter,Arial,sans-serif" font-size="20" font-weight="700" fill="#0b0e16">
+    <g transform="translate(180,800)"><rect width="200" height="44" rx="10" fill="#43E5FF"/><text x="100" y="29" text-anchor="middle">Maintenance</text></g>
+    <g transform="translate(440,800)"><rect width="160" height="44" rx="10" fill="#7C5CFF"/><text x="80" y="29" text-anchor="middle">Triage</text></g>
+    <g transform="translate(660,800)"><rect width="170" height="44" rx="10" fill="#43E5FF"/><text x="85" y="29" text-anchor="middle">Vendor</text></g>
+    <g transform="translate(890,800)"><rect width="220" height="44" rx="10" fill="#C9A227"/><text x="110" y="29" text-anchor="middle">Owner Approval</text></g>
+    <g transform="translate(1170,800)"><rect width="150" height="44" rx="10" fill="#34d399"/><text x="75" y="29" text-anchor="middle">Proof</text></g>
+    <g transform="translate(1380,800)"><rect width="150" height="44" rx="10" fill="#34d399"/><text x="75" y="29" text-anchor="middle">Replay</text></g>
+  </g>
+</svg>
