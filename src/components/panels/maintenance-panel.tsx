@@ -18,6 +18,8 @@ export function MaintenancePanel() {
   const [result, setResult] = useState<any>(null)
   const [orders, setOrders] = useState<any[]>([])
   const [busy, setBusy] = useState(false)
+  const [seeding, setSeeding] = useState(false)
+  const [seedMsg, setSeedMsg] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try { const j = await (await fetch('/api/maintenance', { cache: 'no-store' })).json(); setOrders(j.workOrders ?? []) } catch { /* empty */ }
@@ -37,10 +39,21 @@ export function MaintenancePanel() {
 
   return (
     <div className="m-4 space-y-4" data-testid="maintenance-panel">
-      <div>
-        <h1 className="text-base font-semibold">Maintenance Execution</h1>
-        <p className="text-xs text-muted-foreground">Request → AI triage → work order → vendor match → owner approval (if over threshold) → dispatch. Live when comms are connected; otherwise an honest dry-run with full proof + replay.</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-base font-semibold">Maintenance Execution</h1>
+          <p className="text-xs text-muted-foreground">Request → AI triage → work order → vendor match → owner approval (if over threshold) → dispatch. Live when comms are connected; otherwise an honest dry-run with full proof + replay.</p>
+        </div>
+        <button
+          onClick={async () => { setSeeding(true); try { const j = await (await fetch('/api/demo/seed', { method: 'POST' })).json(); setSeedMsg(j.ok ? `Demo seeded · ${j.seeded.workOrders} work orders · ${j.seeded.pendingApprovals} pending approval(s) · ${j.seeded.replays} replays · comms ${j.credentials.mode}` : (j.error ?? 'error')); await load() } catch (e) { setSeedMsg((e as Error).message) } setSeeding(false) }}
+          disabled={seeding}
+          className="shrink-0 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary disabled:opacity-50"
+          data-testid="demo-seed"
+        >
+          {seeding ? 'Seeding…' : '✨ Demo Mode — seed data'}
+        </button>
       </div>
+      {seedMsg && <p className="text-[11px] text-primary" data-testid="demo-seed-msg">{seedMsg}</p>}
 
       <div className="grid gap-2 rounded-xl border border-border bg-card p-3 sm:grid-cols-2" data-testid="maintenance-form">
         <textarea value={request} onChange={(e) => setRequest(e.target.value)} rows={2} placeholder="Describe the maintenance issue" className="rounded-md border border-border bg-background px-2 py-1 text-xs sm:col-span-2" data-testid="maintenance-request" />

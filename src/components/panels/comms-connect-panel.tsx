@@ -13,6 +13,7 @@ interface LogRow { id: string; channel: string; to_addr: string; recipient_role:
 
 export function CommsConnectPanel() {
   const [channels, setChannels] = useState<ChannelStatus[]>([])
+  const [creds, setCreds] = useState<{ items: { key: string; label: string; present: boolean }[]; mode: string } | null>(null)
   const [log, setLog] = useState<LogRow[]>([])
   const [to, setTo] = useState('')
   const [body, setBody] = useState('Test message from your AI property team.')
@@ -21,6 +22,7 @@ export function CommsConnectPanel() {
 
   const load = useCallback(async () => {
     try { const j = await (await fetch('/api/comms', { cache: 'no-store' })).json(); setChannels(j.channels ?? []); setLog(j.log ?? []) } catch { /* empty */ }
+    try { const d = await (await fetch('/api/demo/seed', { cache: 'no-store' })).json(); setCreds(d.credentials ?? null) } catch { /* empty */ }
   }, [])
   useEffect(() => { void load() }, [load])
 
@@ -41,6 +43,24 @@ export function CommsConnectPanel() {
         <h1 className="text-base font-semibold">Communications</h1>
         <p className="text-xs text-muted-foreground">Connect SMS + email for tenant / owner / vendor messaging. No message is faked — when a credential is missing, sends run as a logged dry-run.</p>
       </div>
+
+      {creds && (
+        <div className="rounded-xl border border-border bg-card p-3" data-testid="comms-credentials">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Live-demo credential checklist</span>
+            <span className={`rounded px-2 py-0.5 text-[10px] uppercase ${creds.mode === 'live' ? 'bg-emerald-500/20 text-emerald-400' : creds.mode === 'partial' ? 'bg-sky-500/20 text-sky-400' : 'bg-amber-500/20 text-amber-400'}`} data-testid="comms-mode">{creds.mode}</span>
+          </div>
+          <ul className="space-y-0.5 text-[11px]">
+            {creds.items.map((c) => (
+              <li key={c.key} className="flex items-center gap-2">
+                <span className={c.present ? 'text-emerald-400' : 'text-amber-400'}>{c.present ? '✓ valid' : '• missing'}</span>
+                <span className="text-foreground/75">{c.label}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1 text-[10px] text-muted-foreground/70">No secret values are shown. {creds.mode === 'dry-run' ? 'All sends dry-run until credentials are added.' : creds.mode === 'partial' ? 'One channel live; the other dry-runs.' : 'Live send enabled on both channels.'}</p>
+        </div>
+      )}
 
       <div className="grid gap-2 sm:grid-cols-2" data-testid="comms-channels">
         {channels.map((c) => (

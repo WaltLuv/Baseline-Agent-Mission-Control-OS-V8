@@ -50,6 +50,29 @@ export function credsPresent(channel: Channel): { live: boolean; missing: string
 let seq = 0
 function id(now: number, p = 'msg') { seq = (seq + 1) % 1e6; return `${p}_${now.toString(36)}${seq.toString(36)}` }
 
+/**
+ * Per-credential readiness checklist for the live-demo go/no-go. Reports only
+ * presence (set/missing) — never the secret value. `mode` summarizes the effect.
+ */
+export function credentialChecklist(): {
+  items: { key: string; label: string; channel: Channel; present: boolean }[]
+  sms: { live: boolean }
+  email: { live: boolean }
+  mode: 'live' | 'partial' | 'dry-run'
+} {
+  const items = [
+    { key: 'TWILIO_ACCOUNT_SID', label: 'Twilio Account SID', channel: 'sms' as Channel },
+    { key: 'TWILIO_AUTH_TOKEN', label: 'Twilio Auth Token', channel: 'sms' as Channel },
+    { key: 'TWILIO_FROM_NUMBER', label: 'Twilio From Number', channel: 'sms' as Channel },
+    { key: 'RESEND_API_KEY', label: 'Resend API Key (or SMTP_*)', channel: 'email' as Channel },
+    { key: 'RESEND_FROM', label: 'Email From Address', channel: 'email' as Channel },
+  ].map((i) => ({ ...i, present: !!process.env[i.key] }))
+  const sms = credsPresent('sms').live
+  const email = credsPresent('email').live
+  const mode = sms && email ? 'live' : sms || email ? 'partial' : 'dry-run'
+  return { items, sms: { live: sms }, email: { live: email }, mode }
+}
+
 /** Per-workspace comms status: provider, from-address, configured (live) flag. */
 export function getCommsStatus(ws: number): { channel: Channel; provider: string; live: boolean; missing: string[] }[] {
   const db = getDatabase()

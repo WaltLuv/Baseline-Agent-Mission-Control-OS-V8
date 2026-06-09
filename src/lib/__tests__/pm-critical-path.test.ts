@@ -8,6 +8,8 @@ import { describe, it, expect } from 'vitest'
 import { credsPresent, testConnection, sendMessage, listComms } from '@/lib/pm/comms'
 import { triage, executeMaintenance, getWorkOrder } from '@/lib/pm/maintenance'
 import { listPending, decide, getApproval } from '@/lib/pm/approvals'
+import { credentialChecklist } from '@/lib/pm/comms'
+import { seedDemo, demoStatus } from '@/lib/pm/demo-seed'
 
 const WS = 991 // isolate this test's workspace
 
@@ -80,6 +82,28 @@ describe('F5 owner approval inbox', () => {
   })
 })
 
+describe('Demo Mode + credential checklist (demo readiness)', () => {
+  it('credential checklist reports per-credential presence + dry-run mode (no creds in test)', () => {
+    const c = credentialChecklist()
+    expect(c.items.some((i) => i.key === 'TWILIO_ACCOUNT_SID')).toBe(true)
+    expect(c.items.every((i) => i.present === false)).toBe(true)
+    expect(c.mode).toBe('dry-run')
+  })
+  it('one-click demo seed populates a realistic workspace (idempotent)', async () => {
+    const ws = 992
+    const a = await seedDemo(ws, 1000)
+    expect(a.workOrders).toBe(4)
+    expect(a.pendingApprovals).toBe(1) // scenario 1 awaits approval
+    expect(a.decisions).toBe(2) // scenario 3 approved, 4 denied
+    expect(a.messages).toBeGreaterThan(0) // dry-run comms log
+    expect(a.replays).toBe(4)
+    // re-seed → same counts (cleared first), not doubled
+    const b = await seedDemo(ws, 2000)
+    expect(b.workOrders).toBe(4)
+    expect(demoStatus(ws).workOrders).toBe(4)
+  })
+})
+
 describe('panels + APIs wired', () => {
   const comms = readFileSync('src/components/panels/comms-connect-panel.tsx', 'utf8')
   const maint = readFileSync('src/components/panels/maintenance-panel.tsx', 'utf8')
@@ -89,10 +113,16 @@ describe('panels + APIs wired', () => {
     expect(comms).toContain('data-testid="comms-channels"')
     expect(comms).toContain('/api/comms')
   })
-  it('maintenance panel runs + shows dispatch status + Agent Activity', () => {
+  it('maintenance panel runs + shows dispatch status + Agent Activity + Demo Mode', () => {
     expect(maint).toContain('data-testid="maintenance-panel"')
     expect(maint).toContain('data-testid="maintenance-dispatch-status"')
     expect(maint).toContain('agentId="maintenance"')
+    expect(maint).toContain('data-testid="demo-seed"')
+    expect(maint).toContain('/api/demo/seed')
+  })
+  it('comms panel shows the credential checklist', () => {
+    expect(comms).toContain('data-testid="comms-credentials"')
+    expect(comms).toContain('data-testid="comms-mode"')
   })
   it('owner-approvals inbox renders pending + approve/deny/info', () => {
     expect(appr).toContain('data-testid="owner-approvals-panel"')
