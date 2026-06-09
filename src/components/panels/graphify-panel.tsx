@@ -18,6 +18,22 @@ export function GraphifyPanel() {
   const [results, setResults] = useState<GraphNode[]>([])
   const [selected, setSelected] = useState<GraphNode | null>(null)
   const [kindFilter, setKindFilter] = useState('all')
+  const [importUrl, setImportUrl] = useState('')
+  const [cloning, setCloning] = useState(false)
+  const [importMsg, setImportMsg] = useState<string | null>(null)
+
+  const cloneRepo = useCallback(async () => {
+    if (!importUrl.trim() || cloning) return
+    setCloning(true)
+    setImportMsg('Cloning + building graph…')
+    try {
+      const r = await fetch('/api/graphify/clone', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: importUrl.trim() }) })
+      const j = await r.json()
+      if (!r.ok) setImportMsg(`Failed: ${j.error ?? 'clone error'}`)
+      else { setGraph(j.graph); setHealth(j.health); setSelected(null); setResults([]); setImportMsg(`Mapped ${j.health.nodes} nodes / ${j.health.edges} edges`) }
+    } catch (e) { setImportMsg(`Error: ${(e as Error).message}`) }
+    setCloning(false)
+  }, [importUrl, cloning])
 
   const load = useCallback(async (refresh = false) => {
     setLoading(true)
@@ -79,8 +95,12 @@ export function GraphifyPanel() {
             </div>
             <div className="rounded-xl border border-border bg-card p-3" data-testid="graphify-import">
               <div className="mb-2 text-[11px] uppercase tracking-widest text-muted-foreground">Repo import</div>
-              <input placeholder="https://github.com/owner/repo" className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs" data-testid="graphify-import-url" />
-              <p className="mt-1 text-[10px] text-muted-foreground/70">Maps this app now (Regenerate ↑). Per-workspace remote import clones to a sandboxed temp dir, https-only, secrets excluded — enabled when the clone runner is configured.</p>
+              <div className="flex gap-2">
+                <input value={importUrl} onChange={(e) => setImportUrl(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void cloneRepo()} placeholder="https://github.com/owner/repo" className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs" data-testid="graphify-import-url" />
+                <button onClick={() => void cloneRepo()} disabled={cloning} className="rounded-md bg-primary px-2.5 text-xs font-semibold text-primary-foreground disabled:opacity-40" data-testid="graphify-import-run">{cloning ? '…' : 'Map'}</button>
+              </div>
+              {importMsg && <p className="mt-1 text-[10px] text-primary" data-testid="graphify-import-msg">{importMsg}</p>}
+              <p className="mt-1 text-[10px] text-muted-foreground/70">Clones the repo to a sandboxed temp dir (https-only, github/gitlab/bitbucket, shallow, secrets excluded), builds its graph, then deletes the clone.</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-3" data-testid="graphify-godnodes">
               <div className="mb-2 text-[11px] uppercase tracking-widest text-muted-foreground">Core modules (god nodes)</div>
