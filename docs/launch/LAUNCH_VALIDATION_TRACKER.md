@@ -28,10 +28,24 @@ Status: ✅ done · 🟡 in progress · ⏳ pending · ❌ blocked
 | 2026-06-09 | Demo/auto paths hit live providers (fake recipients → blocked, no real send) | ✅ fixed — forceDryRun guard on demo/auto sends |
 | 2026-06-09 | New admin not seeded (seed skips when users exist) | ✅ fixed — admin created with app's scrypt hashing |
 
+## Security risk register
+| Risk | Status | Disposition |
+|---|---|---|
+| Previously exposed Stripe/OpenAI keys in GitHub history — HEAD scrubbed, rotation recommended before paid production | 🟡 known | **Accepted risk for local testing** (operator decision, 2026-06-09). **BLOCKING for paid production.** |
+
+No secrets are printed, committed, logged, screenshotted, or written into docs/MEMORY. Live keys exist only in gitignored `.env.local` (0600). HEAD is clean (0 secret values in tracked files); exposure is in prior history only.
+
+## Production rule (hard gate before any paid launch)
+- [ ] Stripe live key rotated · old key revoked
+- [ ] OpenAI key rotated · old key revoked
+- [ ] GitHub history exposure documented (this file)
+- [ ] Final secret scan passes (history + HEAD)
+
 ## Launch blockers (to paid production)
 1. ⏳ Verified production deployment + smoke pass.
-2. 🟡 Stripe charge flow / webhooks (key is live; capture not wired).
-3. (Comms + auth + demo path: cleared.)
+2. 🟡 Stripe charge flow / webhooks (key is live; capture not wired) — see STRIPE_CHARGE_FLOW_READINESS.md.
+3. 🟡 Key rotation (accepted-risk for local; blocking for paid prod — see risk register).
+4. (Comms + auth + demo path: cleared.)
 
 ## Decision
-**GO for demos + design-partner pilot now** (local fully wired, comms live, safety guards on). **Conditional-GO for paid production** on blockers 1–2.
+**GO for demos + design-partner pilot now** (local fully wired, comms live, safety guards on; key exposure accepted for local). **Conditional-GO for paid production** on blockers 1–3.
