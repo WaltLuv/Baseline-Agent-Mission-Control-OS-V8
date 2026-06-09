@@ -72,6 +72,7 @@ import { VideoStudioPanel } from '@/components/panels/video-studio-panel'
 import { GeminiFlowPanel } from '@/components/panels/gemini-flow-panel'
 import { ReplayPanel } from '@/components/panels/replay-panel'
 import { HermesEnterprisePanel } from '@/components/panels/hermes-enterprise-panel'
+import { OrchestrationHQPanel } from '@/components/panels/orchestration-hq-panel'
 import { ChatPanel } from '@/components/chat/chat-panel'
 import { HelpPanel } from '@/components/help/help-panel'
 import { FirstRunTour } from '@/components/help/first-run-tour'
@@ -552,7 +553,7 @@ const ESSENTIAL_PANELS = new Set([
   // Baseline OS parity surfaces — always reachable (honest setup states).
   'codex', 'openclaw', 'hermes', 'oh-my-pi', 'antigravity', 'gemini', 'free-claude', 'browser-use', 'ruflo',
   'hyperframes', 'minimax', 'asset-library', 'knowledge-os', 'notebooklm', 'obsidian', 'notion', 'pinecone', 'pi-agent',
-  'hermes-manage', 'proofs', 'provider-matrix', 'production-unlock', 'gstack-import', 'agent-workforce-setup', 'graphify', 'video-studio', 'replay',
+  'hermes-manage', 'proofs', 'provider-matrix', 'production-unlock', 'gstack-import', 'agent-workforce-setup', 'graphify', 'video-studio', 'replay', 'orchestration',
 ])
 
 function ContentRouter({ tab }: { tab: string }) {
@@ -771,6 +772,8 @@ function ContentRouter({ tab }: { tab: string }) {
       return <ReplayPanel />
     case 'hermes':
       return <HermesEnterprisePanel />
+    case 'orchestration':
+      return <OrchestrationHQPanel />
     case 'agent-gateway':
     case 'mcp-gateway':
       return <AgentGatewayPanel />
