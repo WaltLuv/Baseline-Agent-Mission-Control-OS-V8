@@ -75,7 +75,7 @@ export const FEATURE_SURFACES: FeatureSurface[] = [
   { slug: 'hyperframes', label: 'HyperFrames', category: 'Creative', baselineRoute: '/hyperframes', mcRoute: '/app/hyperframes', status: 'live', description: 'HTML→MP4 render pipeline (in the Creative Provider Matrix).' },
   { slug: 'provider-matrix', label: 'Creative Provider Matrix', category: 'Creative', baselineRoute: '/agents/claude-code-studio', mcRoute: '/app/provider-matrix', status: 'live', description: 'All creative providers — cost, proof, honest status + HyperFrames pipeline.' },
   { slug: 'minimax', label: 'MiniMax', category: 'Creative', baselineRoute: '/minimax', mcRoute: '/app/minimax', status: 'setup_needed', description: 'MiniMax provider (chat/TTS/video).', enableHint: 'Add a MiniMax credential.', enableHref: '/app/credentials' },
-  { slug: 'video-studio', label: 'Video / Creative Studio', category: 'Creative', baselineRoute: '/video-studio', mcRoute: '/app/creative', status: 'live', description: 'Video editing team (in Claude Code Studio).' },
+  { slug: 'video-studio', label: 'Video / Creative Studio', category: 'Creative', baselineRoute: '/video-studio', mcRoute: '/app/video-studio', status: 'live', description: '4-pane creative workspace — upload→preview→AI→render→proof, provider select + approval gate, workspace-scoped.' },
   { slug: 'asset-library', label: 'Asset Library', category: 'Creative', baselineRoute: '/agents/claude-code-studio', mcRoute: '/app/asset-library', status: 'live', description: 'Universal Asset Library (provider-sovereign, deduped, brain-layer mapped).' },
 
   // ── Knowledge ──────────────────────────────────────────────────────
