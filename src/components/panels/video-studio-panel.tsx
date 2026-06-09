@@ -10,6 +10,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AgentActivity } from '@/components/agent-activity'
+import { CREATIVE_PIPELINES, getPipeline, orchestrationFor } from '@/lib/creative-os'
 
 type Kind = 'image' | 'video' | 'audio' | 'document' | 'other'
 interface Asset { name: string; size: number; mtime: number; kind: Kind; url: string }
@@ -31,6 +32,8 @@ export function VideoStudioPanel() {
   const [stage, setStage] = useState('Upload')
   const [provider, setProvider] = useState(PROVIDERS[0])
   const [requireApproval, setRequireApproval] = useState(true)
+  const [pipelineId, setPipelineId] = useState('')
+  const activePipeline = pipelineId ? getPipeline(pipelineId) : null
   const [chat, setChat] = useState<{ role: 'user' | 'ai' | 'system'; text: string }[]>([])
   const [proof, setProof] = useState<ProofEvent[]>([])
 
@@ -81,9 +84,24 @@ export function VideoStudioPanel() {
         </div>
       </div>
 
-      <div className="flex h-[calc(100vh-160px)] gap-3 rounded-xl border border-border bg-card/30 p-2">
+      {/* Creative OS strip — pipeline picker + provider chain */}
+      <div className="mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5" data-testid="creative-os-pipelines">
+        <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Creative OS · Pipeline</span>
+        <select value={pipelineId} onChange={(e) => { setPipelineId(e.target.value); const p = getPipeline(e.target.value); if (p) { setStage(p.stages[0]); addProof('prompt', `Pipeline: ${p.name} (${p.providerChain.join('→')})`) } }} className="rounded-md border border-border bg-background px-2 py-1 text-[11px]">
+          <option value="">Choose a pipeline…</option>
+          {CREATIVE_PIPELINES.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+        {activePipeline && (
+          <span className="flex flex-wrap items-center gap-1 text-[10px] text-muted-foreground" data-testid="creative-os-providers">
+            {orchestrationFor(activePipeline.id).map((r) => <span key={r.intent} className="rounded bg-muted px-1.5 py-0.5">{r.intent}:{r.provider}</span>)}
+          </span>
+        )}
+      </div>
+
+      <div className="flex h-[calc(100vh-200px)] gap-3 rounded-xl border border-border bg-card/30 p-2">
         {/* LEFT rail */}
         <aside className="flex w-52 shrink-0 flex-col" data-testid="vs-asset-rail">
+          <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground" data-testid="creative-os-sources">Sources · chat · summarize · storyboard</div>
           <label className="m-1 cursor-pointer rounded-lg border-2 border-dashed border-border p-3 text-center text-[11px] hover:bg-secondary" data-testid="vs-upload-dropzone">
             {uploading ? 'Uploading…' : 'Click to upload'}
             <div className="text-muted-foreground/60">image · video · audio · PDF · doc</div>
@@ -132,10 +150,10 @@ export function VideoStudioPanel() {
 
       {/* BOTTOM timeline */}
       <div className="mt-2 flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-2" data-testid="vs-timeline">
-        {STAGES.map((s, i) => (
+        {(activePipeline?.stages ?? STAGES).map((s, i, arr) => (
           <span key={s} className="flex items-center">
             <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase ${stage === s ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>{s}</span>
-            {i < STAGES.length - 1 && <span className="mx-1 text-muted-foreground/40">→</span>}
+            {i < arr.length - 1 && <span className="mx-1 text-muted-foreground/40">→</span>}
           </span>
         ))}
         <span className="ml-auto text-[10px] text-muted-foreground">{assets.length} assets · {provider}</span>

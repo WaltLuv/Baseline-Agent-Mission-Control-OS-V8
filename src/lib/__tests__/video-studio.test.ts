@@ -44,6 +44,14 @@ describe('MC Video / Creative Studio parity', () => {
     expect(getSurface('video-studio')?.mcRoute).toBe('/app/video-studio')
   })
 
+  it('Creative OS: pipeline picker + provider chain + sources panel surfaced (parity)', () => {
+    expect(panel).toContain('data-testid="creative-os-pipelines"')
+    expect(panel).toContain('data-testid="creative-os-providers"')
+    expect(panel).toContain('data-testid="creative-os-sources"')
+    expect(panel).toContain('CREATIVE_PIPELINES')
+    expect(panel).toContain('orchestrationFor')
+  })
+
   it('is customer-safe (no Slim Charles / Walt-private data)', () => {
     expect(panel.toLowerCase()).not.toContain('slim charles')
     expect(assetsApi.toLowerCase()).not.toContain('slim charles')
