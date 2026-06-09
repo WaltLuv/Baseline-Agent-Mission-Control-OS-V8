@@ -100,3 +100,61 @@ export function reorderOrgAgents(workspaceId: number, orderedIds: string[], now:
   const stmt = db.prepare('UPDATE org_agents SET sort_order=?, updated_at=? WHERE id=? AND workspace_id=?')
   db.transaction(() => orderedIds.forEach((id, i) => stmt.run(i, now, id, workspaceId)))()
 }
+
+// ── Phase 1: workforce template → org auto-generation (idempotent) ───
+import { orgPlanFromTemplate } from '@/lib/org-chart/from-template'
+
+/**
+ * Generate (or reconcile) the org chart for an installed workforce template.
+ * Idempotent: agents already present for this template+name are skipped, so a
+ * reinstall never duplicates org nodes. Lead is created first; reports are
+ * wired to the lead's id. Workspace-scoped.
+ */
+export function generateOrgFromTemplate(workspaceId: number, slug: string, now: number): { created: number; skipped: number; leadId: string | null } {
+  const plan = orgPlanFromTemplate(slug)
+  if (plan.length === 0) return { created: 0, skipped: 0, leadId: null }
+  const existing = listOrgAgents(workspaceId, true)
+  const has = (name: string) => existing.some((a) => a.name === name && a.category === `template:${slug}`)
+
+  let created = 0
+  let skipped = 0
+  let leadId: string | null = existing.find((a) => a.category === `template:${slug}` && !a.managerId)?.id ?? null
+
+  // Create lead first so reports can point at it.
+  const lead = plan.find((e) => e.isLead)
+  if (lead) {
+    if (has(lead.input.name)) { skipped++; leadId = leadId ?? existing.find((a) => a.name === lead.input.name)?.id ?? null }
+    else { const a = createOrgAgent(workspaceId, lead.input, now); leadId = a.id; created++ }
+  }
+  for (const entry of plan) {
+    if (entry.isLead) continue
+    if (has(entry.input.name)) { skipped++; continue }
+    createOrgAgent(workspaceId, { ...entry.input, managerId: leadId }, now)
+    created++
+  }
+  return { created, skipped, leadId }
+}
+
+// ── Phase 2: Agent Factory → org auto-sync (idempotent, no orphans) ──
+export interface FactoryAgentRef { name: string; role?: string; department?: string; runtime?: string; skills?: string[] }
+
+/** Upsert an Agent-Factory-created agent into the org chart. Idempotent by name+category. */
+export function syncFactoryAgent(workspaceId: number, ref: FactoryAgentRef, now: number): { created: boolean; id: string } {
+  const existing = listOrgAgents(workspaceId, true).find((a) => a.name === ref.name && a.category === 'agent-factory')
+  if (existing) {
+    updateOrgAgent(workspaceId, existing.id, { role: ref.role ?? existing.role, department: ref.department ?? existing.department, runtime: ref.runtime ?? existing.runtime, skills: ref.skills ?? existing.skills }, now)
+    return { created: false, id: existing.id }
+  }
+  const a = createOrgAgent(workspaceId, {
+    name: ref.name, role: ref.role ?? '', department: ref.department ?? 'Engineering', category: 'agent-factory',
+    managerId: null, skills: ref.skills ?? [], memoryAccess: ['workspace'], runtime: ref.runtime ?? 'claude-code', permissions: ['auto'],
+  }, now)
+  return { created: true, id: a.id }
+}
+
+/** Remove a factory agent from the org chart (archive) — no orphan reports. */
+export function removeFactoryAgent(workspaceId: number, name: string, now: number): boolean {
+  const a = listOrgAgents(workspaceId, true).find((x) => x.name === name && x.category === 'agent-factory')
+  if (!a) return false
+  return archiveOrgAgent(workspaceId, a.id, now)
+}

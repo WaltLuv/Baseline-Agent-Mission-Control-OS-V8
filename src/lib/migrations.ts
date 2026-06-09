@@ -2604,6 +2604,30 @@ const migrations: Migration[] = [
       }
       db.exec(`CREATE INDEX IF NOT EXISTS idx_pipeline_workspace ON pipeline_ideas(workspace_id);`)
     },
+  },
+  {
+    // Workforce Replay (Phase 3) — store enough per-mission metadata to replay a
+    // mission like a screen recording: trigger, participating agents, tools,
+    // skills, approvals, files touched, outputs, proof events. Workspace-scoped.
+    // (Data model only; the replay UI is built later.)
+    id: '074_mission_replays',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS mission_replays (
+          id TEXT PRIMARY KEY,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          trigger TEXT NOT NULL DEFAULT '',
+          mission TEXT NOT NULL DEFAULT '',
+          status TEXT NOT NULL DEFAULT 'running',
+          agents TEXT NOT NULL DEFAULT '[]',
+          events TEXT NOT NULL DEFAULT '[]',
+          outputs TEXT NOT NULL DEFAULT '[]',
+          started_at INTEGER NOT NULL,
+          ended_at INTEGER
+        );
+        CREATE INDEX IF NOT EXISTS idx_mission_replays_workspace ON mission_replays(workspace_id);
+      `)
+    },
   }
 ]
 
