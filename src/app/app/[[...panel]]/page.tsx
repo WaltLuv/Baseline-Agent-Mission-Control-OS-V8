@@ -73,6 +73,9 @@ import { GeminiFlowPanel } from '@/components/panels/gemini-flow-panel'
 import { ReplayPanel } from '@/components/panels/replay-panel'
 import { HermesEnterprisePanel } from '@/components/panels/hermes-enterprise-panel'
 import { OrchestrationHQPanel } from '@/components/panels/orchestration-hq-panel'
+import { CommsConnectPanel } from '@/components/panels/comms-connect-panel'
+import { MaintenancePanel } from '@/components/panels/maintenance-panel'
+import { OwnerApprovalsPanel } from '@/components/panels/owner-approvals-panel'
 import { ChatPanel } from '@/components/chat/chat-panel'
 import { HelpPanel } from '@/components/help/help-panel'
 import { FirstRunTour } from '@/components/help/first-run-tour'
@@ -553,7 +556,7 @@ const ESSENTIAL_PANELS = new Set([
   // Baseline OS parity surfaces — always reachable (honest setup states).
   'codex', 'openclaw', 'hermes', 'oh-my-pi', 'antigravity', 'gemini', 'free-claude', 'browser-use', 'ruflo',
   'hyperframes', 'minimax', 'asset-library', 'knowledge-os', 'notebooklm', 'obsidian', 'notion', 'pinecone', 'pi-agent',
-  'hermes-manage', 'proofs', 'provider-matrix', 'production-unlock', 'gstack-import', 'agent-workforce-setup', 'graphify', 'video-studio', 'replay', 'orchestration',
+  'hermes-manage', 'proofs', 'provider-matrix', 'production-unlock', 'gstack-import', 'agent-workforce-setup', 'graphify', 'video-studio', 'replay', 'orchestration', 'comms', 'maintenance', 'approvals',
 ])
 
 function ContentRouter({ tab }: { tab: string }) {
@@ -774,6 +777,12 @@ function ContentRouter({ tab }: { tab: string }) {
       return <HermesEnterprisePanel />
     case 'orchestration':
       return <OrchestrationHQPanel />
+    case 'comms':
+      return <CommsConnectPanel />
+    case 'maintenance':
+      return <MaintenancePanel />
+    case 'approvals':
+      return <OwnerApprovalsPanel />
     case 'agent-gateway':
     case 'mcp-gateway':
       return <AgentGatewayPanel />

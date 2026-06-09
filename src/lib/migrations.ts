@@ -2628,6 +2628,73 @@ const migrations: Migration[] = [
         CREATE INDEX IF NOT EXISTS idx_mission_replays_workspace ON mission_replays(workspace_id);
       `)
     },
+  },
+  {
+    // Property Management production core: communications config + log, work
+    // orders, and owner-spend approvals. Workspace-scoped. Secrets are NOT stored
+    // here — comms_config records provider + from-address + a "configured" flag;
+    // actual credentials come from env at send time (dry-run when absent).
+    id: '075_pm_comms_workorders_approvals',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS comms_config (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          channel TEXT NOT NULL,
+          provider TEXT NOT NULL,
+          from_addr TEXT NOT NULL DEFAULT '',
+          configured INTEGER NOT NULL DEFAULT 0,
+          updated_at INTEGER NOT NULL,
+          UNIQUE(workspace_id, channel)
+        );
+        CREATE TABLE IF NOT EXISTS comms_log (
+          id TEXT PRIMARY KEY,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          channel TEXT NOT NULL,
+          to_addr TEXT NOT NULL,
+          recipient_role TEXT NOT NULL DEFAULT 'tenant',
+          body TEXT NOT NULL DEFAULT '',
+          template TEXT,
+          status TEXT NOT NULL DEFAULT 'dry_run',
+          reason TEXT,
+          consent INTEGER NOT NULL DEFAULT 1,
+          work_order_id TEXT,
+          created_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_comms_log_ws ON comms_log(workspace_id);
+        CREATE TABLE IF NOT EXISTS work_orders (
+          id TEXT PRIMARY KEY,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          request TEXT NOT NULL DEFAULT '',
+          urgency TEXT NOT NULL DEFAULT 'medium',
+          triage TEXT NOT NULL DEFAULT '',
+          property TEXT NOT NULL DEFAULT '',
+          unit TEXT NOT NULL DEFAULT '',
+          tenant TEXT NOT NULL DEFAULT '',
+          vendor TEXT NOT NULL DEFAULT '',
+          cost_estimate REAL NOT NULL DEFAULT 0,
+          status TEXT NOT NULL DEFAULT 'triaged',
+          approval_id TEXT,
+          replay_id TEXT,
+          created_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_work_orders_ws ON work_orders(workspace_id);
+        CREATE TABLE IF NOT EXISTS owner_approvals (
+          id TEXT PRIMARY KEY,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          work_order_id TEXT NOT NULL,
+          cost REAL NOT NULL DEFAULT 0,
+          threshold REAL NOT NULL DEFAULT 0,
+          status TEXT NOT NULL DEFAULT 'pending',
+          context TEXT NOT NULL DEFAULT '{}',
+          decided_by TEXT,
+          decided_at INTEGER,
+          audit TEXT NOT NULL DEFAULT '[]',
+          created_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_owner_approvals_ws ON owner_approvals(workspace_id, status);
+      `)
+    },
   }
 ]
 
