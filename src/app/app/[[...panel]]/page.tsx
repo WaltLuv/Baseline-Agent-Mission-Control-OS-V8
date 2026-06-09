@@ -71,6 +71,7 @@ import { GraphifyPanel } from '@/components/panels/graphify-panel'
 import { VideoStudioPanel } from '@/components/panels/video-studio-panel'
 import { GeminiFlowPanel } from '@/components/panels/gemini-flow-panel'
 import { ReplayPanel } from '@/components/panels/replay-panel'
+import { HermesEnterprisePanel } from '@/components/panels/hermes-enterprise-panel'
 import { ChatPanel } from '@/components/chat/chat-panel'
 import { HelpPanel } from '@/components/help/help-panel'
 import { FirstRunTour } from '@/components/help/first-run-tour'
@@ -731,7 +732,6 @@ function ContentRouter({ tab }: { tab: string }) {
     // never missing, never a 404, never a fake-ready shell.
     case 'codex':
     case 'openclaw':
-    case 'hermes':
     case 'oh-my-pi':
     case 'antigravity':
     case 'free-claude':
@@ -769,6 +769,8 @@ function ContentRouter({ tab }: { tab: string }) {
       return <GeminiFlowPanel />
     case 'replay':
       return <ReplayPanel />
+    case 'hermes':
+      return <HermesEnterprisePanel />
     case 'agent-gateway':
     case 'mcp-gateway':
       return <AgentGatewayPanel />
