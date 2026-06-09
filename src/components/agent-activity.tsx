@@ -10,7 +10,7 @@
  * feed exists yet, so it never fabricates tasks, tools, files, or numbers).
  * Customer-safe: no Walt-private identities or personal-assistant data.
  */
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 export type MissionStatus =
   | 'idle' | 'queued' | 'planning' | 'researching' | 'executing'
@@ -64,6 +64,16 @@ export function AgentActivity({
   events?: ActivityEvent[]
 }) {
   const ss = STATUS_LABEL[status]
+  // Structural awareness — the Graphify brain the agent consults before scanning.
+  const [graph, setGraph] = useState<{ nodes: number; edges: number; godNodes: { id: string }[] } | null>(null)
+  useEffect(() => {
+    let cancel = false
+    fetch('/api/graphify')
+      .then((r) => r.json())
+      .then((j: { health?: { nodes: number; edges: number; godNodes: { id: string }[] } }) => { if (!cancel && j.health) setGraph(j.health) })
+      .catch(() => {})
+    return () => { cancel = true }
+  }, [])
   const files = useMemo(() => events.flatMap((e) => e.files ?? []).slice(0, 8), [events])
   const skills = useMemo(() => Array.from(new Set(events.filter((e) => /skill|generate|import|swarm|vision|voice/i.test(e.tool + (e.verb ?? ''))).map((e) => e.tool))).slice(0, 6), [events])
   const memoryHits = useMemo(() => Array.from(new Set(events.filter((e) => /pinecone|notion|notebook|obsidian|graphify|memory/i.test(e.tool)).map((e) => e.tool))), [events])
@@ -124,6 +134,20 @@ export function AgentActivity({
       <Panel title="Proof events" testid="aa-proof">
         {proofs.length === 0 ? <p className="text-[11px] text-muted-foreground/60">No proof events yet.</p> : (
           <ul className="space-y-0.5 text-[11px] text-foreground/80">{proofs.slice(0, 5).map((e, i) => <li key={i}>{e.proof ?? `${e.tool} ${e.ok === false ? 'failed' : 'ok'}`}</li>)}</ul>
+        )}
+      </Panel>
+
+      <Panel title="Structural awareness (Graphify)" testid="aa-structural">
+        {!graph ? (
+          <p className="text-[11px] text-muted-foreground/60">Graphify brain not generated yet — agents fall back to repo scan.</p>
+        ) : (
+          <div className="text-[11px] text-foreground/80">
+            <div>Graph brain connected · {graph.nodes} nodes / {graph.edges} edges</div>
+            <div className="mt-0.5 text-muted-foreground">Queries the graph to locate exact files before coding (graph-first). Core modules:</div>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {graph.godNodes.slice(0, 4).map((g) => <span key={g.id} className="rounded bg-muted px-1.5 py-0.5 text-[9px]">{g.id.split('/').pop()}</span>)}
+            </div>
+          </div>
         )}
       </Panel>
 
