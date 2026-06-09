@@ -44,8 +44,8 @@ describe('Homepage PM focus + removed sections', () => {
   it('PM CTAs + copy present', () => {
     expect(page).toContain('data-testid="cta-install-pm"')
     expect(page).toContain('data-testid="cta-watch-demo"')
-    expect(page).toContain('AI Workforce Command Center for')
-    expect(page).toContain('Property Management')
+    expect(page).toContain('Real Estate Execution Platform for')
+    expect(page).toContain('Property Operations')
   })
   it('PM workflow + Flight Deck preview sections present', () => {
     expect(page).toContain('data-testid="pm-workflow"')

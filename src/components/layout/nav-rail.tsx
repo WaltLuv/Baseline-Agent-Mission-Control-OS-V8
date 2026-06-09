@@ -100,6 +100,7 @@ const navGroups: NavGroup[] = [
       { id: 'orchestration', label: 'Orchestration', icon: '🎻', priority: false },
       { id: 'maintenance', label: 'Maintenance', icon: '🔧', priority: true },
       { id: 'kanban-gallery', label: 'Self-Driving Kanban', icon: '🚗', priority: true },
+      { id: 'flight-deck', label: 'Flight Deck', icon: '🛰️', priority: true },
       { id: 'approvals', label: 'Owner Approvals', icon: '✅', priority: false },
       { id: 'comms', label: 'Communications', icon: '📨', priority: false },
       { id: 'personas', label: 'Personas', icon: '🎭', priority: false },

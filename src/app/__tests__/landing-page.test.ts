@@ -12,9 +12,9 @@ const src = readFileSync('src/app/page.tsx', 'utf8')
 describe('Landing page — Workforce OS clone + 9-directive console', () => {
   it('hero is the property-management command center (launch reorg)', () => {
     expect(src).toContain('data-testid="hero-badge"')
-    expect(src).toContain('AI Workforce Operating System for Property Management')
-    expect(src).toMatch(/The AI Workforce Command Center for/)
-    expect(src).toContain('Property Management')
+    expect(src).toContain('The Real Estate Execution Platform')
+    expect(src).toMatch(/The Real Estate Execution Platform for/)
+    expect(src).toContain('Property Operations')
     expect(src).toContain('data-testid="cta-install-pm"') // Install Property Management Workforce
     expect(src).toContain('data-testid="cta-watch-demo"') // Watch Live Maintenance Demo
     // launch reorg removed the broad vertical install grid + fake stats

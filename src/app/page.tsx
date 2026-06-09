@@ -393,18 +393,18 @@ export default function Home() {
         <div className="max-w-7xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-indigo-500/20 bg-indigo-950/20 text-xs font-semibold text-indigo-300 mb-8 shadow-inner" data-testid="hero-badge">
             <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-            <span>AI Workforce Operating System for Property Management</span>
+            <span>The Real Estate Execution Platform · starting with Property Management</span>
           </div>
-          <div className="text-sm font-bold uppercase tracking-[0.3em] text-cyan-300/80 mb-4" data-testid="hero-workforce-os">Mission Control · Property Operations</div>
+          <div className="text-sm font-bold uppercase tracking-[0.3em] text-cyan-300/80 mb-4" data-testid="hero-workforce-os">Mission Control · Real Estate Execution</div>
           <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight text-white mb-6 leading-[1.1] max-w-5xl mx-auto">
-            The AI Workforce Command Center for{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-indigo-400 drop-shadow-[0_2px_10px_rgba(6,182,212,0.15)]">Property Management</span>
+            The Real Estate Execution Platform for{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-indigo-400 drop-shadow-[0_2px_10px_rgba(6,182,212,0.15)]">Property Operations</span>
           </h1>
           <p className="text-lg sm:text-xl md:text-2xl text-white font-semibold max-w-3xl mx-auto mb-3" data-testid="hero-install-line">
-            Triage maintenance, coordinate vendors, route owner approvals — with proof.
+            Install an AI workforce to run property operations — with proof.
           </p>
           <p className="text-base sm:text-lg text-gray-400 max-w-3xl mx-auto mb-10 leading-relaxed">
-            Coordinate maintenance, vendors, owner approvals, tenant communication, and workforce operations from a single control center — and replay every workflow with a full proof package.
+            Triage maintenance, coordinate vendors, route owner approvals, manage property workflows, and prove every action with replay. Built to expand across brokerage, mortgage, lending, contractors, and home services — starting with property management.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
             <a href="/app/activate?template=property-management" data-testid="cta-install-pm" className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 rounded-2xl text-sm font-bold text-black bg-white hover:bg-gray-100 transition-all active:scale-[0.97] shadow-xl shadow-white/5 gap-2"><ArrowRight className="w-4 h-4" /> Install Property Management Workforce</a>
