@@ -43,14 +43,11 @@ function formatWhen(unix: number | null): string {
 
 type Filter = 'all' | 'hired' | 'available'
 
-// Real list pricing — per AI-employee, per month. Tiered by role seniority.
-// These agents are NOT free; this surfaces the actual price.
-function personaPriceMonthly(p: Persona): number {
-  const r = `${p.role} ${p.name}`.toLowerCase()
-  if (/\b(ceo|cfo|chief|director|senior cpa|pipeline cfo)\b/.test(r)) return 249
-  if (/\b(lead|manager|officer|intelligence|analyst|specialist|coordinator|account)\b/.test(r)) return 129
-  return 79
-}
+// Pricing model = usage-based credits (1 credit = $0.01). There is NO per-agent
+// seat fee — adding an employee is free; you pay only for what it does (LLM
+// tokens, tool/MCP/CLI calls, voice/SMS, etc.) metered per the credit pricing
+// table with a 2.5× markup. So personas show "no seat fee · usage-based credits",
+// not an invented monthly price.
 
 export default function PersonasPage() {
   const [payload, setPayload] = useState<Payload | null>(null)
@@ -193,8 +190,9 @@ export default function PersonasPage() {
                             Available
                           </span>
                         )}
-                        <span className="ml-auto text-right text-[11px] font-semibold text-cyan-300" data-testid={`persona-price-${p.slug}`}>
-                          ${personaPriceMonthly(p)}<span className="text-[9px] font-normal text-white/45">/mo</span>
+                        <span className="ml-auto text-right" data-testid={`persona-price-${p.slug}`} title="No seat fee. Billed by usage — credits per LLM token, tool/MCP/CLI call, voice/SMS, etc. (1 credit = $0.01, 2.5× markup).">
+                          <span className="block text-[11px] font-semibold text-cyan-300">Usage-based</span>
+                          <span className="block text-[9px] font-normal text-white/45">credits · no seat fee</span>
                         </span>
                       </div>
                       <p className="text-xs text-white/55">{p.role}</p>
