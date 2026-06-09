@@ -32,8 +32,9 @@ export async function seedDemo(ws: number, now: number): Promise<DemoResult> {
   const db = getDatabase()
   let t = now
   // Map DemoScenario.threshold → executeMaintenance.costThreshold explicitly.
+  // Demo seed NEVER hits live providers — forceDryRun guards every send.
   const run = (s: DemoScenario, extra: Record<string, unknown>, ts: number) =>
-    executeMaintenance(ws, { request: s.request, property: s.property, unit: s.unit, tenant: s.tenant, costThreshold: s.threshold, ...extra }, ts)
+    executeMaintenance(ws, { request: s.request, property: s.property, unit: s.unit, tenant: s.tenant, costThreshold: s.threshold, forceDryRun: true, ...extra }, ts)
   const r0 = await run(DEMO_SCENARIOS[0], { tenantContact: '+15555550100', ownerContact: 'owner@maplecourt.example' }, (t += 1000))
   await run(DEMO_SCENARIOS[1], {}, (t += 1000))
   const r2 = await run(DEMO_SCENARIOS[2], { ownerContact: 'owner@oakridge.example' }, (t += 1000))

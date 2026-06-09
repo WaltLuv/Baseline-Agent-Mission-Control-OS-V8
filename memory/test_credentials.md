@@ -118,14 +118,14 @@ The signup transaction now also seeds a default `General` project so the wizard'
 - Standalone env loader: `scripts/load-env.cjs` + supervisor start script now exports /app/.env into process.env at startup. Next.js standalone does not parse .env at runtime — without this, every env update after `yarn build` is invisible.
 
 ## 2026-05-31 — Stripe live (partial, iter 6)
-- `STRIPE_PUBLISHABLE_KEY=pk_live_51TcdsmAu5pCrx2N6...` (wired)
+- `STRIPE_PUBLISHABLE_KEY=[REDACTED_STRIPE_PUBLISHABLE]...` (wired)
 - `STRIPE_WEBHOOK_SECRET=whsec_PIIdSKTcABY8VhpZlvMyUnr8i6f8btO4` (verified — signed HMAC accepted by /api/webhooks/stripe → 200)
 - `STRIPE_WEBHOOK_ENDPOINT_ID=we_1TcfbtAu5pCrx2N64UDukzfQ`
 - `NEXT_PUBLIC_STRIPE_LIVE_MODE=true`
 - BLOCKED: pasted `mk_1Tcdsr...` is not a Stripe key (Stripe API: Invalid API Key). Need `sk_live_*` or `rk_live_*`.
 
 ## 2026-05-31 — Stripe Live LIVE (iter 6 close)
-- `STRIPE_SECRET_KEY=sk_live_51TcdsmAu5pCrx2N6...` — validated against Stripe API. Account: acct_1TcdsmAu5pCrx2N6 (PropControl). Charges enabled, payouts enabled.
+- `STRIPE_SECRET_KEY=[REDACTED_STRIPE_SECRET__rotate_and_store_in_.env.local]...` — validated against Stripe API. Account: acct_1TcdsmAu5pCrx2N6 (PropControl). Charges enabled, payouts enabled.
 - 4 Live prices created (idempotent):
   - STARTER_MONTHLY: price_1Td7tZAu5pCrx2N6Lfe0kerY ($499/mo)
   - STARTER_ANNUAL:  price_1Td7taAu5pCrx2N6auRUz2go ($4788/yr)

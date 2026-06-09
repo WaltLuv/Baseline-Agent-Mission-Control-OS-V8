@@ -17,6 +17,8 @@ export interface MaintenanceInput {
   ownerContact?: string
   vendorContact?: string
   costThreshold?: number
+  /** Demo/auto safety: force dry-run so live providers are never hit accidentally. */
+  forceDryRun?: boolean
 }
 
 let seq = 0
@@ -67,7 +69,7 @@ export async function executeMaintenance(ws: number, input: MaintenanceInput, no
     .run(woId, ws, input.request, t.urgency, t.note, input.property ?? '', input.unit ?? '', input.tenant ?? '', vendor, t.estimate, status, replay.id, now)
 
   // Acknowledge the tenant (live or dry-run).
-  await sendMessage(ws, { channel: 'sms', to: input.tenantContact ?? 'tenant', role: 'tenant', body: fill(MESSAGE_TEMPLATES.tenant_received.body, { tenant: input.tenant, unit: input.unit, wo: woId }), template: 'tenant_received', workOrderId: woId }, now)
+  await sendMessage(ws, { channel: 'sms', to: input.tenantContact ?? 'tenant', role: 'tenant', body: fill(MESSAGE_TEMPLATES.tenant_received.body, { tenant: input.tenant, unit: input.unit, wo: woId }), template: 'tenant_received', workOrderId: woId }, now, { forceDryRun: input.forceDryRun })
 
   let approvalId: string | null = null
   let dispatch: { status: string; reason?: string } | null = null
@@ -80,11 +82,11 @@ export async function executeMaintenance(ws: number, input: MaintenanceInput, no
     db.prepare('UPDATE work_orders SET approval_id = ? WHERE id = ? AND workspace_id = ?').run(approvalId, woId, ws)
     recordReplayEvent(ws, replay.id, { ts: now, kind: 'approval', label: 'Owner approval required before spend', detail: `$${t.estimate} ≥ $${threshold}` })
     // Notify owner (live or dry-run).
-    await sendMessage(ws, { channel: 'email', to: input.ownerContact ?? 'owner', role: 'owner', body: fill(MESSAGE_TEMPLATES.owner_approval.body, { request: input.request, property: input.property, unit: input.unit, cost: t.estimate, wo: woId }), template: 'owner_approval', workOrderId: woId }, now)
+    await sendMessage(ws, { channel: 'email', to: input.ownerContact ?? 'owner', role: 'owner', body: fill(MESSAGE_TEMPLATES.owner_approval.body, { request: input.request, property: input.property, unit: input.unit, cost: t.estimate, wo: woId }), template: 'owner_approval', workOrderId: woId }, now, { forceDryRun: input.forceDryRun })
     recordReplayEvent(ws, replay.id, { ts: now, kind: 'output', label: 'Work order created · awaiting owner approval' })
     endReplay(ws, replay.id, 'completed', now)
   } else {
-    dispatch = await dispatchWorkOrder(ws, woId, now, input.vendorContact)
+    dispatch = await dispatchWorkOrder(ws, woId, now, input.vendorContact, input.forceDryRun)
     recordReplayEvent(ws, replay.id, { ts: now, kind: 'output', label: `Dispatch ${dispatch.status}` })
     endReplay(ws, replay.id, 'completed', now)
   }
@@ -93,11 +95,11 @@ export async function executeMaintenance(ws: number, input: MaintenanceInput, no
 }
 
 /** Dispatch a work order to the matched vendor (live or honest dry-run). */
-export async function dispatchWorkOrder(ws: number, woId: string, now: number, vendorContact?: string): Promise<{ status: string; reason?: string }> {
+export async function dispatchWorkOrder(ws: number, woId: string, now: number, vendorContact?: string, forceDryRun?: boolean): Promise<{ status: string; reason?: string }> {
   const db = getDatabase()
   const wo = getWorkOrder(ws, woId)
   if (!wo) return { status: 'blocked', reason: 'work order not found' }
-  const res = await sendMessage(ws, { channel: 'sms', to: vendorContact ?? 'vendor', role: 'vendor', body: fill(MESSAGE_TEMPLATES.vendor_dispatch.body, { wo: woId, request: wo.request, property: wo.property, unit: wo.unit }), template: 'vendor_dispatch', workOrderId: woId }, now)
+  const res = await sendMessage(ws, { channel: 'sms', to: vendorContact ?? 'vendor', role: 'vendor', body: fill(MESSAGE_TEMPLATES.vendor_dispatch.body, { wo: woId, request: wo.request, property: wo.property, unit: wo.unit }), template: 'vendor_dispatch', workOrderId: woId }, now, { forceDryRun })
   const woStatus = res.status === 'sent' ? 'dispatched' : res.status === 'dry_run' ? 'dry_run_dispatch' : 'blocked'
   db.prepare('UPDATE work_orders SET status = ? WHERE id = ? AND workspace_id = ?').run(woStatus, woId, ws)
   if (wo.replay_id) recordReplayEvent(ws, wo.replay_id, { ts: now, kind: 'tool_call', agent: 'Vendor Coordinator', label: `dispatch → ${woStatus}`, detail: res.reason })

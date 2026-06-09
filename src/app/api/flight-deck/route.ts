@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     panels: {
       runtimes: { items: runtimes, healthy: runtimes.filter((r) => r.health === 'healthy').length, total: runtimes.length, status: runtimes.length ? 'live' : 'setup-needed: pair a runtime' },
       comms: { mode: creds.mode, items: creds.items, status: creds.mode === 'dry-run' ? 'setup-needed: add Twilio/email creds' : 'live' },
-      billing: { status: 'ledger live; payment provider (Stripe) setup-needed' },
+      billing: { status: process.env.STRIPE_SECRET_KEY ? 'ledger live · Stripe key present · charge flow pending' : 'ledger live; Stripe key setup-needed' },
       approvals: { pendingOwner, pendingKanban, status: 'live' },
       replay: { total: replays, status: 'live' },
       proof: { commLogEntries: proofs, workOrders, dispatched, status: 'live' },

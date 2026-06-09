@@ -36,7 +36,7 @@ ACCEPTED
   Default currency: usd
 ```
 
-Persisted to `/app/.env` as `STRIPE_SECRET_KEY=sk_live_51Tcdsm...`.
+Persisted to `/app/.env` as `STRIPE_SECRET_KEY=[REDACTED_STRIPE_SECRET__rotate_and_store_in_.env.local]...`.
 
 ### 2. NEXT_PUBLIC_APP_URL set
 

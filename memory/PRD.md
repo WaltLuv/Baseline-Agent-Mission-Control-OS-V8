@@ -3287,7 +3287,7 @@ Mission Control itself is shippable. No more capability additions until the thre
 
 **Status: ✅ LIVE CHECKOUT PROVEN END-TO-END**
 
-- Validated `sk_live_51TcdsmAu5pCrx2N6…` against Stripe API → acct_1TcdsmAu5pCrx2N6 (PropControl, US/USD, charges+payouts enabled).
+- Validated `[REDACTED_STRIPE_SECRET__rotate_and_store_in_.env.local]…` against Stripe API → acct_1TcdsmAu5pCrx2N6 (PropControl, US/USD, charges+payouts enabled).
 - Brand-new Stripe account → seeded 4 Products/Prices matching /pricing exactly via idempotent API calls.
 - 2 real `cs_live_*` checkout sessions created and verified via Stripe API at livemode=true with correct amounts ($499 Starter monthly, $14388 Growth annual).
 - Webhook full handler (`/api/stripe/webhook`) flipped from 503 → 200 with the live secret key + webhook secret both wired.

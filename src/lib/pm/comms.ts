@@ -104,12 +104,16 @@ export function testConnection(channel: Channel): { ok: boolean; reason: string 
  * Send (or dry-run) a message. Logs every attempt to comms_log. Real network
  * send only when creds exist; otherwise an honest dry_run with the exact payload.
  */
-export async function sendMessage(ws: number, msg: SendInput, now: number): Promise<SendResult> {
+export async function sendMessage(ws: number, msg: SendInput, now: number, opts: { forceDryRun?: boolean } = {}): Promise<SendResult> {
   const db = getDatabase()
   const mid = id(now)
-  const { live, missing } = credsPresent(msg.channel)
+  const probe = credsPresent(msg.channel)
+  // Safety: demo/seed/auto paths force dry-run so live providers are never hit
+  // without an explicit, human-initiated action (no external messages by accident).
+  const live = probe.live && !opts.forceDryRun
+  const missing = probe.missing
   let status: SendStatus = 'dry_run'
-  let reason: string | undefined = live ? undefined : `dry-run: missing ${missing.join(', ')}`
+  let reason: string | undefined = opts.forceDryRun ? 'dry-run: demo/auto path (no live send without explicit action)' : live ? undefined : `dry-run: missing ${missing.join(', ')}`
 
   if (msg.consent === false) {
     status = 'blocked'
