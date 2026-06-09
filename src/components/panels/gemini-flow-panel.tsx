@@ -7,7 +7,7 @@
  */
 import { useState } from 'react'
 import { AgentActivity } from '@/components/agent-activity'
-import { planFromGoal, flowStats, ARTIFACT_KINDS, type FlowWorkflow } from '@/lib/gemini-flow'
+import { planFromGoal, flowStats, flowReplayEvents, ARTIFACT_KINDS, type FlowWorkflow } from '@/lib/gemini-flow'
 
 export function GeminiFlowPanel() {
   const [goal, setGoal] = useState('')
@@ -23,7 +23,13 @@ export function GeminiFlowPanel() {
       const j = await r.json()
       files = (j.results ?? []).map((n: { path: string }) => n.path)
     } catch { /* graph optional */ }
-    setWf(planFromGoal(goal, files, { now: Date.now(), provider: 'gemini' }))
+    const planned = planFromGoal(goal, files, { now: Date.now(), provider: 'gemini' })
+    setWf(planned)
+    // Replay: persist this workflow as a replayable mission (workspace-scoped).
+    fetch('/api/replay', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trigger: `Gemini Flow: ${goal}`.slice(0, 80), mission: goal, events: flowReplayEvents(planned, Date.now()) }),
+    }).catch(() => {})
     setBusy(false)
   }
 

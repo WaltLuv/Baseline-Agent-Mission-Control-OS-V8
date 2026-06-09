@@ -104,6 +104,7 @@ const navGroups: NavGroup[] = [
       { id: 'pipeline', label: 'Pipeline', icon: '🛤️', priority: false },
       { id: 'agent-workforce-setup', label: 'Workforce Setup', icon: '🧰', priority: false },
       { id: 'value', label: 'ROI / Value', icon: '📈', priority: false },
+      { id: 'replay', label: 'Workforce Replay', icon: '⏯️', priority: false },
       { id: 'goals', label: 'Goals', icon: '🎯', priority: false },
       { id: 'proofs', label: 'Proofs / Handoff', icon: '📦', priority: false },
     ],
