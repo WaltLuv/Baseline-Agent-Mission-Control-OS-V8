@@ -7,31 +7,30 @@ import { describe, it, expect } from 'vitest'
 const page = readFileSync('src/app/page.tsx', 'utf8')
 const hero = readFileSync('src/components/marketing/mission-control-hero.tsx', 'utf8')
 
-describe('Cinematic hero', () => {
-  it('renders a video hero with autoplay/muted/loop/playsInline + poster', () => {
+describe('Hero — sales-presentation film player', () => {
+  it('is the real film with a Play-with-sound button + poster (no muted autoplay)', () => {
     expect(hero).toContain('<video')
-    expect(hero).toContain('autoPlay')
-    expect(hero).toContain('muted')
-    expect(hero).toContain('loop')
-    expect(hero).toContain('playsInline')
     expect(hero).toContain('poster=')
+    expect(hero).toContain('playsInline')
+    expect(hero).toContain('data-testid="hero-play"') // explicit Play Film button
+    expect(hero).toContain('v.muted = false') // narration audio on click
+    expect(hero).toContain('mission-control-hero.mp4')
+    expect(hero).not.toMatch(/autoPlay/) // no muted-autoplay-loop
   })
-  it('is a multi-act cinematic sequence (boot→operations→swarm→control tower), not a static field', () => {
-    expect(hero).toContain('data-testid="hero-animation"')
-    expect(hero).toContain('data-testid="hero-opening"')
-    expect(hero).toContain('data-testid="hero-act-caption"')
-    expect(hero).toContain('hero-act-${act2.key}') // dynamic act testids
-    for (const k of ['boot', 'portfolio', 'swarm', 'tower']) expect(hero, `missing act ${k}`).toContain(`key: '${k}'`)
-    expect(hero).toContain('100 agents scanning the market')
-    expect(hero).toContain('Flight Deck · Graphify · Replay')
-    expect(hero).toContain('Owner Approval')
+  it('renders narration-synced chapters derived from the actual transcript', () => {
+    expect(hero).toContain('data-testid="hero-chapter"')
+    expect(hero).toContain('data-testid="hero-chapter-rail"')
+    expect(hero).toContain('onTimeUpdate')
+    for (const beat of ['PROPCONTROL', 'THE FACTORY', 'THE AI AGENT', 'INSTALL THE WORKFORCE']) {
+      expect(hero, `missing chapter ${beat}`).toContain(beat)
+    }
+    expect(hero).toContain('vendor dispatch') // real PropControl narration
   })
-  it('the REAL source video is wired as the hero (loop mp4/webm + demo + poster exist)', () => {
-    expect(existsSync('public/marketing/mission-control-hero.mp4'), 'graded hero loop mp4').toBe(true)
-    expect(existsSync('public/marketing/mission-control-hero.webm'), 'graded hero loop webm').toBe(true)
+  it('the real film + demo + operator poster assets exist', () => {
+    expect(existsSync('public/marketing/mission-control-hero.mp4'), 'full edited film').toBe(true)
     expect(existsSync('public/marketing/mission-control-demo.mp4'), 'full narrated demo').toBe(true)
-    expect(existsSync('public/marketing/mission-control-hero-poster.jpg'), 'graded poster frame').toBe(true)
-    expect(existsSync('public/marketing/mission-control-hero-opening.jpg')).toBe(true)
+    expect(existsSync('public/marketing/mission-control-hero-poster.jpg'), 'graded poster').toBe(true)
+    expect(existsSync('public/marketing/mission-control-hero-opening.jpg'), 'operator opening frame/thumbnail').toBe(true)
   })
   it('homepage uses the hero component', () => {
     expect(page).toContain('<MissionControlHero />')
