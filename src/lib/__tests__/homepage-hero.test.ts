@@ -16,10 +16,14 @@ describe('Cinematic hero', () => {
     expect(hero).toContain('playsInline')
     expect(hero).toContain('poster=')
   })
-  it('has the animated cinematic scene + opening frame + workflow ticker (Tier-2 fallback)', () => {
+  it('is a multi-act cinematic sequence (boot→operations→swarm→control tower), not a static field', () => {
     expect(hero).toContain('data-testid="hero-animation"')
     expect(hero).toContain('data-testid="hero-opening"')
-    expect(hero).toContain('mc-hero-ticker')
+    expect(hero).toContain('data-testid="hero-act-caption"')
+    expect(hero).toContain('hero-act-${act2.key}') // dynamic act testids
+    for (const k of ['boot', 'portfolio', 'swarm', 'tower']) expect(hero, `missing act ${k}`).toContain(`key: '${k}'`)
+    expect(hero).toContain('100 agents scanning the market')
+    expect(hero).toContain('Flight Deck · Graphify · Replay')
     expect(hero).toContain('Owner Approval')
   })
   it('poster + opening-frame assets exist', () => {
