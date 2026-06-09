@@ -408,7 +408,7 @@ export default function Home() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
             <a href="/app/activate?template=property-management" data-testid="cta-install-pm" className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 rounded-2xl text-sm font-bold text-black bg-white hover:bg-gray-100 transition-all active:scale-[0.97] shadow-xl shadow-white/5 gap-2"><ArrowRight className="w-4 h-4" /> Install Property Management Workforce</a>
-            <a href="#pm-workflow" data-testid="cta-watch-demo" className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 rounded-2xl text-sm font-bold text-gray-300 bg-white/5 border border-white/[0.08] hover:bg-white/10 transition-all active:scale-[0.97] gap-2"><Play className="w-4 h-4 fill-current" /> Watch Live Maintenance Demo</a>
+            <a href="/marketing/mission-control-demo.mp4" target="_blank" rel="noopener" data-testid="cta-watch-demo" className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 rounded-2xl text-sm font-bold text-gray-300 bg-white/5 border border-white/[0.08] hover:bg-white/10 transition-all active:scale-[0.97] gap-2"><Play className="w-4 h-4 fill-current" /> Watch Live Maintenance Demo</a>
           </div>
           <div className="relative max-w-5xl mx-auto rounded-2xl border border-white/[0.08] bg-[#0A0A0F] p-2 sm:p-3 shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-500 opacity-60 z-30"></div>

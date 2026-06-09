@@ -26,8 +26,11 @@ describe('Cinematic hero', () => {
     expect(hero).toContain('Flight Deck · Graphify · Replay')
     expect(hero).toContain('Owner Approval')
   })
-  it('poster + opening-frame assets exist', () => {
-    expect(existsSync('public/marketing/mission-control-hero-poster.svg')).toBe(true)
+  it('the REAL source video is wired as the hero (loop mp4/webm + demo + poster exist)', () => {
+    expect(existsSync('public/marketing/mission-control-hero.mp4'), 'graded hero loop mp4').toBe(true)
+    expect(existsSync('public/marketing/mission-control-hero.webm'), 'graded hero loop webm').toBe(true)
+    expect(existsSync('public/marketing/mission-control-demo.mp4'), 'full narrated demo').toBe(true)
+    expect(existsSync('public/marketing/mission-control-hero-poster.jpg'), 'graded poster frame').toBe(true)
     expect(existsSync('public/marketing/mission-control-hero-opening.jpg')).toBe(true)
   })
   it('homepage uses the hero component', () => {

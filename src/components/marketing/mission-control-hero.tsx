@@ -13,7 +13,9 @@
  */
 import { useEffect, useState } from 'react'
 
-const POSTER = '/marketing/mission-control-hero-opening.jpg'
+// Poster = a graded frame from Walt's actual source film. Opening intro = the
+// operator photo (fades into the real video, which now plays as the hero).
+const POSTER = '/marketing/mission-control-hero-poster.jpg'
 const OPENING = '/marketing/mission-control-hero-opening.jpg'
 
 // The four acts — built around the existing narration / story structure.
