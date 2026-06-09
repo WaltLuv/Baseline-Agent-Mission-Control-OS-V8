@@ -5,9 +5,28 @@ import {
   OLLAMA_HOST, FACTORY_SYSTEM_PROMPT, ollamaModelFromEnv, slugify, extractHtml,
 } from '@/lib/agent-factory/build-helpers'
 import { detectRuntime } from '@/lib/agent-runtimes'
+import { syncFactoryAgent } from '@/lib/org-chart/store'
+import { startReplay, recordReplayEvent, endReplay } from '@/lib/replay/store'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
+// Phase 2 + 3 wiring: when Agent Factory produces an agent/app, add it to the
+// org chart (idempotent) and capture the build as a replayable mission. Local
+// single-tenant workspace = 1. Never blocks the build on a sync failure.
+function factorySyncAndReplay(projectName: string, prompt: string, engine: string): { created: boolean; id: string } | null {
+  try {
+    const now = Date.now()
+    const synced = syncFactoryAgent(1, { name: projectName, role: 'Agent Factory build', runtime: engine }, now)
+    const r = startReplay(1, `Agent Factory build: ${projectName}`, prompt.slice(0, 120), now)
+    recordReplayEvent(1, r.id, { ts: now, kind: 'agent_start', agent: projectName, label: 'agent-factory build', detail: engine })
+    recordReplayEvent(1, r.id, { ts: Date.now(), kind: 'output', label: `${synced.created ? 'added to' : 'updated in'} Org Chart` })
+    endReplay(1, r.id, 'completed', Date.now())
+    return synced
+  } catch {
+    return null
+  }
+}
 
 /**
  * Agent Factory build.
@@ -77,6 +96,8 @@ export async function POST(req: Request) {
         } catch {
           send({ t: 'info', engine: 'claude-code', m: 'Dispatched to Claude Code runtime.' })
         }
+        const synced = factorySyncAndReplay(projectName, prompt, 'claude-code')
+        if (synced) send({ t: 'org', m: synced.created ? 'Agent added to Org Chart' : 'Org Chart updated', openOrgChart: '/app/org-chart' })
         controller.close(); return
       }
 
@@ -116,7 +137,8 @@ export async function POST(req: Request) {
       try {
         const file = await uniqueFile(dir, slugify(prompt))
         await writeFile(path.join(dir, file), html, 'utf8')
-        send({ t: 'done', file, project: projectName, bytes: html.length, engine })
+        const synced = factorySyncAndReplay(projectName, prompt, engine)
+        send({ t: 'done', file, project: projectName, bytes: html.length, engine, org: synced ? { created: synced.created, openOrgChart: '/app/org-chart' } : null })
       } catch (e) {
         send({ t: 'error', m: `could not save file: ${String(e).slice(0, 120)}` })
       }

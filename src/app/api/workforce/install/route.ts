@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireVerifiedEmail } from '@/lib/auth'
 import { mutationLimiter } from '@/lib/rate-limit'
 import { installWorkforceTemplate } from '@/lib/baseline-os/workforce-templates/install'
+import { generateOrgFromTemplate } from '@/lib/org-chart/store'
+import { startReplay, recordReplayEvent, endReplay } from '@/lib/replay/store'
 
 /**
  * POST /api/workforce/install
@@ -43,7 +45,37 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     )
   }
-  return NextResponse.json(result, { status: result.status === 'installed' ? 201 : 200 })
+
+  // Phase 1 wiring: auto-generate the org chart for the installed workforce.
+  // Idempotent — a reinstall creates 0 duplicate org nodes.
+  // Phase 3 wiring: capture the whole thing as a replayable mission.
+  const now = Date.now()
+  let orgChart = { created: 0, skipped: 0, leadId: null as string | null }
+  let replayId: string | null = null
+  try {
+    const replay = startReplay(workspaceId, `Install workforce: ${slug}`, `Workforce install + org generation (${slug})`, now)
+    replayId = replay.id
+    recordReplayEvent(workspaceId, replay.id, { ts: now, kind: 'tool_call', label: 'workforce.install', detail: slug })
+    orgChart = generateOrgFromTemplate(workspaceId, slug, now)
+    recordReplayEvent(workspaceId, replay.id, { ts: Date.now(), kind: 'output', label: `org chart generated: ${orgChart.created} agents`, detail: `${orgChart.skipped} existing` })
+    endReplay(workspaceId, replay.id, 'completed', Date.now())
+  } catch {
+    /* org generation is additive — never block the install on it */
+  }
+
+  return NextResponse.json(
+    {
+      ...result,
+      orgChart,
+      replayId,
+      ui: {
+        message: orgChart.created > 0 ? 'Org chart generated' : 'Org chart already up to date',
+        agentsCreated: orgChart.created,
+        openOrgChart: '/app/org-chart',
+      },
+    },
+    { status: result.status === 'installed' ? 201 : 200 },
+  )
 }
 
 export const dynamic = 'force-dynamic'
