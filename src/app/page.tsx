@@ -391,9 +391,8 @@ export default function Home() {
       {/* Hero */}
       <section className="relative pt-32 pb-24 md:pt-40 md:pb-32 px-4 sm:px-6 lg:px-8 z-10">
         <div className="max-w-7xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-indigo-500/20 bg-indigo-950/20 text-xs font-semibold text-indigo-300 mb-8 shadow-inner" data-testid="hero-badge">
-            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-            <span>The Real Estate Execution Platform · starting with Property Management</span>
+          <div className="mb-6 flex justify-center" data-testid="hero-badge">
+            <img src="/brand/baseline-logo.png" alt="Baseline Automations — The Real Estate Execution Platform" className="h-32 w-auto select-none sm:h-44" />
           </div>
           <div className="text-sm font-bold uppercase tracking-[0.3em] text-cyan-300/80 mb-4" data-testid="hero-workforce-os">Mission Control · Real Estate Execution</div>
           <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight text-white mb-6 leading-[1.1] max-w-5xl mx-auto">
