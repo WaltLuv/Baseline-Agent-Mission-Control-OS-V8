@@ -95,7 +95,7 @@ export async function executeMaintenance(ws: number, input: MaintenanceInput, no
 }
 
 /** Dispatch a work order to the matched vendor (live or honest dry-run). */
-export async function dispatchWorkOrder(ws: number, woId: string, now: number, vendorContact?: string, forceDryRun?: boolean): Promise<{ status: string; reason?: string }> {
+export async function dispatchWorkOrder(ws: number, woId: string, now: number, vendorContact?: string, forceDryRun?: boolean): Promise<{ status: string; reason?: string; comms_id?: string }> {
   const db = getDatabase()
   const wo = getWorkOrder(ws, woId)
   if (!wo) return { status: 'blocked', reason: 'work order not found' }
@@ -103,7 +103,7 @@ export async function dispatchWorkOrder(ws: number, woId: string, now: number, v
   const woStatus = res.status === 'sent' ? 'dispatched' : res.status === 'dry_run' ? 'dry_run_dispatch' : 'blocked'
   db.prepare('UPDATE work_orders SET status = ? WHERE id = ? AND workspace_id = ?').run(woStatus, woId, ws)
   if (wo.replay_id) recordReplayEvent(ws, wo.replay_id, { ts: now, kind: 'tool_call', agent: 'Vendor Coordinator', label: `dispatch → ${woStatus}`, detail: res.reason })
-  return { status: woStatus, reason: res.reason }
+  return { status: woStatus, reason: res.reason, comms_id: res.id }
 }
 
 function fill(tpl: string, v: Record<string, unknown>): string {

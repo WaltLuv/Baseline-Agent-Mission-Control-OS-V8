@@ -7,6 +7,7 @@
  * package (replay) and communication log. Approving triggers the dispatch.
  */
 import { useCallback, useEffect, useState } from 'react'
+import { ApprovalSuccessSequence, type ApprovalSequenceData } from '@/components/pm/approval-success-sequence'
 
 interface Approval {
   id: string; work_order_id: string; cost: number; threshold: number
@@ -18,17 +19,38 @@ export function OwnerApprovalsPanel() {
   const [approvals, setApprovals] = useState<Approval[]>([])
   const [note, setNote] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
+  const [sequence, setSequence] = useState<ApprovalSequenceData | null>(null)
+  const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
     try { const j = await (await fetch('/api/approvals/owner?all=1', { cache: 'no-store' })).json(); setApprovals(j.approvals ?? []) } catch { /* empty */ }
   }, [])
   useEffect(() => { void load() }, [load])
 
-  const decide = async (id: string, decision: string) => {
-    const j = await (await fetch('/api/approvals/owner', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, decision, note }) })).json()
-    setMsg(j.ok ? `${decision}${j.dispatch ? ` · dispatch ${j.dispatch.status}` : ''}` : (j.error ?? 'error'))
-    setNote('')
-    await load()
+  const decide = async (approval: Approval, decision: string) => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const j = await (await fetch('/api/approvals/owner', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: approval.id, decision, note }) })).json()
+      if (j.ok && decision === 'approved' && j.dispatch) {
+        // Premium success sequence — every step driven by the real response.
+        setSequence({
+          request: String(approval.context.request ?? approval.work_order_id),
+          dispatchStatus: String(j.dispatch.status),
+          dispatchReason: j.dispatch.reason,
+          commsId: j.dispatch.comms_id,
+          workOrderId: j.work_order?.id,
+          replayId: j.work_order?.replay_id ?? null,
+        })
+        setMsg(null)
+      } else {
+        setMsg(j.ok ? `${decision}${j.dispatch ? ` · dispatch ${j.dispatch.status}` : ''}` : (j.error ?? 'error'))
+      }
+      setNote('')
+      await load()
+    } finally {
+      setBusy(false)
+    }
   }
 
   const pending = approvals.filter((a) => a.status === 'pending')
@@ -55,9 +77,9 @@ export function OwnerApprovalsPanel() {
             <div className="mt-1 text-[10px] text-muted-foreground/70">Work order <span className="font-mono">{a.work_order_id}</span> · proof in Workforce Replay</div>
             <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional note / question" className="mt-2 w-full rounded-md border border-border bg-background px-2 py-1 text-[11px]" />
             <div className="mt-2 flex gap-2">
-              <button onClick={() => void decide(a.id, 'approved')} className="rounded-md bg-emerald-600 px-3 py-1 text-[11px] font-semibold text-white" data-testid={`approve-${a.id}`}>Approve</button>
-              <button onClick={() => void decide(a.id, 'denied')} className="rounded-md bg-red-600 px-3 py-1 text-[11px] font-semibold text-white" data-testid={`deny-${a.id}`}>Deny</button>
-              <button onClick={() => void decide(a.id, 'info_requested')} className="rounded-md border border-border px-3 py-1 text-[11px]" data-testid={`info-${a.id}`}>Request info</button>
+              <button onClick={() => void decide(a, 'approved')} disabled={busy} className="rounded-md bg-emerald-600 px-3 py-1 text-[11px] font-semibold text-white disabled:opacity-50" data-testid={`approve-${a.id}`}>Approve</button>
+              <button onClick={() => void decide(a, 'denied')} disabled={busy} className="rounded-md bg-red-600 px-3 py-1 text-[11px] font-semibold text-white disabled:opacity-50" data-testid={`deny-${a.id}`}>Deny</button>
+              <button onClick={() => void decide(a, 'info_requested')} disabled={busy} className="rounded-md border border-border px-3 py-1 text-[11px] disabled:opacity-50" data-testid={`info-${a.id}`}>Request info</button>
             </div>
           </div>
         ))}
@@ -77,6 +99,8 @@ export function OwnerApprovalsPanel() {
           </ul>
         )}
       </div>
+
+      {sequence && <ApprovalSuccessSequence data={sequence} onClose={() => setSequence(null)} />}
     </div>
   )
 }

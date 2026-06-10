@@ -3850,3 +3850,23 @@ Make the Property Management demo workspace the DEFAULT onboarding experience. N
 - LOW: CSP nonce on Google Identity Services inline script (console warning on /login, /signup — cosmetic, carryover).
 - Flight Deck Phase 2 pairing (next priority per Walt: launch readiness + production deployment + Flight Deck pairing).
 - Optional: seed PM-flavored runtime placeholders or connect real runtimes so Flight Deck shows healthy counts in demo.
+
+---
+
+## Session: Owner-approval "oh shit" moment (June 10, 2026 — approved by Walt)
+
+### What was built (demo-conversion polish, real state only)
+1. **`lib/pm/maintenance.ts`** — `dispatchWorkOrder` now returns `comms_id` (the real comms_log row id) alongside status/reason.
+2. **`lib/pm/approvals.ts`** — `decide()` response extended with `work_order: {id, status, replay_id}` + dispatch `comms_id`; logs two real Agent Activity events on approve (`owner_approval_decided` by the owner, `work_order_dispatched` by Vince Cardella · Vendor Coordinator) and one on deny. Duplicate-approve guard unchanged (`already approved`, no re-dispatch).
+3. **`components/pm/approval-success-sequence.tsx` (new)** — premium staged overlay (no confetti): Owner approved → Vendor dispatched → Proof package updated → Replay ready. Every step driven 1:1 by the API response; honest dry-run copy ("add Twilio/email credentials to send live"); blocked dispatch renders an amber warning, not fake success; respects prefers-reduced-motion; footer links View replay → /app/replay · Proof package · Work order.
+4. **`panels/owner-approvals-panel.tsx`** — approve now opens the sequence with real response data; buttons disabled while in flight; deny/info keep the inline message.
+
+### Tests (all green)
+- `backend/tests/test_owner_approval_dispatch.py` (7/7 vs live app): approve updates WO → dry_run_dispatch · dispatch triggered with comms_id · proof comms_log +1 · replay has "Owner approved" + dispatch events · activity feed has both events · sequence fields present · repeated approve rejected with NO duplicate dispatch (comms count unchanged).
+- `src/components/pm/__tests__/approval-success-sequence.test.tsx` (5/5): staged reveal, mandated copy, dry-run honesty, replay link, blocked-warn state.
+- Regression: pm-critical-path 16/16 (assertion updated for new decide signature + sequence wiring), customer-zero-50, iter-11 integration 12/12, tsc, eslint 0 errors, production build clean.
+- Browser-verified: signup → approvals → Approve → staged sequence → View replay → mission timeline.
+
+### Status / next (per Walt)
+- STOP here. Next: production deploy + Flight Deck Phase 2 pairing.
+- Claude Code will push updates to GitHub; integrate them into this app for production WHEN WALT SAYS GO (do not pull early).
