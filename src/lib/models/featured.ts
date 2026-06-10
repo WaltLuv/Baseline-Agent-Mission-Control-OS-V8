@@ -11,6 +11,19 @@
 import type { FeaturedEntry } from './types'
 
 export const FEATURED_CATALOG: FeaturedEntry[] = [
+  // ── 2026 flagship models (added per operator instruction — high context,
+  //    reasoning, vision, voice, multimodal; for the complex workflows MC runs) ──
+  { tier: 'best_overall', source: 'openrouter', model_slug: 'anthropic/claude-opus-4-8', rationale: 'Claude Opus 4.8 — flagship reasoning, 1M context, vision + tool use. Default for complex execution.' },
+  { tier: 'best_overall', source: 'openrouter', model_slug: 'anthropic/claude-opus-4-7', rationale: 'Claude Opus 4.7 — high-reasoning predecessor, long context.' },
+  { tier: 'best_overall', source: 'openrouter', model_slug: 'openai/gpt-5.5', rationale: 'OpenAI GPT-5.5 — multimodal flagship (text/vision/voice).' },
+  { tier: 'best_reasoning', source: 'openrouter', model_slug: 'anthropic/claude-opus-4-8', rationale: 'Opus 4.8 deliberate reasoning for multi-step workflows.' },
+  { tier: 'best_reasoning', source: 'openrouter', model_slug: 'qwen/qwen-3.7', rationale: 'Qwen 3.7 — strong open-weight reasoning, large context.' },
+  { tier: 'best_cheap_fast', source: 'openrouter', model_slug: 'qwen/qwen-3.6', rationale: 'Qwen 3.6 — fast, capable, low cost.' },
+  { tier: 'best_multimodal', source: 'openrouter', model_slug: 'google/gemini-3.5', rationale: 'Gemini 3.5 — vision/voice/text multimodal, very large context.' },
+  { tier: 'best_cheap_fast', source: 'openrouter', model_slug: 'google/gemini-3.5-flash', rationale: 'Gemini 3.5 Flash — fast frontier, cheap; great for triage + intake.' },
+  { tier: 'best_long_context', source: 'openrouter', model_slug: 'moonshot/kimi-2.6', rationale: 'Kimi 2.6 — very long context for big-document workflows.' },
+  { tier: 'best_long_context', source: 'openrouter', model_slug: 'moonshot/kimi-2.5', rationale: 'Kimi 2.5 — long-context predecessor.' },
+
   // ── Best overall ────────────────────────────────────────────────
   {
     tier: 'best_overall',

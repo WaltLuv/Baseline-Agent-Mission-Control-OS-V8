@@ -105,3 +105,6 @@ memory/test_credentials.md
 mempalace.yaml
 entities.json
 scripts/seed-walt-admin.cjs
+
+# generated structural graph (regenerated on demand)
+graphify-out/

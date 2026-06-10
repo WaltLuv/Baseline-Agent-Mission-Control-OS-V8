@@ -2734,6 +2734,26 @@ const migrations: Migration[] = [
         CREATE INDEX IF NOT EXISTS idx_kanban_cards_ws ON kanban_cards(workspace_id, current_stage);
       `)
     },
+  },
+  {
+    // 2026 flagship model pricing (added per operator instruction). Internal
+    // credit rates only — never shown to Mission Control customers (they see
+    // workflow estimates). wholesale/retail in cents, 2.5× markup, credits = retail/credit-value.
+    id: '077_flagship_model_pricing_2026',
+    up: (db) => {
+      db.exec(`
+        INSERT OR IGNORE INTO pricing_configs (event_type, provider, model, wholesale_cost_cents, retail_cost_cents, credits_required, status, created_at, updated_at) VALUES
+          ('llm_inference','openrouter','anthropic/claude-opus-4-8', 1600, 4000, 40, 'active', unixepoch(), unixepoch()),
+          ('llm_inference','openrouter','anthropic/claude-opus-4-7', 1500, 3750, 38, 'active', unixepoch(), unixepoch()),
+          ('llm_inference','openrouter','openai/gpt-5.5',             500, 1250, 13, 'active', unixepoch(), unixepoch()),
+          ('llm_inference','openrouter','google/gemini-3.5',          200,  500,  6, 'active', unixepoch(), unixepoch()),
+          ('llm_inference','openrouter','google/gemini-3.5-flash',     15,   38,  1, 'active', unixepoch(), unixepoch()),
+          ('llm_inference','openrouter','qwen/qwen-3.7',               20,   50,  2, 'active', unixepoch(), unixepoch()),
+          ('llm_inference','openrouter','qwen/qwen-3.6',               20,   50,  2, 'active', unixepoch(), unixepoch()),
+          ('llm_inference','openrouter','moonshot/kimi-2.6',           40,  100,  3, 'active', unixepoch(), unixepoch()),
+          ('llm_inference','openrouter','moonshot/kimi-2.5',           40,  100,  3, 'active', unixepoch(), unixepoch());
+      `)
+    },
   }
 ]
 
