@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { panelHref, useNavigateToPanel } from '@/lib/navigation'
 import type { ChecklistItemStatus } from '@/lib/help/checklist'
 
@@ -33,6 +34,11 @@ export function SetupChecklist({ embedded = false }: { embedded?: boolean }) {
   const [data, setData] = useState<ApiResponse | null>(null)
   const [dismissed, setDismissed] = useState(false)
   const navigateToPanel = useNavigateToPanel()
+  const searchParams = useSearchParams()
+  // Fresh activation landing (signup / onboarding): the live demo business
+  // leads the overview — the checklist yields and stays reachable from the
+  // Help menu. It returns on the next normal visit.
+  const isActivationLanding = !!searchParams?.get('activated')
 
   useEffect(() => {
     let cancelled = false
@@ -49,7 +55,7 @@ export function SetupChecklist({ embedded = false }: { embedded?: boolean }) {
   }, [])
 
   if (!data) return null
-  if (!embedded && (dismissed || data.percent === 100)) return null
+  if (!embedded && (dismissed || isActivationLanding || data.percent === 100)) return null
 
   const required = data.items.filter((i) => i.tier === 'required')
   const optional = data.items.filter((i) => i.tier === 'optional')

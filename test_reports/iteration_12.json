@@ -1,0 +1,56 @@
+{
+  "summary": "Iteration 12 — Property Management first-run demo workspace E2E verification. Backend pytest suite (10/10 PASS) and full browser flow proven: PM-defaulted signup → /app/overview?activated=1&source=signup (no verify-email), workforce-activated-notice rendered with signup copy, pm-ops-strip live with exact expected counts (4 / 1-amber / 4 / 9 / 0-of-5), setup-checklist correctly hidden on ?activated=1 and re-renders on plain /app/overview, deep-link hrefs match panels, 6 PM personas present with humanized last_activity, workspace isolation OK, duplicate signup → 409 (not 500), admin regression + x-api-key handshake unchanged. ONE INTEGRATION BUG FOUND: clicking pm-ops-approvals (which advertises 1 owner approval pending) lands on /app/approvals which renders empty 'Nothing waiting for you'. Ops-strip count and approvals-panel data source are not aligned.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "/api/runtime/handshake",
+        "issue": "Flight Deck card on overview shows 0/5 runtimes healthy — same heartbeat-staleness behavior reported in iter11 (heartbeat 60s vs green threshold). Cosmetic for this iteration but undermines the 'business is already running' demo narrative."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "pm-ops-approvals → /app/approvals",
+        "issue": "pm-ops-strip card 'pm-ops-approvals' shows '1 Owner approvals awaiting your decision' (matches GET /api/demo/seed pendingApprovals:1) but the linked /app/approvals panel renders empty: 'Nothing waiting for you — When an AI Employee escalates a decision, it will appear here with the rationale.' The seeded owner approval is not surfacing in the approvals panel UI even though the count is correct and the demo seed claims it exists. Review request explicitly required: 'click at least the approvals card and verify the approvals panel shows the pending owner approval.' This assertion fails.",
+        "affected_selectors": ["[data-testid='pm-ops-approvals']", "/app/approvals panel"],
+        "priority": "HIGH"
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_pm_first_run_demo_iter12.py",
+    "/app/test_reports/pytest/iteration_12_results.xml"
+  ],
+  "action_items": [
+    "HIGH — Wire the /app/approvals panel to the same demo-seeded data source the pm-ops-strip reads. The seed inserts 1 pending owner approval (pendingApprovals=1 via GET /api/demo/seed) but the approvals listing/component is reading a different/empty source. Likely a workspace_id scoping mismatch or the panel queries an 'AI Employee escalation' table while the seed inserts into an 'owner approval' table.",
+    "MEDIUM — Investigate Flight Deck '0/5 runtimes healthy' on new signup. Either seed PM-runtime placeholders so the demo shows a non-zero healthy count, OR clarify copy ('Connect your runtimes to see healthy count') so new users don't think the workforce is broken.",
+    "LOW (carryover from iter11) — CSP nonce missing on the Google Identity Services inline bootstrap; console error on /signup and /login."
+  ],
+  "critical_code_review_comments": [
+    "PROVEN GOOD: Signup auto-provision flow is correct end-to-end. POST /api/auth/signup returns demo:{workforce_installed:true, demo_seeded:true} and next:/app/overview?activated=1&source=signup in a single round-trip. No verify-email detour. Workspace isolation also verified — admin ws=1 counts unaffected by new signup.",
+    "PROVEN GOOD: All 6 PM personas (Tessa Reyes, Marcus Doyle, Rena Patel, Owen Whitfield, Vince Cardella, Quinn Hartley) are present with status in {busy,idle} and last_activity rendered as human strings (NOT numeric timestamps).",
+    "PROVEN GOOD: PmOpsStrip renders exactly the 5 expected cards with correct counts (4 work-orders / 2 dispatched, 1 owner approvals with amber, 4 replays, 9 proof packages, 0/5 Flight Deck) and correct hrefs (/app/maintenance, /app/approvals, /app/replay, /app/proofs, /app/flight-deck).",
+    "PROVEN GOOD: setup-checklist conditional rendering — hidden when URL has activated=1, re-renders fully on plain /app/overview (shows '4 of 5 required steps complete · 80%' for a fresh signup).",
+    "PROVEN GOOD: Duplicate-email signup returns HTTP 409 cleanly, no 500.",
+    "BUG: /app/approvals panel is not consuming the seeded owner approval. Either the seed writes to a table the panel doesn't read, or the panel filter (e.g. status, type, owner_id) excludes seeded rows. Recommend a quick join check: SELECT * FROM approvals WHERE workspace_id=<new_ws> — the row exists (count proves it), but the panel query has an extra predicate that excludes it."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_pm_first_run_demo_iter12.py (new)",
+    "/app/test_reports/iteration_12.json (new)",
+    "/app/test_reports/pytest/iteration_12_results.xml (new)"
+  ],
+  "success_rate": {
+    "backend": "100% (10/10 pytest cases pass)",
+    "frontend": "~92% — all UI/redirect/strip/checklist/notice items verified; only approvals deep-link content assertion fails"
+  },
+  "test_credentials": "admin / admin12345 (per /app/memory/test_credentials.md). x-api-key: mc_live_eba04a5e7773dc6901cb2699750c4c738ffd85ad5c33ac15. Signup test accounts created this run (PM, workspace auto-provisioned): qa.iter12.<ts>.<rand>@baselinetest.com / DemoPassword123!; qa.ui12.<ts>@baselinetest.com / DemoPassword123!; qa.ui12b.<ts>@baselinetest.com / DemoPassword123!",
+  "seed_data_creation": "3 new PM workspaces created via POST /api/auth/signup during this iteration (one curl-driven by pytest, two browser-driven). Each auto-installs the PM workforce template (6 employees + 12 workflows) and seeds {workOrders:4, pendingApprovals:1, decisions:2, messages:9, replays:4}. All scoped to their own workspace_id — admin workspace 1 was NOT mutated.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Pytest suite at /app/backend/tests/test_pm_first_run_demo_iter12.py runs in ~1.5s and exercises the full PM first-run path including duplicate-email safety, workspace isolation, agents listing, and demo seed counts. After main agent fixes the /app/approvals data-source mismatch, re-run JUST the browser portion: signup → click pm-ops-approvals → assert the page shows the pending owner approval (NOT 'Nothing waiting for you'). The backend pytest does not exercise the approvals panel UI; it only verifies pendingApprovals:1 in the demo/seed endpoint, which already returns the correct count.",
+  "rca of the issue": "Approvals integration gap RCA: GET /api/demo/seed reports pendingApprovals:1 and the seeded owner-approval row exists (the ops-strip counter reads it correctly). The /app/approvals page component, however, queries a different list endpoint (likely /api/approvals or /api/escalations) which either (a) filters by approval.type='ai_employee_escalation' while the seeder writes type='owner_approval', or (b) joins on a workspace_id that wasn't set during seed, or (c) requires status='pending' but the seeder sets status='awaiting_owner'. Reproduction: sign up at /signup with business_type=pm → land on /app/overview?activated=1 → click data-testid=pm-ops-approvals → observe empty state at /app/approvals. Mitigation: align the approvals panel's list-query with the same predicate the strip counter uses (or fix the seeder to populate exactly the fields the panel expects). Suggested 1-line diff: in /app/src/lib/pm/first-run-demo.ts seed, ensure inserted approvals carry status='pending', kind='owner_approval', and workspace_id matches the new workspace; and in the approvals route, accept both kinds 'owner_approval' AND 'ai_employee_escalation'."
+}
