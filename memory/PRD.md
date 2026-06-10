@@ -3892,3 +3892,19 @@ Make the Property Management demo workspace the DEFAULT onboarding experience. N
 ### Outstanding
 - **baseline-agent-os repo is PRIVATE again** → OS commit `6fe4e20` (Flight Deck Tauri pairing UI, "Baseline Automations ecosystem" copy, keychain storage) NOT yet pulled into /app/baseline-os. Needs repo flipped public briefly or a read token. Existing sync (handshake/heartbeat/tasks) unaffected.
 - Production deploy next; Apple signing/notarization, websocket revocation push, token rotation remain upstream-documented gaps.
+
+---
+
+## Session: Final Claude Code wave integrated (June 10, 2026 — late)
+
+### Pulled into preview
+- **MC `7c05528`** — canonical device-pairing unblock (their proxy.ts public bypass REPLACED my equivalent interim fix — no duplicate logic) + new ApproveDevice form (code prefill via ?pair=, role picker) mounted in Flight Deck panel + device-pairing-public-routes tests (6) + pairing proof screenshots in docs/.
+- **baseline-os `c5c87bb`** (repo public again) — full sync to /app/baseline-os via rsync (preserved local .env.local, launch.sh, live-data.json): regal pyramid org chart w/ correct persona portraits (34/34), Workforce Map pyramid, Flight Deck Tauri pairing + "Baseline Automations ecosystem" positioning (6fe4e20, 7630b35 included).
+
+### Verification
+- MC: tsc ✓ · build ✓ · vitest device-pairing 15 + public-routes 6 ✓ · pytest 19/19 (PM demo + approval flow + integration) ✓.
+- Pairing re-validated post-update on live preview: start → approve → claim → heartbeat paired. Flight Deck panel browser-verified: Pair-a-new-device form (prefilled code, role picker), Paired Devices 1 online · 1 paired · 2 revoked w/ permission chips + Revoke.
+- baseline-os: bun install clean · org-pyramid tests 9/9 · full OS suite 232/232 · /org-chart route 200 on :4173 · sync doctor all green · sync push loop running.
+
+### State
+Preview now contains: my PM-demo onboarding + approval sequence + DB-persistence/Host-header fixes, PLUS all Claude Code commits (devices pairing + approval UI, both scroll P0s, org chart). MC tree ≈ upstream 7c05528 + local work. Ready for production deploy + real Flight Deck pairing.

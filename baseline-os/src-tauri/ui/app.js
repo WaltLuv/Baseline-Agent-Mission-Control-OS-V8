@@ -1,4 +1,4 @@
-// Baseline Flight Deck — secure desktop connector for the PropControl ecosystem.
+// Baseline Flight Deck — secure desktop connector for the Baseline Automations ecosystem.
 // Talks to the Rust backend via the global Tauri API (withGlobalTauri: true).
 const invoke = window.__TAURI__?.core?.invoke;
 const tauriEvent = window.__TAURI__?.event;
@@ -99,25 +99,63 @@ function renderSecurity() {
   });
 }
 
-// ── Device pairing (honest state from local config; handshake = roadmap) ──
+// ── Device pairing (real Mission Control handshake; tokens live in keychain) ──
+let pollTimer = null;
+function show(id, on) { const el = $(id); if (el) el.classList.toggle("hidden", !on); }
+
 async function renderPairing() {
-  let cfg = {};
-  try { cfg = (await invoke("read_safe_config")) || {}; } catch { /* ignore */ }
-  const paired = cfg.paired === true && (cfg.workspace || cfg.workspace_id);
+  let st = { paired: false, status: "unpaired", permissions: [] };
+  try { st = (await invoke("get_pairing_state")) || st; } catch { /* not in tauri */ }
   const panel = $("#pairing-panel");
-  if (paired) {
+  const revoked = st.status === "revoked" || st.status === "expired";
+
+  // reset sub-sections
+  show("#pairing-detail", false);
+
+  if (st.paired) {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
     panel.classList.add("s-online");
     $("#pairing-ico").textContent = "🔗";
-    $("#pairing-title").textContent = `Paired to ${cfg.workspace || cfg.workspace_id}`;
-    $("#pairing-sub").textContent = "This device is securely connected to your Mission Control workspace.";
+    $("#pairing-title").textContent = `Paired${st.workspace ? " · workspace " + st.workspace : ""}`;
+    $("#pairing-sub").textContent = "This device is securely connected to Mission Control" + (st.last_heartbeat_ok === false ? " · last heartbeat failed" : st.last_heartbeat_ok ? " · heartbeat OK" : "") + ".";
     $("#pairing-actions").innerHTML = `<button class="ghost" id="unpair-btn">Unpair</button>`;
+    show("#pairing-start", false); show("#pairing-code-box", false); show("#pairing-detail", true);
+    $("#pairing-facts").innerHTML =
+      `<span class="fact">Role: <b>${st.role || "operator"}</b></span>` +
+      `<span class="fact">Device: ${st.device_name || st.device_id?.slice(0,8) || "—"}</span>` +
+      `<span class="fact">${st.mission_control_url || ""}</span>`;
+    $("#pairing-perms").innerHTML = (st.permissions || []).map((p) => `<span class="perm">${p}</span>`).join("") || `<span class="panel-sub">no permissions granted</span>`;
   } else {
     panel.classList.remove("s-online");
-    $("#pairing-ico").textContent = "🔌";
-    $("#pairing-title").textContent = "This device isn't paired yet";
-    $("#pairing-sub").textContent = "Pairing creates a secure, revocable bridge between this Mac and your Mission Control workspace.";
+    $("#pairing-ico").textContent = revoked ? "⚠️" : "🔌";
+    $("#pairing-title").textContent = revoked
+      ? (st.status === "expired" ? "Pairing expired — pair again" : "Device revoked — pair again")
+      : "This device isn't paired yet";
+    $("#pairing-sub").textContent = revoked
+      ? "Mission Control ended this device's access. Pair again to reconnect."
+      : "Pairing creates a secure, revocable bridge between this Mac and your Mission Control workspace.";
     $("#pairing-actions").innerHTML = `<button class="primary" id="pair-btn">Pair this device →</button>`;
+    show("#pairing-code-box", false);
   }
+}
+
+async function startPairing() {
+  const url = ($("#mc-url")?.value || "http://localhost:3000").trim();
+  try {
+    const r = await invoke("pairing_start", { missionControlUrl: url });
+    $("#pairing-code").textContent = r.pairing_code || "––––";
+    show("#pairing-start", false); show("#pairing-code-box", true);
+    $("#pairing-actions").innerHTML = "";
+    window.__pairUrl = r.pairing_url;
+    // Poll for approval.
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(async () => {
+      try {
+        const st = await invoke("pairing_poll");
+        if (st.paired) { clearInterval(pollTimer); pollTimer = null; renderPairing(); refresh(); toast("Paired ✓"); }
+      } catch (e) { /* keep polling */ }
+    }, 2500);
+  } catch (e) { toast("Pairing failed: " + e); }
 }
 
 async function refresh() {
@@ -184,13 +222,22 @@ document.addEventListener("click", async (ev) => {
   const t = ev.target.closest("button");
   if (!t || !invoke) return;
   if (t.id === "pair-btn") {
-    // Honest: pairing lives in Mission Control; the secure handshake is on the roadmap.
-    try { await invoke("open_local_url", { url: "http://localhost:3000" }); } catch {}
-    toast("Pairing happens in Mission Control. The secure handshake is rolling out — your device will appear there once enabled.");
+    show("#pairing-start", true); show("#pairing-code-box", false);
+    $("#pairing-actions").innerHTML = "";
+    return;
+  }
+  if (t.id === "start-btn") { await startPairing(); return; }
+  if (t.id === "open-mc-btn") {
+    try { await invoke("open_local_url", { url: window.__pairUrl || "http://localhost:3000" }); } catch (e) { toast(String(e)); }
+    return;
+  }
+  if (t.id === "cancel-pair-btn") {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    show("#pairing-code-box", false); renderPairing();
     return;
   }
   if (t.id === "unpair-btn") {
-    try { await invoke("write_safe_config", { patch: { paired: false } }); toast("This device is no longer paired."); renderPairing(); } catch (e) { toast(String(e)); }
+    try { await invoke("unpair"); toast("This device is no longer paired."); renderPairing(); refresh(); } catch (e) { toast(String(e)); }
     return;
   }
   if (t.dataset.open) {
@@ -218,9 +265,25 @@ document.addEventListener("keydown", (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "r") { e.preventDefault(); refresh(); }
 });
 
+// Heartbeat: when paired, ping Mission Control so it shows this device online.
+// A revoked/expired token clears local auth (handled in the Rust command) and
+// renderPairing() then shows the "pair again" state.
+async function heartbeatTick() {
+  if (!invoke) return;
+  try {
+    const st = await invoke("get_pairing_state");
+    if (st && st.paired) {
+      await invoke("device_heartbeat");
+      renderPairing();
+    }
+  } catch { /* offline / not paired */ }
+}
+
 if (tauriEvent) tauriEvent.listen("flight-deck-ready", () => refresh());
 setWelcome(localStorage.getItem("fd_onboarded") !== "1");
 renderExamples();
 renderSecurity();
 refresh();
 setInterval(refresh, 8000);
+heartbeatTick();
+setInterval(heartbeatTick, 30000);

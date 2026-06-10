@@ -30,8 +30,10 @@ import {
   Workflow,
   Table2,
   Brain,
+  Crown,
 } from "lucide-react";
 import { AgentActivity } from "@/components/agent-activity";
+import { OrgPyramid } from "@/components/org-pyramid";
 import {
   orgPlanFromDirective,
   planAdditions,
@@ -133,6 +135,32 @@ function buildHierarchy(agents: OrgAgent[]): OrgNode[] {
   return roots;
 }
 
+/**
+ * Give the freshly-seeded roster a sensible default 3-tier reporting structure
+ * (apex → division leads → individual contributors) so the Hierarchy view reads
+ * as a real pyramid immediately. Entirely editable afterward via the CRUD table.
+ * A leadership-sounding persona is preferred as the apex; otherwise the first.
+ */
+function seedHierarchy(list: OrgAgent[]): OrgAgent[] {
+  if (list.length <= 1) return list;
+  const leaderRe = /operator|chief|coordinator|architect|strateg|director|lead|principal|hermes/i;
+  const apexIdx = Math.max(0, list.findIndex((a) => leaderRe.test(`${a.name} ${a.role}`)));
+  const apex = list[apexIdx];
+  const rest = list.filter((a) => a.id !== apex.id);
+  const leadCount = Math.min(3, Math.max(1, Math.ceil(rest.length / 4)));
+  const leads = rest.slice(0, leadCount);
+  const ics = rest.slice(leadCount);
+  const divisions = ["Operations", "Strategy", "Creative", "Division"];
+  return list.map((a) => {
+    if (a.id === apex.id) return { ...a, managerId: null, department: "Command" };
+    const leadPos = leads.findIndex((l) => l.id === a.id);
+    if (leadPos >= 0) return { ...a, managerId: apex.id, department: divisions[leadPos] ?? "Division" };
+    const icPos = ics.findIndex((c) => c.id === a.id);
+    const lead = leads[icPos % leads.length];
+    return { ...a, managerId: lead.id, department: lead.department === "Personal" ? divisions[icPos % leads.length] : (divisions[icPos % leads.length] ?? "Division") };
+  });
+}
+
 interface PersonaSeed {
   id: string;
   name: string;
@@ -174,8 +202,9 @@ function OrgChartPage() {
           archived: false,
           sortOrder: i,
         }));
-        save(seeded);
-        setAgents(seeded);
+        const withHierarchy = seedHierarchy(seeded);
+        save(withHierarchy);
+        setAgents(withHierarchy);
       })
       .catch(() => setAgents([]))
       .finally(() => setReady(true));
@@ -272,7 +301,7 @@ function OrgChartPage() {
   const hierarchy = useMemo(() => buildHierarchy(visible), [visible]);
   const nameOf = (id: string | null) => agents.find((a) => a.id === id)?.name ?? "—";
 
-  const [view, setView] = useState<"tree" | "map" | "execution" | "table">("tree");
+  const [view, setView] = useState<"pyramid" | "tree" | "map" | "execution" | "table">("pyramid");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = visible.find((a) => a.id === selectedId) ?? null;
 
@@ -289,6 +318,7 @@ function OrgChartPage() {
   );
 
   const VIEWS = [
+    { id: "pyramid" as const, label: "Hierarchy", icon: Crown },
     { id: "tree" as const, label: "Organization", icon: GitBranch },
     { id: "map" as const, label: "Workforce Map", icon: MapIcon },
     { id: "execution" as const, label: "Execution", icon: Workflow },
@@ -410,11 +440,14 @@ function OrgChartPage() {
                 ))}
               </div>
             )}
+            {view === "pyramid" && (
+              <OrgPyramid nodes={hierarchy} selectedId={selectedId} onSelect={setSelectedId} />
+            )}
             {view === "tree" && (
               <OrgTree nodes={hierarchy} selectedId={selectedId} onSelect={setSelectedId} />
             )}
             {view === "map" && (
-              <WorkforceMap agents={visible} selectedId={selectedId} onSelect={setSelectedId} />
+              <OrgPyramid nodes={hierarchy} selectedId={selectedId} onSelect={setSelectedId} />
             )}
             {view === "execution" && <ExecutionView nodes={hierarchy} />}
           </div>

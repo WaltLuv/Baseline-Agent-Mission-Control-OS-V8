@@ -28,7 +28,7 @@
         <button class="welcome-close" id="welcome-close" title="Got it">×</button>
         <h1>Connect this device to Mission Control 🔗</h1>
         <p class="lead">
-          Flight Deck is the secure desktop connector for the PropControl ecosystem.
+          Flight Deck is the secure desktop connector for the Baseline Automations ecosystem.
           It bridges your local files, tools, browser workers and AI workforce to your
           Mission Control workspace in the cloud — so you can run real work on this
           machine while supervising it from anywhere. No commands to memorize.
@@ -41,7 +41,7 @@
         <div class="welcome-foot">Most people run Mission Control in the browser. Install Flight Deck when you want local files, browser automation, and on-device AI workers. Tip: <kbd>⌘</kbd><kbd>⇧</kbd><kbd>F</kbd> shows/hides this window.</div>
       </section>
 
-      <!-- Device pairing status -->
+      <!-- Device pairing -->
       <section class="panel pairing" id="pairing-panel">
         <div class="pairing-row">
           <div class="pairing-left">
@@ -51,9 +51,30 @@
               <div class="panel-sub" id="pairing-sub">Pairing creates a secure, revocable bridge between this Mac and your Mission Control workspace.</div>
             </div>
           </div>
-          <div class="pairing-actions" id="pairing-actions">
-            <button class="primary" id="pair-btn">Pair this device →</button>
+          <div class="pairing-actions" id="pairing-actions"></div>
+        </div>
+
+        <!-- Step 1: enter MC URL + start (hidden once a code exists / paired) -->
+        <div class="pairing-start hidden" id="pairing-start">
+          <input id="mc-url" type="text" value="http://localhost:3000" placeholder="Your Mission Control URL" />
+          <button class="primary" id="start-btn">Get pairing code →</button>
+        </div>
+
+        <!-- Step 2: code shown, waiting for approval in Mission Control -->
+        <div class="pairing-code-box hidden" id="pairing-code-box">
+          <div class="panel-sub">Enter or approve this code in Mission Control → <b>Flight Deck</b>:</div>
+          <div class="pairing-code" id="pairing-code">––––-––––</div>
+          <div class="pairing-wait" id="pairing-wait">Waiting for approval…</div>
+          <div class="pairing-code-actions">
+            <button class="open-primary mini" id="open-mc-btn">Open Mission Control ↗</button>
+            <button class="ghost mini" id="cancel-pair-btn">Cancel</button>
           </div>
+        </div>
+
+        <!-- Paired details -->
+        <div class="pairing-detail hidden" id="pairing-detail">
+          <div class="pairing-facts" id="pairing-facts"></div>
+          <div class="perms" id="pairing-perms"></div>
         </div>
       </section>
 
@@ -102,7 +123,7 @@
     </main>
 
     <footer class="appfoot">
-      <span>The secure desktop connector for the PropControl ecosystem · <kbd>⌘</kbd><kbd>⇧</kbd><kbd>F</kbd> to toggle</span>
+      <span>The secure desktop connector for the Baseline Automations ecosystem · <kbd>⌘</kbd><kbd>⇧</kbd><kbd>F</kbd> to toggle</span>
       <span id="foot-version"></span>
     </footer>
 

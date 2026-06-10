@@ -89,6 +89,20 @@ main { padding: 18px 22px 20px; display: flex; flex-direction: column; gap: 16px
 }
 .pairing-title { font-weight: 700; font-size: 15px; }
 .pairing-actions { display: flex; gap: 8px; }
+.pairing-start { display: flex; gap: 8px; margin-top: 12px; }
+.pairing-start.hidden, .pairing-code-box.hidden, .pairing-detail.hidden { display: none; }
+#mc-url { flex: 1; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.14); color: var(--text); border-radius: 9px; padding: 9px 12px; outline: none; }
+#mc-url:focus { border-color: var(--gold); }
+.pairing-code-box { margin-top: 12px; padding: 14px; border-radius: 12px; background: rgba(0,0,0,0.3); border: 1px dashed rgba(201,162,39,0.4); }
+.pairing-code { font: 700 30px/1.1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 6px; color: var(--gold-bright); margin: 8px 0; }
+.pairing-wait { color: var(--amber); font-size: 12px; margin-bottom: 10px; }
+.pairing-code-actions { display: flex; gap: 8px; }
+.pairing-detail { margin-top: 12px; }
+.pairing-facts { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+.fact { font-size: 12px; color: var(--muted); }
+.fact b { color: var(--text); }
+.perms { display: flex; flex-wrap: wrap; gap: 6px; }
+.perm { font-size: 10.5px; color: var(--cyan); background: rgba(67,229,255,0.1); border: 1px solid rgba(67,229,255,0.25); border-radius: 999px; padding: 3px 9px; }
 
 /* ── Security grid ── */
 .secure-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px,1fr)); gap: 12px; }

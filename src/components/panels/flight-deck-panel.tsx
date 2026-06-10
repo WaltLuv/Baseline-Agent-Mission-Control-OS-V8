@@ -8,6 +8,7 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 import { PairedDevices } from '@/components/flight-deck/paired-devices'
+import { ApproveDevice } from '@/components/flight-deck/approve-device'
 
 export function FlightDeckPanel() {
   const [d, setD] = useState<any>(null)
@@ -63,6 +64,7 @@ export function FlightDeckPanel() {
           </Tile>
         </div>
       )}
+      <ApproveDevice />
       <PairedDevices />
     </div>
   )

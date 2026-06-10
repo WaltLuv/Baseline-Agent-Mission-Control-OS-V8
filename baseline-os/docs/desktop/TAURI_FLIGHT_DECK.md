@@ -1,11 +1,15 @@
-# Baseline Flight Deck — The Secure Desktop Connector for the PropControl Ecosystem
+# Baseline Flight Deck — The Secure Desktop Connector for the Baseline Automations Ecosystem
 
 Flight Deck is a **customer-facing desktop app** that securely connects a user's
 local machine — files, business tools, browser workers, AI workforce — to their
 **Mission Control** cloud workspace. It is **not** a personal/dev tool; it is the
-installable runtime connector for the whole PropControl ecosystem (Mission
-Control, Baseline OS, PropControl, VisionOps, VoiceOps, PropControl Empire, and
-future products).
+installable runtime connector for the whole **Baseline Automations ecosystem** —
+any business vertical, not just real estate (Mission Control, Baseline OS,
+PropControl, VisionOps, VoiceOps, and future vertical workforces).
+
+> Pairing is **built** (Phase 2 complete): a real Mission Control ↔ Flight Deck
+> handshake with workspace-scoped device tokens in the OS keychain, RBAC,
+> heartbeat, and revocation. See [FLIGHT_DECK_PAIRING.md](./FLIGHT_DECK_PAIRING.md).
 
 > **Mission Control** runs your business in the cloud (any browser, no install).
 > **Flight Deck** is the optional desktop app that bridges your local resources
@@ -115,16 +119,16 @@ allowlist, secret-key rejection, pairing-identifier vs token separation).
 | Pairing **state** surfaced in UI | ✅ Built | "Paired to …" / "not paired yet" with a revoke (unpair) control |
 | Secret/token handling | ✅ Built (by exclusion) | config refuses secret-looking keys; tokens must go to OS keychain (not yet wired) |
 | Loopback-only + allowlist + approval gates | ✅ Built + tested | the enforced trust boundary |
-| **Secure pairing handshake** (device ↔ Mission Control auth) | ⛔ **Gap / Phase 2** | UI routes the user to Mission Control to pair; the cryptographic handshake + token storage in keychain is not built |
-| **User account / org / RBAC enforcement** | ⛔ **Gap / Phase 2** | identifiers can be stored; roles aren't enforced locally yet — enforcement is server-side in Mission Control |
-| **Revocation propagation** (cloud → device) | ⛔ **Gap / Phase 2** | local "unpair" clears device state; a server-initiated revoke channel isn't built |
+| **Secure pairing handshake** (device ↔ Mission Control auth) | ✅ **Built** | start → approve (owner/admin) → one-time claim → scoped device token in keychain. See FLIGHT_DECK_PAIRING.md |
+| **RBAC** | ✅ **Built** | approve/revoke gated to owner/admin; device role (owner/admin/operator/limited) + least-privilege permissions enforced + tested |
+| **Revocation propagation** (cloud → device) | ✅ **Built (poll)** | MC marks revoked → next heartbeat returns 401 → device deletes its token + shows "pair again". Polling heartbeat (MVP); websocket push = future |
+| Token expiry / rotation | 🟡 Partial | pairing code expires (10 min); device-token rotation = future |
 | Windows / Linux packaging | ⛔ **Phase 2** | macOS only today |
 
-**Bottom line:** the device-side model, status surfacing, and security boundary
-are real and tested. The cloud↔device **auth handshake, RBAC enforcement, and
-revocation channel** are not built yet and are called out as the next milestone —
-no faked pairing state (the "Pair this device" button honestly routes to Mission
-Control and tells the user the handshake is rolling out).
+**Bottom line:** the full pairing handshake, keychain token storage, RBAC, and
+poll-based revocation are **built and tested** (MC: 15 tests; Flight Deck: 14 UI
++ 8 Rust). Remaining: websocket revocation push, device-token rotation, and
+Windows/Linux packaging.
 
 ---
 

@@ -30,6 +30,8 @@ use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use tauri_plugin_opener::OpenerExt;
 
+mod pairing;
+
 // ── Runtime registry ────────────────────────────────────────────────────
 // The fixed set of local runtimes the cockpit knows about. `port` (when set)
 // is probed read-only over TCP. `launchd_label` runtimes are checked via
@@ -448,7 +450,12 @@ pub fn run() {
             start_runtime,
             stop_runtime,
             read_safe_config,
-            write_safe_config
+            write_safe_config,
+            pairing::pairing_start,
+            pairing::pairing_poll,
+            pairing::device_heartbeat,
+            pairing::get_pairing_state,
+            pairing::unpair
         ])
         .run(tauri::generate_context!())
         .expect("error while running Baseline Flight Deck");
