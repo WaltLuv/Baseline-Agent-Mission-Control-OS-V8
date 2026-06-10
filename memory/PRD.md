@@ -3870,3 +3870,25 @@ Make the Property Management demo workspace the DEFAULT onboarding experience. N
 ### Status / next (per Walt)
 - STOP here. Next: production deploy + Flight Deck Phase 2 pairing.
 - Claude Code will push updates to GitHub; integrate them into this app for production WHEN WALT SAYS GO (do not pull early).
+
+---
+
+## Session: Claude Code updates integrated into preview (June 10, 2026)
+
+### Pulled from GitHub (MC repo, clean 3-way apply — zero conflicts with local work)
+- `9c5a440` feat(devices): Mission Control ↔ Flight Deck secure device pairing — 6 routes under /api/devices (pairing/start, pairing/approve, [id]/status, heartbeat, list, [id]/revoke), lib/device-pairing.ts, migration 078 paired_devices, PairedDevices panel + Flight Deck tile, 15 unit tests.
+- `2c529e7` fix(activation): P0 scroll trap on /app/activate.
+- `e0af13b` fix(credentials): P0 scroll trap on /app/credentials — AppShellFrame DOCUMENT_SCROLL_ROUTES generalization.
+
+### Integration fix found in OUR deployment (added on top)
+- `src/proxy.ts`: the session middleware blocked the device-facing endpoints (anonymous by design). Added to public allowlist: `/api/devices/pairing/start`, `/api/devices/heartbeat`, `/api/devices/*/status` — each verifies its own credentials internally (claim-token hash / Bearer device-token hash). Approve/list/revoke remain session + role gated.
+
+### Verification (preview, real browser + live API)
+- Scroll P0s: /app/activate (mode=document, install button reachable) and /app/credentials (3282px, all providers incl. Stripe/Twilio/PropControl/VisionOps/VoiceOps + AES-256-GCM footer reachable) both scroll.
+- Pairing lifecycle E2E on live preview: start → code KLD6-PKFR → admin approve (role operator) → claim → device token → heartbeat {status:paired, role, permissions[]} → device shows online:1 in /api/devices → revoke {ok:true} → next heartbeat 401. Revoke takes the numeric row id (not device UUID).
+- Migration 078 applied cleanly on the persistent /app/.data DB.
+- Gate: tsc ✓ · build ✓ · vitest 44/44 (device-pairing 15, scroll-structure 9, pm-critical-path 16+, sequence 5) · pytest 19/19 (approval flow + integration) · secret scan + no-Slim/no-Mansa clean on touched files · baseline-os sync loop green.
+
+### Outstanding
+- **baseline-agent-os repo is PRIVATE again** → OS commit `6fe4e20` (Flight Deck Tauri pairing UI, "Baseline Automations ecosystem" copy, keychain storage) NOT yet pulled into /app/baseline-os. Needs repo flipped public briefly or a read token. Existing sync (handshake/heartbeat/tasks) unaffected.
+- Production deploy next; Apple signing/notarization, websocket revocation push, token rotation remain upstream-documented gaps.

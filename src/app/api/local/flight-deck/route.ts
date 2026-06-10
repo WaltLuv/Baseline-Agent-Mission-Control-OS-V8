@@ -46,11 +46,15 @@ function isInstalled(targetPath: string): boolean {
 
 function resolveFlightDeckInstallPath(): string | null {
   const configured = getConfiguredFlightDeckPath()
-  if (configured && isInstalled(configured)) return configured
+  // An explicit operator override (FLIGHT_DECK_PATH) is authoritative: use
+  // exactly that path and do NOT fall through to default /Applications probing.
+  // Keeps detection deterministic (and tests hermetic regardless of what is
+  // installed on the host).
+  if (configured) return configured
   for (const candidate of DEFAULT_INSTALL_PATHS) {
     if (isInstalled(candidate)) return candidate
   }
-  return configured
+  return null
 }
 
 /**

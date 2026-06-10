@@ -235,7 +235,15 @@ export function proxy(request: NextRequest) {
   // Allow public routes: login, setup, landing, pricing, auth API, docs, container health probe,
   // marketplace preview, ROI calculator, and Stripe webhook (signature-verified internally).
   const isPublicHealthProbe = pathname === '/api/status' && request.nextUrl.searchParams.get('action') === 'health'
-  if (pathname === '/' || pathname === '/health' || pathname === '/api/health' || pathname === '/login' || pathname === '/signup' || pathname === '/forgot-password' || pathname === '/reset-password' || pathname.startsWith('/invite/') || pathname === '/setup' || pathname === '/pricing' || pathname === '/marketplace' || pathname === '/roi-calculator' || pathname === '/flight-deck' || pathname === '/download' || pathname === '/api/stripe/webhook' || pathname === '/api/webhooks/stripe' || pathname.startsWith('/_next/') || pathname.startsWith('/_next/image') || pathname.startsWith('/api/auth/') || pathname.startsWith('/api/invites/') || pathname === '/api/setup' || pathname === '/api/marketplace/catalog' || pathname.startsWith('/briefing/share') || pathname.startsWith('/demo/') || pathname === '/api/demo-share/verify' || pathname === '/api/demo-share/redeem' || pathname === '/api/docs' || pathname === '/docs' || pathname === '/help' || pathname.startsWith('/downloads/') || pathname === '/downloads' || pathname.startsWith('/api/flight-deck/') || pathname === '/api/approvals/email-link' || isPublicHealthProbe) {
+  // Flight Deck device pairing: device-facing endpoints are session-less by
+  // design — pairing/start mints a code for an anonymous device, status?claim=
+  // is the device's approval poll, heartbeat authenticates via its own Bearer
+  // device-token hash. Each route verifies its own credentials internally.
+  const isDevicePairingPublic = pathname === '/api/devices/pairing/start'
+    || pathname === '/api/devices/heartbeat'
+    || (pathname.startsWith('/api/devices/') && pathname.endsWith('/status'))
+
+  if (pathname === '/' || pathname === '/health' || pathname === '/api/health' || pathname === '/login' || pathname === '/signup' || pathname === '/forgot-password' || pathname === '/reset-password' || pathname.startsWith('/invite/') || pathname === '/setup' || pathname === '/pricing' || pathname === '/marketplace' || pathname === '/roi-calculator' || pathname === '/flight-deck' || pathname === '/download' || pathname === '/api/stripe/webhook' || pathname === '/api/webhooks/stripe' || pathname.startsWith('/_next/') || pathname.startsWith('/_next/image') || pathname.startsWith('/api/auth/') || pathname.startsWith('/api/invites/') || pathname === '/api/setup' || pathname === '/api/marketplace/catalog' || pathname.startsWith('/briefing/share') || pathname.startsWith('/demo/') || pathname === '/api/demo-share/verify' || pathname === '/api/demo-share/redeem' || pathname === '/api/docs' || pathname === '/docs' || pathname === '/help' || pathname.startsWith('/downloads/') || pathname === '/downloads' || pathname.startsWith('/api/flight-deck/') || pathname === '/api/approvals/email-link' || isDevicePairingPublic || isPublicHealthProbe) {
     const { response, nonce } = nextResponseWithNonce(request)
     return addSecurityHeaders(response, request, nonce)
   }

@@ -54,6 +54,7 @@ interface Props {
 export function WorkforceInstaller({ onComplete, onSkip }: Props) {
   const [templates, setTemplates] = useState<Template[]>([])
   const [selected, setSelected] = useState<string | null>(null)
+  const [showMore, setShowMore] = useState(false)
   const [installing, setInstalling] = useState<string | null>(null)
   const [installProgress, setInstallProgress] = useState(0)
   const [result, setResult] = useState<InstallResult | null>(null)
@@ -65,7 +66,11 @@ export function WorkforceInstaller({ onComplete, onSkip }: Props) {
       const res = await fetch('/api/workforce/templates', { cache: 'no-store' })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = (await res.json()) as { templates: Template[] }
-      setTemplates(data.templates)
+      // Property Management is the default target — always first.
+      const sorted = [...data.templates].sort((a, b) =>
+        a.slug === 'property-management' ? -1 : b.slug === 'property-management' ? 1 : 0,
+      )
+      setTemplates(sorted)
       // Auto-expand the flagship.
       const flag = data.templates.find((t) => t.slug === 'property-management')
       if (flag) setSelected(flag.slug)
@@ -231,53 +236,76 @@ export function WorkforceInstaller({ onComplete, onSkip }: Props) {
         </div>
       )}
 
-      {/* Catalog grid */}
+      {/* Catalog grid — Property Management (primary) is always shown; the
+          other verticals collapse under "More templates" so they don't distract
+          from the default PM activation path. */}
       <div className="grid grid-cols-1 gap-2" data-testid="workforce-catalog">
-        {templates.map((t) => (
-          <button
-            key={t.slug}
-            type="button"
-            onClick={() => t.status === 'ready' && setSelected(t.slug)}
-            disabled={t.status !== 'ready'}
-            data-testid={`workforce-card-${t.slug}`}
-            data-status={t.status}
-            className={`text-left rounded-xl border p-4 transition-colors ${
-              t.status !== 'ready'
-                ? 'border-white/[0.04] bg-white/[0.01] opacity-50 cursor-not-allowed'
-                : selected === t.slug
-                ? 'border-violet-400/50 bg-violet-500/[0.06]'
-                : 'border-white/[0.08] bg-white/[0.02] hover:border-white/[0.16]'
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <h4 className="text-base font-semibold text-white">{t.vertical}</h4>
-                  {t.status === 'ready' ? (
-                    <span className="text-[10px] uppercase tracking-wider font-mono px-1.5 py-0.5 rounded border border-emerald-500/30 bg-emerald-500/15 text-emerald-200">
-                      Ready
-                    </span>
-                  ) : (
-                    <span className="text-[10px] uppercase tracking-wider font-mono px-1.5 py-0.5 rounded border border-white/[0.08] bg-white/[0.04] text-white/45">
-                      Coming soon
-                    </span>
-                  )}
-                  {t.install_state?.installed && (
-                    <span className="text-[10px] uppercase tracking-wider font-mono px-1.5 py-0.5 rounded border border-emerald-500/40 bg-emerald-500/25 text-emerald-100">
-                      Installed
-                    </span>
+        {(() => {
+          const isPrimary = (slug: string) => slug === 'property-management'
+          const primary = templates.filter((t) => isPrimary(t.slug) || t.install_state?.installed)
+          const secondary = templates.filter((t) => !isPrimary(t.slug) && !t.install_state?.installed)
+          const renderCard = (t: Template) => (
+            <button
+              key={t.slug}
+              type="button"
+              onClick={() => t.status === 'ready' && setSelected(t.slug)}
+              disabled={t.status !== 'ready'}
+              data-testid={`workforce-card-${t.slug}`}
+              data-status={t.status}
+              className={`text-left rounded-xl border p-4 transition-colors ${
+                t.status !== 'ready'
+                  ? 'border-white/[0.04] bg-white/[0.01] opacity-50 cursor-not-allowed'
+                  : selected === t.slug
+                  ? 'border-violet-400/50 bg-violet-500/[0.06]'
+                  : 'border-white/[0.08] bg-white/[0.02] hover:border-white/[0.16]'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-base font-semibold text-white">{t.vertical}</h4>
+                    {t.status === 'ready' ? (
+                      <span className="text-[10px] uppercase tracking-wider font-mono px-1.5 py-0.5 rounded border border-emerald-500/30 bg-emerald-500/15 text-emerald-200">
+                        Ready
+                      </span>
+                    ) : (
+                      <span className="text-[10px] uppercase tracking-wider font-mono px-1.5 py-0.5 rounded border border-white/[0.08] bg-white/[0.04] text-white/45">
+                        Coming soon
+                      </span>
+                    )}
+                    {t.install_state?.installed && (
+                      <span className="text-[10px] uppercase tracking-wider font-mono px-1.5 py-0.5 rounded border border-emerald-500/40 bg-emerald-500/25 text-emerald-100">
+                        Installed
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-white/65 mt-1 leading-snug">{t.tagline}</p>
+                  {t.status === 'ready' && (
+                    <p className="text-[11px] text-white/45 mt-1.5 font-mono">
+                      {t.persona_count} AI employees · {t.workflow_count} workflows · {t.tool_count} tools · ~{t.install_seconds}s
+                    </p>
                   )}
                 </div>
-                <p className="text-sm text-white/65 mt-1 leading-snug">{t.tagline}</p>
-                {t.status === 'ready' && (
-                  <p className="text-[11px] text-white/45 mt-1.5 font-mono">
-                    {t.persona_count} AI employees · {t.workflow_count} workflows · {t.tool_count} tools · ~{t.install_seconds}s
-                  </p>
-                )}
               </div>
-            </div>
-          </button>
-        ))}
+            </button>
+          )
+          return (
+            <>
+              {primary.map(renderCard)}
+              {secondary.length > 0 && !showMore && (
+                <button
+                  type="button"
+                  onClick={() => setShowMore(true)}
+                  data-testid="workforce-more-templates"
+                  className="text-left rounded-xl border border-dashed border-white/[0.1] bg-white/[0.01] p-3 text-sm text-white/55 hover:text-white hover:border-white/[0.2]"
+                >
+                  More templates ({secondary.length}) — Insurance, AI Product Launch & more ▾
+                </button>
+              )}
+              {showMore && secondary.map(renderCard)}
+            </>
+          )
+        })()}
       </div>
 
       {/* Selected template preview */}

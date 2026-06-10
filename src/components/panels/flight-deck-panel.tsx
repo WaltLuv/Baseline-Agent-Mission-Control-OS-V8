@@ -7,11 +7,14 @@
  * status. Every panel is live or an honest setup-needed. No filler widgets.
  */
 import { useCallback, useEffect, useState } from 'react'
+import { PairedDevices } from '@/components/flight-deck/paired-devices'
 
 export function FlightDeckPanel() {
   const [d, setD] = useState<any>(null)
+  const [dev, setDev] = useState<{ total: number; online: number; paired: number; revoked: number; latest_heartbeat: number | null } | null>(null)
   const load = useCallback(async () => {
     try { setD((await (await fetch('/api/flight-deck', { cache: 'no-store' })).json()).panels ?? null) } catch { setD(null) }
+    try { setDev((await (await fetch('/api/devices', { cache: 'no-store' })).json()).summary ?? null) } catch { setDev(null) }
   }, [])
   useEffect(() => { void load() }, [load])
 
@@ -55,8 +58,12 @@ export function FlightDeckPanel() {
           <Tile title="Kanban Pipeline" status={d.kanban.status} testid="fd-kanban">{d.kanban.shipped} shipped · {d.kanban.awaiting} awaiting approval</Tile>
           <Tile title="System Health" status={d.systemHealth.status} testid="fd-health">DB {d.systemHealth.db} · migrations {d.systemHealth.migrations}</Tile>
           <Tile title="Customer Demo Status" status={d.demo.status.includes('seed') ? 'setup-needed: ' + d.demo.status : 'live'} testid="fd-demo">{d.demo.seeded ? 'Demo data present' : 'No demo data'}</Tile>
+          <Tile title="Paired Devices" status={dev && dev.total > 0 ? 'live' : 'setup-needed: no Flight Deck devices paired yet'} testid="fd-devices">
+            {dev ? <>{dev.online} online · {dev.paired} paired · {dev.revoked} revoked</> : 'No devices'}
+          </Tile>
         </div>
       )}
+      <PairedDevices />
     </div>
   )
 }

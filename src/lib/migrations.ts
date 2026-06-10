@@ -2754,6 +2754,43 @@ const migrations: Migration[] = [
           ('llm_inference','openrouter','moonshot/kimi-2.5',           40,  100,  3, 'active', unixepoch(), unixepoch());
       `)
     },
+  },
+  {
+    // Mission Control ↔ Flight Deck secure device pairing. Stores ONLY hashes of
+    // codes/tokens (never raw). Workspace-scoped, role-gated, revocable. See
+    // src/lib/device-pairing.ts for the handshake logic + invariants.
+    id: '078_flight_deck_device_pairing',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS paired_devices (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER,
+          user_id INTEGER,
+          device_id TEXT NOT NULL UNIQUE,
+          device_name TEXT,
+          device_type TEXT,
+          platform TEXT,
+          app_version TEXT,
+          public_key TEXT,
+          device_fingerprint TEXT,
+          pairing_code_hash TEXT,
+          claim_token_hash TEXT,
+          device_token_hash TEXT,
+          status TEXT NOT NULL DEFAULT 'pending',
+          role TEXT NOT NULL DEFAULT 'operator',
+          permissions_json TEXT NOT NULL DEFAULT '[]',
+          last_seen_at INTEGER,
+          paired_at INTEGER,
+          revoked_at INTEGER,
+          expires_at INTEGER,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_paired_devices_ws ON paired_devices(workspace_id, status);
+        CREATE INDEX IF NOT EXISTS idx_paired_devices_device ON paired_devices(device_id);
+        CREATE INDEX IF NOT EXISTS idx_paired_devices_token ON paired_devices(device_token_hash);
+      `)
+    },
   }
 ]
 
