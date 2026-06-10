@@ -11,6 +11,71 @@ the DB would be wiped on every deploy/restart. App Platform only becomes viable
 
 ---
 
+## ⚡ Quickstart (command-by-command)
+
+Follow these in order. Replace `mc.example.com` with your real domain, `<DROPLET_IP>`
+with the droplet's IP, and `mc_data` with your volume's mount name.
+
+**1. Create droplet** (DO console → Create → Droplet): Ubuntu 24.04, Basic, **2 GB / 1 vCPU**, add your SSH key, pick a region.
+
+**2. Create + attach volume** (DO console → Create → Volume): **10 GB**, *same region*, attach to the droplet. It mounts at `/mnt/mc_data`.
+
+**3. Point DNS**: add an **A record** `mc.example.com → <DROPLET_IP>`. Verify locally:
+```bash
+dig +short mc.example.com        # must print <DROPLET_IP> before you continue
+```
+
+**4. SSH into the droplet:**
+```bash
+ssh root@<DROPLET_IP>
+```
+
+**5. Install Docker + tools (on the droplet):**
+```bash
+curl -fsSL https://get.docker.com | sh
+apt-get update && apt-get install -y sqlite3 git ufw
+ufw allow OpenSSH && ufw allow 80 && ufw allow 443 && ufw --force enable
+df -h | grep mnt                 # confirm /mnt/mc_data is mounted
+```
+
+**6. Clone the repo:**
+```bash
+git clone https://github.com/WaltLuv/Baseline-Agent-Mission-Control-OS-V8.git /opt/mission-control
+cd /opt/mission-control
+```
+
+**7. Create `.env.production`** (fill every CHANGE_ME, then lock it down):
+```bash
+cp .env.production.example .env.production
+openssl rand -hex 32             # paste into AUTH_SECRET, NEXTAUTH_SECRET, SHARE_SIGNING_SECRET, CREDENTIALS_ENCRYPTION_KEY
+openssl rand -hex 16             # paste into API_KEY
+nano .env.production             # set MC_HOST, APP_URL, AUTH_*, Stripe, Resend, Twilio, Google, etc.
+chmod 600 .env.production
+```
+
+**8. Run the deploy script:**
+```bash
+export MC_DATA_DIR=/mnt/mc_data
+export MC_HOST=mc.example.com
+./scripts/deploy-droplet.sh
+```
+
+**9. Run the smoke test:**
+```bash
+./scripts/smoke-test-prod.sh https://mc.example.com
+```
+
+**10. Confirm backups:**
+```bash
+MC_DATA_DIR=/mnt/mc_data ./scripts/backup-db.sh        # makes one now
+ls -lh /mnt/mc_data/backups/                            # see the .db.gz
+crontab -e                                              # add the hourly line from §9
+```
+
+Done — visit `https://mc.example.com` and log in. Detailed reference for every step is below.
+
+---
+
 ## 0. What you need
 
 - A DigitalOcean account + project
