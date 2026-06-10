@@ -25,7 +25,7 @@ Use via `x-api-key` header for programmatic API calls.
 
 ## Baseline OS ↔ Mission Control sync (June 2026)
 - Baseline OS console: `http://127.0.0.1:4173` (internal, started by `/app/baseline-os/launch.sh`)
-- Sync heartbeat loop: `mc sync watch --interval 60` (auto-started with the frontend)
+- Sync loop: `mc sync push --json` every 45s (process name `baseline-os-sync-loop`, auto-started with the frontend)
 - Verify: `cd /app/baseline-os && bun run scripts/mc.ts sync doctor` (bun at `/app/.bun/bin/bun`)
 - MC runtime registry: `GET /api/runtime/handshake` with the `x-api-key` above
 

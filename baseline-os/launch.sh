@@ -35,10 +35,12 @@ if ! pgrep -f "vite.*4173" > /dev/null 2>&1; then
   echo "[baseline-os] console starting on 127.0.0.1:4173 (pid $!)"
 fi
 
-# 2. Heartbeat loop → Mission Control runtime registry (handshake + heartbeat).
-if ! pgrep -f "mc.ts sync watch" > /dev/null 2>&1; then
-  nohup "$BUN" run scripts/mc.ts sync watch --interval 60 >> "$SYNC_LOG" 2>&1 &
-  echo "[baseline-os] mc sync watch started (pid $!)"
+# 2. Sync loop → Mission Control runtime registry. `sync push` re-runs local
+#    runtime discovery on every pass (unlike `sync watch`, whose heartbeats
+#    let local last_seen age out and flip health to red between ticks).
+if ! pgrep -f "baseline-os-sync-loop" > /dev/null 2>&1; then
+  nohup bash -c 'exec -a baseline-os-sync-loop bash -c "while true; do '"$BUN"' run scripts/mc.ts sync push --json; sleep 45; done"' >> "$SYNC_LOG" 2>&1 &
+  echo "[baseline-os] mc sync push loop started (pid $!)"
 fi
 
 exit 0

@@ -3792,3 +3792,36 @@ git rm --cached
    walkthrough using `docs/CUSTOMER_ZERO_WALKTHROUGH.md` (including
    the Act 07.5 email preview beat I added).
 
+
+---
+
+## Session: Preview environment rebuild + Baseline OS side-by-side integration (June 10, 2026)
+
+### Problem statement
+Set up Mission Control V8 (this repo, latest commit `0cf438c`) running in preview mode with all recent updates, connected and syncing with `WaltLuv/baseline-agent-os`. User directives: MC = customer-facing cloud command center; Baseline OS = workforce/execution layer at `/app/baseline-os`; loose coupling via authenticated APIs only (no shared DB); placeholder env vars for all credentials; integration/deployment only — no new products, no scope creep.
+
+### What was done
+1. **Repos**: Cloned both repos (user then re-privatized). `/app` was already the MC repo at latest commit; `baseline-agent-os` placed at `/app/baseline-os` (nested `.git` removed; `node_modules`, `.env*.local`, `.bun/` gitignored; MC tsconfig excludes `baseline-os/`).
+2. **Toolchain (persistent under /app)**: Node 22.14 at `/app/.node22` (real dir — container restarts wipe /usr/local), pnpm 10 inside it, bun 1.3.14 copy at `/app/.bun/bin/bun`.
+3. **Mission Control**: `pnpm install` + `pnpm build` (standalone) clean. `/app/.env` recreated: AUTH_USER/AUTH_PASS admin seed, fresh AUTH_SECRET / API_KEY / SHARE_SIGNING_SECRET / FLIGHT_DECK_PAIRING_SECRET, MC_ALLOWED_HOSTS incl. `*.preview.emergentagent.com` + `*.emergent.host`, Google OAuth creds, empty placeholders for OpenAI/Anthropic/OpenRouter/Gemini/Pinecone/Twilio/Resend/Stripe/SMTP/Notion. Billing seed + all-template demo workspace seed re-run.
+4. **CSRF fix (backend shim)**: `/app/backend/server.py` now preserves the original `Host` header when proxying :8001 → :3000. Without it every external mutating request failed with "CSRF origin mismatch" (httpx was rewriting Host to 127.0.0.1:3000 while Origin stayed the preview domain).
+5. **Baseline OS sidecar**: `/app/baseline-os/launch.sh` (invoked from `/app/frontend/launch.sh` on every supervisor start) seeds `live-data.json`, runs the operator console on `127.0.0.1:4173` (internal-only by design), and runs a 45s `mc sync push --json` loop (push re-runs runtime discovery each pass; plain `sync watch` heartbeats let local `last_seen` age out and flipped health to red).
+6. **Sync proven end-to-end**: `mc sync doctor` all green (API key accepted, handshake/heartbeat/tasks-queue endpoints reachable) · `sync push` registers 2 discovered runtimes (claude-code@…, hermes@…) · MC `GET /api/runtime/handshake` shows both with `health=green` steadily · `sync pull` returns MC snapshot + per-agent task queue.
+7. **Testing**: iteration_11 — backend 12/12 pass (login, auth gates, x-api-key, public pages /marketplace /roi-calculator /pricing, 401s, sync CLI), browser login → /app dashboard verified externally. New reusable suite at `/app/backend/tests/test_mc_baseline_integration.py`.
+
+### Architecture (as deployed in preview)
+```
+Browser ──► Emergent ingress
+   /api/* ──► :8001 FastAPI shim (Host-preserving reverse proxy)──► :3000
+   /*     ──► :3000 Next.js standalone (Mission Control, Node 22)
+Baseline OS (vite dev, 127.0.0.1:4173 internal)
+   └── sync push loop (45s) ──x-api-key──► MC /api/runtime/{handshake,heartbeat}
+   └── sync pull ◄── MC /api/tasks/queue
+```
+
+### Known minor items / backlog
+- CSP console warning on /login from the Google Identity Services inline bootstrap (cosmetic; username/password + Google login unaffected). Fix = nonce on the GIS script tag.
+- Baseline OS console is internal-only (127.0.0.1:4173) — by design per user directive (MC is the customer-facing surface). Expose later via tunnel/Flight Deck if desired.
+- 3 PNGs in `baseline-os/src/assets/hermes-art/` are >5MB (fine for git, flagged for repo hygiene).
+- Production deploy go-live checklist unchanged (Stripe live keys, webhook secret, real provider keys in env).
+- Flight Deck Phase 2 pairing: `FLIGHT_DECK_PAIRING_SECRET` placeholder minted in `/app/.env`.
