@@ -375,7 +375,8 @@ export default function Home() {
             <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
             <a href="/marketplace" data-testid="nav-marketplace" className="hover:text-white transition-colors">Marketplace</a>
             <a href="https://rehab-vision.emergent.host" target="_blank" rel="noopener noreferrer" data-testid="nav-visionops" className="hover:text-white transition-colors">VisionOps</a>
-            <a href="https://propcontrol.netlify.app/" target="_blank" rel="noopener noreferrer" data-testid="nav-propcontrol" className="hover:text-white transition-colors">PC Empire</a>
+            <a href="https://propcontrolempire.com/" target="_blank" rel="noopener noreferrer" data-testid="nav-pc-empire" className="hover:text-white transition-colors">PC Empire</a>
+            <a href="https://propcontrol.netlify.app/" target="_blank" rel="noopener noreferrer" data-testid="nav-propcontrol" className="hover:text-white transition-colors">PropControl</a>
             <a href="/login" data-testid="nav-mission-control" className="hover:text-white transition-colors">Mission Control</a>
           </nav>
           <div className="flex items-center gap-4">

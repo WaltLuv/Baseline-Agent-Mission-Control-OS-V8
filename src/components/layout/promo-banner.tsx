@@ -18,13 +18,22 @@ export function PromoBanner() {
 
       <div className="flex flex-wrap items-center gap-2 md:ml-auto">
         <a
+          href="https://propcontrolempire.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-testid="ecosystem-link-pc-empire"
+          className="text-2xs font-medium text-white/80 hover:text-white px-2 py-1 rounded border border-white/15 hover:border-white/30 transition-colors"
+        >
+          PC Empire
+        </a>
+        <a
           href="https://propcontrol.netlify.app/"
           target="_blank"
           rel="noopener noreferrer"
           data-testid="ecosystem-link-propcontrol"
           className="text-2xs font-medium text-white/80 hover:text-white px-2 py-1 rounded border border-white/15 hover:border-white/30 transition-colors"
         >
-          PC Empire
+          PropControl
         </a>
         <a
           href="https://rehab-vision.emergent.host"
