@@ -1,6 +1,12 @@
 # ════════════════════════════════════════════════════════════════════════
 # DigitalOcean App Platform Spec — Mission Control v3
 #
+# ⚠️  NOT THE CURRENT DEPLOY PATH. Mission Control stores production data in
+#     SQLite; App Platform has an EPHEMERAL filesystem (data is wiped on every
+#     deploy/restart). The live deploy uses a Droplet + Docker + a persistent
+#     volume — see docs/deploy/DIGITALOCEAN_DROPLET_DEPLOY.md.
+#     This spec only becomes viable AFTER migrating SQLite → managed Postgres.
+#
 # Single-service deploy using the published GHCR image. App Platform will
 # attach a managed TLS cert and route the public domain at $MC_HOST to
 # the container's port 3000.
@@ -27,7 +33,7 @@ services:
   - name: web
     image:
       registry_type: GHCR
-      repository: builderz-labs/mission-control
+      repository: waltluv/baseline-agent-mission-control-os-v8
       tag: latest
     instance_count: 1
     instance_size_slug: basic-xs
