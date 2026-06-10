@@ -16,8 +16,12 @@ AUTH_PASS=admin12345
 NEXT_PUBLIC_GATEWAY_OPTIONAL=true
 ```
 
-## API Key (headless access + Baseline OS sync)
-Configured in `/app/.env` as `API_KEY` and mirrored in `/app/baseline-os/.env.local` as `MC_API_KEY`:
+## PM demo signup test accounts (first-run demo auto-provisioned)
+- Any NEW signup at `/signup` auto-provisions the PM demo workspace (6 AI employees, 4 work orders, 1 pending owner approval, 4 replays, 9 proof entries) and lands on `/app/overview?activated=1&source=signup`.
+- Example test account: `avery.final@baselinetest.com` / `DemoPassword123!`
+- DB persists at `/app/.data` (MISSION_CONTROL_DATA_DIR) — survives rebuilds.
+
+## API Key (headless access + Baseline OS sync)Configured in `/app/.env` as `API_KEY` and mirrored in `/app/baseline-os/.env.local` as `MC_API_KEY`:
 ```
 mc_live_eba04a5e7773dc6901cb2699750c4c738ffd85ad5c33ac15
 ```

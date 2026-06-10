@@ -3825,3 +3825,28 @@ Baseline OS (vite dev, 127.0.0.1:4173 internal)
 - 3 PNGs in `baseline-os/src/assets/hermes-art/` are >5MB (fine for git, flagged for repo hygiene).
 - Production deploy go-live checklist unchanged (Stripe live keys, webhook secret, real provider keys in env).
 - Flight Deck Phase 2 pairing: `FLIGHT_DECK_PAIRING_SECRET` placeholder minted in `/app/.env`.
+
+---
+
+## Session: PM Demo Workspace as default onboarding (June 10, 2026 — approved by Walt)
+
+### Mandate
+Make the Property Management demo workspace the DEFAULT onboarding experience. New users land in a business that is already running (work orders, vendor dispatches, owner approvals, replay, proof, agent activity, Flight Deck) within 30 seconds — onboarding/conversion optimization only, no new products. PM is the clearest proof of value, not a product limitation.
+
+### Implemented (wiring over existing systems)
+1. **`src/lib/pm/first-run-demo.ts` (new)** — `provisionFirstRunDemo(workspaceId, actor)`: installs the Phase-5 PM workforce template (6 AI employees + 12 workflows), runs the existing `seedDemo()` (4 maintenance scenarios → 4 work_orders, 1 pending + 2 decided owner_approvals, 9 comms/proof entries, 4 mission_replays, all dry-run), then sets persona status (busy/idle) + human "currently working on" lines matching the seeded scenarios. Best-effort + idempotent; never fails signup.
+2. **`api/auth/signup`** — calls provisionFirstRunDemo after the workspace txn; response now includes `demo:{workforce_installed, demo_seeded}`; `next` changed `/verify-email` → `/app/overview?activated=1&source=signup` (verification email still sent in background).
+3. **`components/pm/pm-ops-strip.tsx` (new)** — "Live operations" strip on overview (data from existing `/api/flight-deck`): Work orders · Owner approvals (amber when pending) · Replay history · Proof packages · Flight Deck status; deep-links to `/app/maintenance|approvals|replay|proofs|flight-deck`. Hides itself when no operational data (honest empty state).
+4. **Setup checklist** — hidden on the `?activated=1` landing so the live business leads; returns on subsequent visits (and stays in Help menu).
+5. **Signup page** — business type defaults to Property Manager. **Activated notice** — new `signup` copy.
+6. **BUG FIX (found by testing agent)** — `/app/approvals` static route (AI-employee escalation queue) shadowed the catch-all OwnerApprovalsPanel, so the strip's "1 owner approval" linked to an empty page. Fixed: `/app/approvals` now mounts the Owner Approval Inbox (owner_approvals: approve→dispatch, deny→block, audit trail) above the escalation queue.
+7. **CRITICAL FIX (latent deploy landmine)** — SQLite data dir resolved to cwd `.next/standalone/.data`, which is DESTROYED on every build. Set `MISSION_CONTROL_DATA_DIR=/app/.data` in `/app/.env`. DB now persists across builds/deploys. (Runtime registry self-healed via the Baseline OS 45s sync-push loop.)
+
+### Verification
+- Testing agent iteration_12: backend 10/10 PASS; browser flow verified (PM default, landing redirect, ops-strip exact counts 4/1/4/9, checklist hidden on landing + returns on plain visit, 6 personas humanized, workspace isolation, dup-email 409, admin + x-api-key regression green).
+- Post-fix browser verification: signup → activated notice (signup copy) → click approvals card → Owner Approval Inbox shows pending "$850 Major water leak Maple Court 4B" with Approve/Deny + decision history. Flight Deck card now reads "connect a runtime" when 0 healthy.
+
+### Backlog
+- LOW: CSP nonce on Google Identity Services inline script (console warning on /login, /signup — cosmetic, carryover).
+- Flight Deck Phase 2 pairing (next priority per Walt: launch readiness + production deployment + Flight Deck pairing).
+- Optional: seed PM-flavored runtime placeholders or connect real runtimes so Flight Deck shows healthy counts in demo.

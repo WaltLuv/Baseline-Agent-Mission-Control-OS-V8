@@ -62,7 +62,7 @@ export function PmOpsStrip() {
     { key: 'approvals', label: 'Owner approvals', value: String(pendingOwner), sub: pendingOwner > 0 ? 'awaiting your decision' : 'queue clear', href: '/app/approvals', alert: pendingOwner > 0 },
     { key: 'replays', label: 'Replay history', value: String(replays), sub: 'missions recorded', href: '/app/replay' },
     { key: 'proof', label: 'Proof packages', value: String(proofs), sub: 'comm-log entries', href: '/app/proofs' },
-    { key: 'flight-deck', label: 'Flight Deck', value: `${runtimesHealthy}/${runtimesTotal}`, sub: 'runtimes healthy', href: '/app/flight-deck' },
+    { key: 'flight-deck', label: 'Flight Deck', value: runtimesHealthy > 0 ? `${runtimesHealthy}/${runtimesTotal}` : '—', sub: runtimesHealthy > 0 ? 'runtimes healthy' : 'connect a runtime', href: '/app/flight-deck' },
   ]
 
   return (
