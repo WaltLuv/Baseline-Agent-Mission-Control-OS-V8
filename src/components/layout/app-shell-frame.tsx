@@ -15,7 +15,7 @@ export function AppShellFrame({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className={isActivationFlow ? 'min-h-screen' : 'h-screen'}
+      className={isActivationFlow ? 'min-h-screen' : 'h-screen overflow-hidden'}
       data-testid="app-shell-frame"
       data-scroll-mode={isActivationFlow ? 'document' : 'locked'}
     >
