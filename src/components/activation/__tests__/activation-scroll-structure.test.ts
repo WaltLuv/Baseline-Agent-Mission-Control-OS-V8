@@ -25,15 +25,32 @@ describe('Activation page is scrollable (P0)', () => {
     expect(layout).not.toMatch(/<div className="h-screen overflow-hidden">\{children\}<\/div>/)
   })
 
-  it('AppShellFrame puts /app/activate in document scroll mode', () => {
-    expect(frame).toContain("pathname === '/app/activate'")
-    expect(frame).toContain("data-scroll-mode={isActivationFlow ? 'document' : 'locked'}")
-    // activation flow = min-h-screen (grows + document-scrolls), not viewport-locked.
-    expect(frame).toContain("isActivationFlow ? 'min-h-screen'")
+  it('AppShellFrame puts tall setup pages (activate + credentials) in document scroll mode', () => {
+    expect(frame).toContain("'/app/activate'")
+    expect(frame).toContain("'/app/credentials'")
+    expect(frame).toContain('DOCUMENT_SCROLL_ROUTES')
+    expect(frame).toContain("data-scroll-mode={isDocumentScroll ? 'document' : 'locked'}")
+    // document-scroll routes = min-h-screen (grow + document-scroll), not viewport-locked.
+    expect(frame).toContain("isDocumentScroll ? 'min-h-screen'")
   })
 
   it('the dashboard (locked) mode keeps its viewport lock — no dashboard regression', () => {
     expect(frame).toContain("'h-screen overflow-hidden'")
+  })
+
+  it('Credentials page root grows (min-h-screen), reachable via document scroll', () => {
+    const creds = read('src/app/app/credentials/page.tsx')
+    expect(creds).toContain('min-h-screen')
+    expect(creds).toContain('data-testid="credentials-page"')
+  })
+
+  it('Credentials secret inputs stay masked + the save button is rendered', () => {
+    const creds = read('src/app/app/credentials/page.tsx')
+    // Secret fields are password-masked; only a preview is ever shown (no raw value).
+    expect(creds).toMatch(/data-testid=\{`credentials-secret-\$\{f\.key\}`\}/)
+    expect(creds).toContain("type=\"password\"")
+    expect(creds).toContain('secret_preview')
+    expect(creds).toContain('data-testid="credentials-save"')
   })
 
   it('ActivationHub root grows (min-h-screen), not a clipped fixed height', () => {
