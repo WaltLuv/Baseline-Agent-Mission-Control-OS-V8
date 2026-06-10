@@ -1,0 +1,372 @@
+{
+  "$schema": "./schema/team_manifest.schema.json",
+  "version": 1,
+  "name": "Hermes AI Employee Persona Stack",
+  "owner": "Walter Thornton",
+  "updated_at": "2026-06-04",
+  "notes": "Heavy-hitter Hermes personas split across model tiers to minimize token spend. Opus 4.7 = strategic / risk; Sonnet 4.6 = high-volume execution; Haiku 4.5 = precision routing.",
+  "agents": [
+    {
+      "id": "michael",
+      "name": "Michael",
+      "domain": "Master Orchestrator",
+      "primary_model": "claude-opus-4-7",
+      "tools": [
+        "routing-engine",
+        "telegram-gateway",
+        "intent-extractor"
+      ],
+      "trigger_keywords": [
+        "orchestrate",
+        "route",
+        "intake"
+      ],
+      "patterns": [
+        "classify_and_act",
+        "fan_out_and_synthesize"
+      ]
+    },
+    {
+      "id": "phil_gaston",
+      "name": "Phil Gaston",
+      "domain": "OpenClaw Division Chief",
+      "primary_model": "claude-opus-4-7",
+      "tools": [
+        "openclaw-control",
+        "swarm-dispatch",
+        "runtime-registry"
+      ],
+      "trigger_keywords": [
+        "openclaw",
+        "swarm",
+        "division"
+      ],
+      "patterns": [
+        "fan_out_and_synthesize",
+        "loop_until_done"
+      ]
+    },
+    {
+      "id": "saul",
+      "name": "Saul",
+      "domain": "Walt's Fixer \u00b7 objection-handling closer",
+      "primary_model": "claude-sonnet-4-6",
+      "tools": [
+        "telegram-gateway",
+        "objection-handler",
+        "deal-closer"
+      ],
+      "trigger_keywords": [
+        "objection",
+        "close",
+        "fix",
+        "negotiate"
+      ],
+      "patterns": [
+        "generate_and_filter"
+      ]
+    },
+    {
+      "id": "stringer",
+      "name": "Stringer",
+      "domain": "CIO \u2014 capital stack + unit economics",
+      "primary_model": "claude-sonnet-4-6",
+      "tools": [
+        "unit-economics-calc",
+        "debt-service-model",
+        "capital-stack"
+      ],
+      "trigger_keywords": [
+        "unit economics",
+        "debt service",
+        "capital stack",
+        "CIO"
+      ],
+      "patterns": [
+        "tournament",
+        "fan_out_and_synthesize"
+      ]
+    },
+    {
+      "id": "avon",
+      "name": "Avon",
+      "domain": "Territory Expansion \u00b7 market control",
+      "primary_model": "claude-sonnet-4-6",
+      "tools": [
+        "territory-map",
+        "propcontrol-readwrite",
+        "market-control-metrics"
+      ],
+      "trigger_keywords": [
+        "territory",
+        "expansion",
+        "market share"
+      ],
+      "patterns": [
+        "tournament",
+        "fan_out_and_synthesize"
+      ]
+    },
+    {
+      "id": "beth",
+      "name": "Beth Dutton",
+      "domain": "Revenue Defense \u00b7 owner-concession stress tests",
+      "primary_model": "claude-opus-4-7",
+      "tools": [
+        "contract-redline",
+        "concession-stress",
+        "ledger-readonly"
+      ],
+      "trigger_keywords": [
+        "revenue defense",
+        "renegotiation",
+        "concession"
+      ],
+      "patterns": [
+        "adversarial_verification"
+      ]
+    },
+    {
+      "id": "chris",
+      "name": "Chris",
+      "domain": "Work Order Execution",
+      "primary_model": "claude-sonnet-4-6",
+      "tools": [
+        "day6-workorder-flow",
+        "vendor-dispatch",
+        "WO-status-updater"
+      ],
+      "trigger_keywords": [
+        "work order",
+        "WO",
+        "execute"
+      ],
+      "patterns": [
+        "loop_until_done"
+      ]
+    },
+    {
+      "id": "gus",
+      "name": "Gus",
+      "domain": "Quality Control \u00b7 SLA sign-off",
+      "primary_model": "claude-opus-4-8",
+      "tools": [
+        "sla-checker",
+        "qc-checklist",
+        "sign-off-writer"
+      ],
+      "trigger_keywords": [
+        "QC",
+        "SLA",
+        "sign-off",
+        "quality control"
+      ],
+      "patterns": [
+        "adversarial_verification",
+        "loop_until_done"
+      ]
+    },
+    {
+      "id": "mike",
+      "name": "Mike",
+      "domain": "Field Verification \u00b7 ground-truth data",
+      "primary_model": "claude-sonnet-4-6",
+      "tools": [
+        "field-verify",
+        "geotag-checker",
+        "photo-validator"
+      ],
+      "trigger_keywords": [
+        "field verification",
+        "ground truth",
+        "photo"
+      ],
+      "patterns": [
+        "loop_until_done"
+      ]
+    },
+    {
+      "id": "omar",
+      "name": "Omar",
+      "domain": "Director of Audit",
+      "primary_model": "claude-opus-4-7",
+      "tools": [
+        "audit-log-readwrite",
+        "anomaly-detect",
+        "regulatory-checker"
+      ],
+      "trigger_keywords": [
+        "audit",
+        "anomaly",
+        "irregularity"
+      ],
+      "patterns": [
+        "adversarial_verification"
+      ]
+    },
+    {
+      "id": "tony",
+      "name": "Tony",
+      "domain": "Payload Structurer \u00b7 turns intake into formal task",
+      "primary_model": "claude-sonnet-4-6",
+      "tools": [
+        "payload-builder",
+        "task-schema-validator"
+      ],
+      "trigger_keywords": [
+        "structure",
+        "payload",
+        "format task"
+      ],
+      "patterns": [
+        "classify_and_act"
+      ]
+    },
+    {
+      "id": "walter_thornton",
+      "name": "Walter Thornton",
+      "domain": "Operator \u2014 deal initiator + final word",
+      "primary_model": "human",
+      "tools": [
+        "all"
+      ],
+      "trigger_keywords": [
+        "walt",
+        "operator",
+        "approve"
+      ],
+      "patterns": [
+        "fan_out_and_synthesize"
+      ]
+    },
+    {
+      "id": "lester_freamon",
+      "name": "Lester Freamon",
+      "domain": "Competitive intelligence \u00b7 money trails",
+      "primary_model": "claude-opus-4-7",
+      "tools": [
+        "money-trail-tracer",
+        "competitor-intel"
+      ],
+      "trigger_keywords": [
+        "competitive intel",
+        "money trail"
+      ],
+      "patterns": [
+        "tournament"
+      ]
+    },
+    {
+      "id": "vito_corleone",
+      "name": "Vito Corleone",
+      "domain": "Reputational risk evaluator",
+      "primary_model": "claude-opus-4-7",
+      "tools": [
+        "reputation-risk",
+        "stakeholder-map"
+      ],
+      "trigger_keywords": [
+        "reputation",
+        "risk",
+        "stakeholder"
+      ],
+      "patterns": [
+        "tournament",
+        "adversarial_verification"
+      ]
+    },
+    {
+      "id": "john_rogers",
+      "name": "John Rogers",
+      "domain": "Long-horizon institutional synthesis",
+      "primary_model": "claude-opus-4-7",
+      "tools": [
+        "institutional-memory",
+        "long-horizon-model"
+      ],
+      "trigger_keywords": [
+        "long horizon",
+        "institutional"
+      ],
+      "patterns": [
+        "fan_out_and_synthesize"
+      ]
+    },
+    {
+      "id": "mellody_hobson",
+      "name": "Mellody Hobson",
+      "domain": "Final synthesis partner with Rogers",
+      "primary_model": "claude-opus-4-7",
+      "tools": [
+        "board-ready-writer",
+        "executive-summary"
+      ],
+      "trigger_keywords": [
+        "board ready",
+        "executive summary"
+      ],
+      "patterns": [
+        "fan_out_and_synthesize"
+      ]
+    },
+    {
+      "id": "don_draper",
+      "name": "Don Draper",
+      "domain": "Positioning copy \u2014 high-converting variations",
+      "primary_model": "claude-sonnet-4-6",
+      "tools": [
+        "copy-generator",
+        "positioning-engine"
+      ],
+      "trigger_keywords": [
+        "positioning",
+        "ad copy",
+        "sales copy"
+      ],
+      "patterns": [
+        "generate_and_filter"
+      ]
+    }
+  ],
+  "routing_table": {
+    "intake_to_field_loop": [
+      {
+        "intake": "michael",
+        "structurer": "tony",
+        "executor": "chris",
+        "verifier": "mike",
+        "qc": "gus"
+      }
+    ],
+    "deal_flow_tournament": [
+      {
+        "initiator": "walter_thornton",
+        "workers": [
+          "avon",
+          "stringer"
+        ],
+        "graders": [
+          "lester_freamon",
+          "vito_corleone"
+        ],
+        "synthesizers": [
+          "john_rogers",
+          "mellody_hobson"
+        ]
+      }
+    ],
+    "revenue_defense": [
+      {
+        "generators": [
+          "don_draper",
+          "saul"
+        ],
+        "auditors": [
+          "beth",
+          "compliance_officer"
+        ],
+        "approver": "cfo"
+      }
+    ]
+  }
+}

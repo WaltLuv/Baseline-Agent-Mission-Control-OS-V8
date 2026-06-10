@@ -327,7 +327,7 @@ on every register / heartbeat line so operators see what's actually in use.
 | Public routes (/, /login, /signup, /pricing, /marketplace, /roi-calculator, /flight-deck, /docs) | ✅ all 200 |
 | Auth-required routes without cookie | ✅ 307 (page) / 401 (api) — no leaks |
 | Homepage scroll trap | ✅ no `h-screen overflow-hidden` on root |
-| Emergent preview URL | ✅ Live at https://token-monetization.preview.emergentagent.com |
+| Emergent preview URL | ✅ Live at https://mission-control-v8.preview.emergentagent.com |
 
 ### Files changed
 ```
@@ -597,7 +597,7 @@ All 9 launch verticals shipping with complete playbooks (PM · GC · Home Servic
 ### OpenClaw — real runtime proof (P0 complete)
 - `/app/scripts/connect-runtime.mjs` executed against the user's external OpenClaw instance:
   - Registered `openclaw-prod-1` (agent_id=48, workspace_id=1, runtime_type=openclaw) via `POST /api/agents/register`.
-  - Probed `https://keen-matsumoto-2.preview.emergentagent.com` → HTTP 200, `probe=alive`.
+  - Probed `https://mission-control-v8.preview.emergentagent.com` → HTTP 200, `probe=alive`.
   - Heartbeats accepted at 10s cadence; `GET /api/agent-runtimes` shows `connection_status=connected`, `seconds_since_heartbeat=8`.
   - Refresh persistence proven (multiple polls return same row).
   - Connection transition proven: heartbeat halted → row aged to 81s (about to flip to offline at 90s window) → re-register restored `hb_age=7s, status=connected`, idempotent (`new=false`, same agent_id).

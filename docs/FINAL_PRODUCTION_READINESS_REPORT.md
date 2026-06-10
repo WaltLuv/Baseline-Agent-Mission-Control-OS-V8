@@ -149,7 +149,7 @@ ARM64 `.deb` + `.AppImage` continue to serve** from
 ### Status: 🟢 **10/11 PASS — fresh-stranger journey works end-to-end.**
 
 Full report: `/app/test_reports/iteration_5.json`.
-Live deployment under test: `https://token-monetization.preview.emergentagent.com`.
+Live deployment under test: `https://mission-control-v8.preview.emergentagent.com`.
 
 Fresh randomly-generated account: `cz-prod-1780220227@example.com`
 (saved in `/app/memory/test_credentials.md`).

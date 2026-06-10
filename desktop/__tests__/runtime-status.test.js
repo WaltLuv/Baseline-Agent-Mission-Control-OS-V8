@@ -59,7 +59,7 @@ describe('Flight Deck — runtime status surface', () => {
   it('allows DigitalOcean, Emergent, staging, and localhost variants', () => {
     expect(isAllowedUrl('https://baseline-agents.com')).toBe(true)
     expect(isAllowedUrl('https://walters-mc.emergent.host')).toBe(true)
-    expect(isAllowedUrl('https://abc.preview.emergentagent.com')).toBe(true)
+    expect(isAllowedUrl('https://mission-control-v8.preview.emergentagent.com')).toBe(true)
     expect(isAllowedUrl('http://localhost:3000')).toBe(true)
     expect(isAllowedUrl('http://127.0.0.1:3000')).toBe(true)
     expect(isAllowedUrl('http://localhost:3001')).toBe(true)

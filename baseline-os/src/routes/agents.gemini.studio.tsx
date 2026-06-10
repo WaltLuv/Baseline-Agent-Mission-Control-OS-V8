@@ -1,0 +1,14 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { VideoAgentStudio } from "@/components/video-agent-studio";
+
+export const Route = createFileRoute("/agents/gemini/studio")({
+  head: () => ({ meta: [{ title: "Gemini Studio — Baseline Automations" }] }),
+  component: () => (
+    <div className="flex flex-col" style={{ height: "calc(100vh - 56px)", overflow: "hidden" }}>
+      <div className="px-5 py-2 border-b shrink-0" style={{ borderColor: "var(--panel-border)" }}>
+        <Link to="/agents/gemini" className="text-[10.5px] uppercase tracking-[0.22em] hover:underline">← Gemini</Link>
+      </div>
+      <div className="flex-1 min-h-0"><VideoAgentStudio agentId="gemini" brand="Gemini" tone="#4F8EF7" /></div>
+    </div>
+  ),
+});

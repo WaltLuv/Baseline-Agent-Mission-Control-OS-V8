@@ -9,7 +9,7 @@
 | Field | Value |
 |-------|-------|
 | Date / time (UTC) | 2026-05-29 17:55 |
-| Environment tested | `https://token-monetization.preview.emergentagent.com` |
+| Environment tested | `https://mission-control-v8.preview.emergentagent.com` |
 | Stand-in for | `https://mission.baselineautomations.com` (post-DO-deploy) |
 | Auth credentials | `admin` / `admin12345` (local sandbox) |
 | Vitest result | **1214 / 1214 passing** |

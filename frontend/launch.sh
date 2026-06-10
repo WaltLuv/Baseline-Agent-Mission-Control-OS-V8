@@ -41,6 +41,11 @@ if [ -f /app/.env ] && [ -x /app/.node22/bin/node ]; then
   done < <(/app/.node22/bin/node /app/scripts/load-env.cjs /app/.env 2>/dev/null || true)
 fi
 
+# Start the Baseline OS sidecar (workforce layer console + MC sync heartbeat).
+# Idempotent; never blocks Mission Control boot.
+chmod +x /app/baseline-os/launch.sh 2>/dev/null || true
+bash /app/baseline-os/launch.sh || true
+
 # Force the standalone server to bind on every interface so the
 # Kubernetes service / Emergent ingress can reach it.
 export HOSTNAME=0.0.0.0

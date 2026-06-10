@@ -13,7 +13,7 @@ import base64
 import pytest
 import requests
 
-BASE_URL = "https://token-monetization.preview.emergentagent.com"
+BASE_URL = "https://mission-control-v8.preview.emergentagent.com"
 
 
 @pytest.fixture(scope="module")

@@ -1,0 +1,241 @@
+{
+  "$schema_version": 1,
+  "id": "property-management",
+  "name": "Property Management Workforce",
+  "tagline": "Tenants happy. Owners informed. Maintenance handled.",
+  "vertical": "real-estate",
+  "color": "#22d3ee",
+  "icon": "Building2",
+  "pitch": "A six-person AI team that runs the day-to-day of a property management book — tenant relations, maintenance dispatch, leasing, vendor coordination, owner reporting, and compliance. Drops in next to PropControl, VisionOps, VoiceOps, and your existing CRM. After install, your Mission Control dashboard shows real tasks, real approvals, and real proof of work — no setup ceremony required.",
+  "value_props": [
+    "Maintenance requests triaged + dispatched within minutes of intake",
+    "Lease renewal cascade (60/30/14-day) runs untouched",
+    "Owner statements drafted monthly — operator approves before send",
+    "Vendor insurance + W-9 expiry monitored, escalated before lapses",
+    "After-hours emergencies routed to the right human, not voicemail"
+  ],
+
+  "employees": [
+    {
+      "id": "tessa-reyes",
+      "name": "Tessa Reyes",
+      "role": "Tenant Relations Lead",
+      "summary": "Tenant communication, lease inquiries, complaint triage, move-in/out coordination. Bilingual. Reads tone, escalates to a human when stakes go up.",
+      "color": "#22d3ee",
+      "voice": "warm, direct, never patronizing",
+      "expertise": ["tenant comms", "complaint triage", "move-in/out", "renewals"],
+      "handles": ["tenant_request_inbox", "lease_renewal_cascade", "move_in_coordination", "move_out_coordination"],
+      "runtime_hint": "hermes",
+      "skill_ids": ["tenant-inbox-triage", "renewal-reminder-send", "move-in-checklist", "move-out-checklist", "complaint-log"]
+    },
+    {
+      "id": "marcus-doyle",
+      "name": "Marcus Doyle",
+      "role": "Maintenance Dispatcher",
+      "summary": "Triages maintenance tickets, assigns vendors, tracks SLAs, escalates emergencies. Knows which trades go to which vendor and why.",
+      "color": "#f59e0b",
+      "voice": "no-nonsense, fast, blunt about timing",
+      "expertise": ["work order triage", "vendor assignment", "emergency routing", "SLA tracking"],
+      "handles": ["maintenance_intake", "after_hours_emergency", "work_order_tracking"],
+      "runtime_hint": "claude-code",
+      "skill_ids": ["maint-intake-triage", "vendor-dispatch", "work-order-create", "emergency-route", "sla-track"]
+    },
+    {
+      "id": "rena-patel",
+      "name": "Rena Patel",
+      "role": "Leasing Coordinator",
+      "summary": "Listings refresh on vacancy, showings scheduled, applications screened, lease drafting kicked off. Tracks pipeline conversion.",
+      "color": "#8b5cf6",
+      "voice": "polished, persuasive without spin",
+      "expertise": ["listing management", "showings", "applications", "lease drafting"],
+      "handles": ["listing_refresh", "application_processing", "showing_scheduling"],
+      "runtime_hint": "claude-code",
+      "skill_ids": ["listing-refresh", "application-screen", "showing-schedule"]
+    },
+    {
+      "id": "owen-whitfield",
+      "name": "Owen Whitfield",
+      "role": "Owner Relations",
+      "summary": "Monthly owner statements drafted, capex approvals routed, vacancy reports, year-end packets. Owners ask, Owen has it ready.",
+      "color": "#10b981",
+      "voice": "executive-summary first, numbers tight",
+      "expertise": ["owner reporting", "capex approvals", "vacancy summaries", "year-end"],
+      "handles": ["owner_monthly_statement", "capex_approval", "vacancy_report"],
+      "runtime_hint": "hermes",
+      "skill_ids": ["owner-statement-draft", "capex-approval-route", "vacancy-summary"]
+    },
+    {
+      "id": "vince-cardella",
+      "name": "Vince Cardella",
+      "role": "Vendor Coordinator",
+      "summary": "Vendor vetting, RFP send-out, insurance/W-9 expiry tracking, scheduled services. Keeps the trades binder accurate.",
+      "color": "#f43f5e",
+      "voice": "trade-savvy, suspicious of anyone without a COI",
+      "expertise": ["vendor onboarding", "RFP", "compliance docs", "scheduled services"],
+      "handles": ["vendor_insurance_monitor", "vendor_performance"],
+      "runtime_hint": "claude-code",
+      "skill_ids": ["vendor-insurance-check", "vendor-rfp-send", "vendor-performance-log"]
+    },
+    {
+      "id": "quinn-hartley",
+      "name": "Quinn Hartley",
+      "role": "Inspections & Compliance",
+      "summary": "Inspection scheduling, report distribution, code compliance, lease renewals on the calendar. Catches what gets forgotten.",
+      "color": "#a855f7",
+      "voice": "calm, granular, paper-trail oriented",
+      "expertise": ["inspections", "code compliance", "renewals calendar"],
+      "handles": ["inspection_scheduling", "compliance_audit", "lease_renewal_calendar"],
+      "runtime_hint": "claude-code",
+      "skill_ids": ["inspection-schedule", "compliance-check"]
+    }
+  ],
+
+  "workflows": [
+    { "id": "maintenance_intake",          "name": "Maintenance Request Intake → Dispatch", "employee_id": "marcus-doyle",  "cadence": "event-driven",                "trigger": "tenant submits maintenance request", "skill_ids": ["maint-intake-triage","vendor-dispatch","work-order-create"], "outcome": "vendor assigned, tenant + owner notified within SLA" },
+    { "id": "lease_renewal_cascade",       "name": "Lease Renewal Cascade (60/30/14 day)",  "employee_id": "tessa-reyes",   "cadence": "daily 8:00 local",            "trigger": "lease end_date within rolling 60/30/14 day window", "skill_ids": ["renewal-reminder-send"], "outcome": "tenant notified per cascade; owner sees pipeline" },
+    { "id": "rent_collection_summary",     "name": "Rent Collection Daily Summary",         "employee_id": "owen-whitfield","cadence": "daily 9:00 local",            "trigger": "scheduled",                                    "skill_ids": ["rent-status-pull"], "outcome": "owner sees yesterday's collections + outstanding" },
+    { "id": "move_in_coordination",        "name": "Move-In Coordination",                  "employee_id": "tessa-reyes",   "cadence": "event-driven",                "trigger": "lease signed",                                "skill_ids": ["move-in-checklist"], "outcome": "key handoff, utilities, walkthrough scheduled" },
+    { "id": "move_out_coordination",       "name": "Move-Out Coordination",                 "employee_id": "tessa-reyes",   "cadence": "event-driven",                "trigger": "lease end notice received",                   "skill_ids": ["move-out-checklist","complaint-log"], "outcome": "final inspection scheduled, deposit accounting drafted" },
+    { "id": "inspection_schedule",         "name": "Inspection Schedule + Report",          "employee_id": "quinn-hartley", "cadence": "weekly Mon 7:00",             "trigger": "scheduled or new unit added",                 "skill_ids": ["inspection-schedule"], "outcome": "inspections on calendar, reports filed" },
+    { "id": "vendor_insurance_monitor",    "name": "Vendor Insurance + W-9 Expiry Monitor", "employee_id": "vince-cardella","cadence": "daily 7:00",                  "trigger": "scheduled",                                    "skill_ids": ["vendor-insurance-check"], "outcome": "30/14/0 day warnings to vendors + owner" },
+    { "id": "owner_monthly_statement",     "name": "Owner Monthly Statement Drafting",      "employee_id": "owen-whitfield","cadence": "monthly 1st 6:00",            "trigger": "month-end",                                    "skill_ids": ["owner-statement-draft"], "outcome": "draft statement awaiting operator approval before send" },
+    { "id": "listing_refresh",             "name": "Listing Refresh on Vacancy",            "employee_id": "rena-patel",    "cadence": "event-driven",                "trigger": "unit marked vacant",                          "skill_ids": ["listing-refresh"], "outcome": "listing refreshed across syndication feeds" },
+    { "id": "after_hours_emergency",       "name": "After-Hours Emergency Routing",         "employee_id": "marcus-doyle",  "cadence": "event-driven 18:00–08:00",    "trigger": "after-hours emergency channel",               "skill_ids": ["emergency-route","sla-track"], "outcome": "right human paged, not voicemail" },
+    { "id": "application_processing",      "name": "Lease Application Processing",          "employee_id": "rena-patel",    "cadence": "event-driven",                "trigger": "new application submitted",                   "skill_ids": ["application-screen"], "outcome": "screening complete, recommend approve/deny with reasons" },
+    { "id": "vendor_performance",          "name": "Vendor Performance Tracking",           "employee_id": "vince-cardella","cadence": "weekly Fri 16:00",            "trigger": "scheduled",                                    "skill_ids": ["vendor-performance-log"], "outcome": "weekly vendor scorecard (SLA, cost, satisfaction)" }
+  ],
+
+  "skills": [
+    { "id": "tenant-inbox-triage",     "name": "Tenant inbox triage",          "tool_id": "notion-q", "verb": "search",       "args_template": { "query": "tenant inbox unread" }, "risk_level": "LOW",     "proof_contract": "stdout+exit" },
+    { "id": "renewal-reminder-send",   "name": "Lease renewal reminder send",  "tool_id": "comms",    "verb": "send-email",   "args_template": { "to": "${tenant_email}", "subject": "Lease renewal", "body": "${rendered}" }, "risk_level": "HIGH",  "proof_contract": "stdout+exit+log" },
+    { "id": "move-in-checklist",       "name": "Move-in checklist",            "tool_id": "memo",     "verb": "log",          "args_template": { "topic": "move-in:${unit_id}", "body": "${rendered}" }, "risk_level": "LOW",   "proof_contract": "stdout+exit" },
+    { "id": "move-out-checklist",      "name": "Move-out checklist",           "tool_id": "memo",     "verb": "log",          "args_template": { "topic": "move-out:${unit_id}", "body": "${rendered}" }, "risk_level": "LOW",  "proof_contract": "stdout+exit" },
+    { "id": "complaint-log",           "name": "Complaint log entry",          "tool_id": "memo",     "verb": "log",          "args_template": { "topic": "complaint:${tenant_id}", "body": "${rendered}" }, "risk_level": "LOW",   "proof_contract": "stdout+exit" },
+
+    { "id": "maint-intake-triage",     "name": "Maintenance intake triage",    "tool_id": "notion-q", "verb": "search",       "args_template": { "query": "maintenance:${unit_id}" }, "risk_level": "LOW",    "proof_contract": "stdout+exit" },
+    { "id": "vendor-dispatch",         "name": "Vendor dispatch",              "tool_id": "comms",    "verb": "send-email",   "args_template": { "to": "${vendor_email}", "subject": "Work order ${wo_id}", "body": "${rendered}" }, "risk_level": "HIGH", "proof_contract": "stdout+exit+log" },
+    { "id": "work-order-create",       "name": "Work order create",            "tool_id": "gh",       "verb": "issue-create", "args_template": { "repo": "${tracker_repo}", "title": "WO ${unit_id}: ${summary}", "body": "${rendered}" }, "risk_level": "HIGH", "proof_contract": "stdout+exit+log" },
+    { "id": "emergency-route",         "name": "Emergency routing",            "tool_id": "comms",    "verb": "send-sms",     "args_template": { "to": "${on_call_phone}", "body": "${rendered}" }, "risk_level": "HIGH", "proof_contract": "stdout+exit+log" },
+    { "id": "sla-track",               "name": "SLA track",                    "tool_id": "memo",     "verb": "log",          "args_template": { "topic": "sla:${wo_id}", "body": "${rendered}" }, "risk_level": "LOW",   "proof_contract": "stdout+exit" },
+
+    { "id": "listing-refresh",         "name": "Listing refresh",              "tool_id": "listing",  "verb": "refresh",      "args_template": { "unit_id": "${unit_id}" }, "risk_level": "MEDIUM", "proof_contract": "stdout+exit+log" },
+    { "id": "application-screen",      "name": "Application screening",        "tool_id": "memo",     "verb": "log",          "args_template": { "topic": "screen:${applicant_id}", "body": "${rendered}" }, "risk_level": "MEDIUM", "proof_contract": "stdout+exit" },
+    { "id": "showing-schedule",        "name": "Showing schedule",             "tool_id": "memo",     "verb": "log",          "args_template": { "topic": "showing:${unit_id}", "body": "${rendered}" }, "risk_level": "LOW", "proof_contract": "stdout+exit" },
+
+    { "id": "owner-statement-draft",   "name": "Owner statement draft",        "tool_id": "owner-stmt","verb": "draft",       "args_template": { "owner_id": "${owner_id}", "period": "${period}" }, "risk_level": "HIGH", "proof_contract": "stdout+exit+log" },
+    { "id": "capex-approval-route",    "name": "Capex approval route",         "tool_id": "comms",    "verb": "send-email",   "args_template": { "to": "${owner_email}", "subject": "Capex approval needed", "body": "${rendered}" }, "risk_level": "HIGH", "proof_contract": "stdout+exit+log" },
+    { "id": "vacancy-summary",         "name": "Vacancy summary",              "tool_id": "memo",     "verb": "log",          "args_template": { "topic": "vacancy-summary:${period}", "body": "${rendered}" }, "risk_level": "LOW", "proof_contract": "stdout+exit" },
+
+    { "id": "vendor-insurance-check",  "name": "Vendor insurance expiry check","tool_id": "vendor-cli","verb": "expiry-list", "args_template": { "horizon_days": "30" }, "risk_level": "LOW",      "proof_contract": "stdout+exit" },
+    { "id": "vendor-rfp-send",         "name": "Vendor RFP send",              "tool_id": "comms",    "verb": "send-email",   "args_template": { "to": "${vendor_email}", "subject": "RFP", "body": "${rendered}" }, "risk_level": "HIGH", "proof_contract": "stdout+exit+log" },
+    { "id": "vendor-performance-log",  "name": "Vendor performance log",       "tool_id": "memo",     "verb": "log",          "args_template": { "topic": "vendor-perf:${vendor_id}", "body": "${rendered}" }, "risk_level": "LOW", "proof_contract": "stdout+exit" },
+
+    { "id": "inspection-schedule",     "name": "Inspection schedule",          "tool_id": "memo",     "verb": "log",          "args_template": { "topic": "inspection:${unit_id}", "body": "${rendered}" }, "risk_level": "LOW", "proof_contract": "stdout+exit" },
+    { "id": "compliance-check",        "name": "Compliance check",             "tool_id": "notion-q", "verb": "search",       "args_template": { "query": "compliance:${unit_id}" }, "risk_level": "LOW", "proof_contract": "stdout+exit" },
+    { "id": "rent-status-pull",        "name": "Rent collection status",       "tool_id": "memo",     "verb": "log",          "args_template": { "topic": "rent-status:${period}", "body": "${rendered}" }, "risk_level": "LOW", "proof_contract": "stdout+exit" }
+  ],
+
+  "new_tools": [
+    {
+      "id": "memo",
+      "cli_name": "memo",
+      "category": "ops",
+      "description": "Append-only journal entries for internal recordkeeping. Local-only; never sends.",
+      "risk_level": "LOW",
+      "approval_policy": "auto",
+      "allowed_runtimes": ["*"],
+      "supported_actions": [
+        { "verb": "log", "description": "Write a memo entry under a topic.", "argv": ["log", "--topic", "${topic}", "--body", "${body}"], "input_schema": { "topic": { "type": "string", "required": true, "max_length": 200 }, "body": { "type": "string", "required": true, "max_length": 10000 } }, "output_schema": { "memo_id": "string" }, "risk_level": "LOW", "success_exit_codes": [0], "timeout_ms": 5000 }
+      ],
+      "examples": [ { "description": "Log a move-in note", "verb": "log", "args": { "topic": "move-in:unit-12B", "body": "Keys handed to Tessa at 14:00" }, "expected_exit_code": 0 } ]
+    },
+    {
+      "id": "comms",
+      "cli_name": "comms",
+      "category": "comms",
+      "description": "Outbound tenant/vendor/owner messaging (email + SMS). Requires provider credentials to actually send; without them, drafts only.",
+      "risk_level": "HIGH",
+      "approval_policy": "approval-required",
+      "allowed_runtimes": ["claude-code", "hermes", "*"],
+      "supported_actions": [
+        { "verb": "send-email", "description": "Send an email via the configured provider.",   "argv": ["send-email", "--to", "${to}", "--subject", "${subject}", "--body", "${body}"], "input_schema": { "to": { "type": "string", "required": true, "max_length": 256 }, "subject": { "type": "string", "required": true, "max_length": 256 }, "body": { "type": "string", "required": true, "max_length": 20000 } }, "output_schema": { "message_id": "string" }, "risk_level": "HIGH", "success_exit_codes": [0], "timeout_ms": 15000 },
+        { "verb": "send-sms",   "description": "Send an SMS via the configured provider.",    "argv": ["send-sms",   "--to", "${to}", "--body", "${body}"],                                  "input_schema": { "to": { "type": "string", "required": true, "max_length": 32 },  "body": { "type": "string", "required": true, "max_length": 1600 } },                                                                                                       "output_schema": { "message_id": "string" }, "risk_level": "HIGH", "success_exit_codes": [0], "timeout_ms": 15000 }
+      ],
+      "examples": [ { "description": "Send a renewal reminder", "verb": "send-email", "args": { "to": "tenant@example.com", "subject": "Lease renewal", "body": "Your lease ends 2026-08-31. Renew?" }, "expected_exit_code": 0 } ]
+    },
+    {
+      "id": "listing",
+      "cli_name": "listing",
+      "category": "ops",
+      "description": "Listing feed refresh — pushes vacancy state to syndication. Requires configured feeds.",
+      "risk_level": "MEDIUM",
+      "approval_policy": "auto",
+      "allowed_runtimes": ["claude-code", "*"],
+      "supported_actions": [
+        { "verb": "refresh", "description": "Refresh a unit's listing.", "argv": ["refresh", "--unit", "${unit_id}"], "input_schema": { "unit_id": { "type": "string", "required": true, "max_length": 64, "pattern": "^[a-zA-Z0-9._-]+$" } }, "output_schema": { "feed_count": "number" }, "risk_level": "MEDIUM", "success_exit_codes": [0], "timeout_ms": 15000 }
+      ],
+      "examples": [ { "description": "Refresh unit 12B", "verb": "refresh", "args": { "unit_id": "12B" }, "expected_exit_code": 0 } ]
+    },
+    {
+      "id": "owner-stmt",
+      "cli_name": "owner-stmt",
+      "category": "finance",
+      "description": "Owner statement drafter. Reads ledger + occupancy, drafts PDF + cover note. Draft only — sending requires the comms tool.",
+      "risk_level": "HIGH",
+      "approval_policy": "approval-required",
+      "allowed_runtimes": ["claude-code", "hermes", "*"],
+      "supported_actions": [
+        { "verb": "draft", "description": "Draft an owner statement.", "argv": ["draft", "--owner", "${owner_id}", "--period", "${period}"], "input_schema": { "owner_id": { "type": "string", "required": true, "max_length": 64, "pattern": "^[a-zA-Z0-9._-]+$" }, "period": { "type": "string", "required": true, "max_length": 12, "pattern": "^[0-9]{4}-[0-9]{2}$" } }, "output_schema": { "statement_id": "string", "pdf_path": "string" }, "risk_level": "HIGH", "success_exit_codes": [0], "timeout_ms": 30000 }
+      ],
+      "examples": [ { "description": "Draft Sept '26 statement for owner OW-44", "verb": "draft", "args": { "owner_id": "OW-44", "period": "2026-09" }, "expected_exit_code": 0 } ]
+    },
+    {
+      "id": "vendor-cli",
+      "cli_name": "vendor-cli",
+      "category": "ops",
+      "description": "Vendor roster — insurance/W-9 expiry, RFP send, performance scoring.",
+      "risk_level": "MEDIUM",
+      "approval_policy": "auto",
+      "allowed_runtimes": ["claude-code", "*"],
+      "supported_actions": [
+        { "verb": "expiry-list", "description": "List vendor docs expiring within horizon.", "argv": ["expiry-list", "--horizon", "${horizon_days}"], "input_schema": { "horizon_days": { "type": "number", "required": true } }, "output_schema": { "vendors": "array" }, "risk_level": "LOW", "success_exit_codes": [0], "timeout_ms": 8000 }
+      ],
+      "examples": [ { "description": "Who expires in the next 30 days?", "verb": "expiry-list", "args": { "horizon_days": "30" }, "expected_exit_code": 0 } ]
+    }
+  ],
+
+  "approval_policy_overrides": [
+    { "tool_id": "comms",      "verb": "send-email",   "risk_level": "HIGH",   "reason": "outbound tenant/vendor/owner email — operator co-signs" },
+    { "tool_id": "comms",      "verb": "send-sms",     "risk_level": "HIGH",   "reason": "outbound SMS — operator co-signs" },
+    { "tool_id": "owner-stmt", "verb": "draft",        "risk_level": "HIGH",   "reason": "owner statements modify business records prior to send" },
+    { "tool_id": "listing",    "verb": "refresh",      "risk_level": "MEDIUM", "reason": "vacancy state visible to public — caller may request approval" },
+    { "tool_id": "memo",       "verb": "log",          "risk_level": "LOW",    "reason": "local-only journal" }
+  ],
+
+  "seed_tasks": [
+    { "title": "Sample · Maintenance request (Unit 12B leaky faucet)",                "description": "Tenant in 12B reports a leaky kitchen faucet. Triage, assign vendor, notify tenant + owner within SLA.",                                                              "employee_id": "marcus-doyle",   "workflow_id": "maintenance_intake",       "priority": "high"   },
+    { "title": "Sample · Lease renewal cascade — 7 leases in 60-day window",         "description": "Run the 60-day renewal cascade for the 7 leases ending in the next 60 days. Draft + send reminders, log responses.",                                                  "employee_id": "tessa-reyes",    "workflow_id": "lease_renewal_cascade",    "priority": "medium" },
+    { "title": "Sample · Move-in coordination (incoming tenant for Unit 4A)",        "description": "Coordinate move-in for the new tenant in 4A: keys, utilities, walkthrough, welcome packet.",                                                                            "employee_id": "tessa-reyes",    "workflow_id": "move_in_coordination",     "priority": "medium" },
+    { "title": "Sample · Vendor insurance expiry — 3 vendors lapse this month",      "description": "Three vendors have COI / W-9 expiring within 30 days. Notify + collect updated docs before any new work orders dispatch.",                                              "employee_id": "vince-cardella", "workflow_id": "vendor_insurance_monitor", "priority": "high"   },
+    { "title": "Sample · Owner statement draft (Q3 close for OW-44)",                "description": "Draft September monthly statement for owner OW-44. Operator reviews before send.",                                                                                     "employee_id": "owen-whitfield", "workflow_id": "owner_monthly_statement",  "priority": "medium" },
+    { "title": "Sample · Inspection schedule — Q4 walks across 18 units",            "description": "Schedule Q4 walkthroughs for the 18 units due for inspection. Coordinate access with tenants.",                                                                       "employee_id": "quinn-hartley",  "workflow_id": "inspection_schedule",      "priority": "medium" },
+    { "title": "Sample · Vacancy at Unit 7C — refresh listings + start showings",    "description": "Unit 7C marked vacant. Refresh listings across syndication feeds + open the showings calendar.",                                                                       "employee_id": "rena-patel",     "workflow_id": "listing_refresh",          "priority": "high"   },
+    { "title": "Sample · After-hours emergency (no heat) — route to on-call HVAC",   "description": "Tenant reports no heat at 23:14. Route to on-call HVAC vendor + page property manager. Track resolution.",                                                            "employee_id": "marcus-doyle",   "workflow_id": "after_hours_emergency",    "priority": "high"   }
+  ],
+
+  "dashboards": [
+    { "title": "Mission Control",   "route": "/mission-control",  "description": "Every seed task above lives here. Operators triage, route, supervise." },
+    { "title": "Approvals",         "route": "/approvals",        "description": "HIGH-tier ops (send email/SMS, owner statements) queue here for operator sign-off." },
+    { "title": "CLI Tools",         "route": "/cli",              "description": "The 15 skills bound to 8 tools. New tools (memo, comms, listing, owner-stmt, vendor-cli) appear here." },
+    { "title": "Runtime Registry",  "route": "/runtime-registry", "description": "Sees which AI runtime each employee maps to (hermes / claude-code)." },
+    { "title": "Personas",          "route": "/personas",         "description": "Optional — if the Hermes pantheon is installed, the 6 employees register as personas." }
+  ],
+
+  "proof_expectations": [
+    { "milestone": "post-install state ready",  "criteria": "GET /api/workforces/property-management/status returns installed_at + 6 employees + 12 workflows + ≥15 skills + ≥5 new tools + ≥8 seed tasks" },
+    { "milestone": "Mission Control visible",   "criteria": "GET /api/tasks shows the 8 seed tasks linked to the workforce + employee fields" },
+    { "milestone": "Approval policy applied",   "criteria": "GET /api/tools/comms shows approval_policy=approval-required and risk_level=HIGH; running send-email queues an approval" },
+    { "milestone": "Tool registry populated",   "criteria": "GET /api/tools returns memo, comms, listing, owner-stmt, vendor-cli in addition to the prior 3" },
+    { "milestone": "Uninstall reverses",        "criteria": "POST /api/workforces/property-management/uninstall removes the 5 new tools, the seed tasks, and the workforces.json entry — registry is left as it was before install" }
+  ]
+}

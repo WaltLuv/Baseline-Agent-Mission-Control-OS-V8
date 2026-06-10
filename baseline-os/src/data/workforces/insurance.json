@@ -1,0 +1,227 @@
+{
+  "$schema_version": 1,
+  "id": "insurance",
+  "name": "Insurance Operations Workforce",
+  "tagline": "Claims triaged. Documents collected. Renewals prepped.",
+  "vertical": "insurance",
+  "color": "#06b6d4",
+  "icon": "Shield",
+  "pitch": "A six-person AI team that runs the day-to-day of an insurance operation — claims intake, adjuster coordination, policyholder follow-up, document collection, compliance review, and renewal prep. Drops in next to your existing claims-management system. After install, your Mission Control dashboard shows real claims, real approvals, and real proof of work.",
+  "value_props": [
+    "Claim intake triaged within minutes of FNOL",
+    "Documents chased automatically through the policyholder lifecycle",
+    "Adjuster scheduling and routing handled without ping-pong",
+    "Renewal prep organized 60/30/14 days before policy expiry",
+    "Compliance exceptions surfaced before they ship to customers",
+    "Every action logged with cryptographic proof and an audit trail"
+  ],
+
+  "employees": [
+    {
+      "id": "iris-bennett",
+      "name": "Iris Bennett",
+      "role": "Claims Intake Coordinator",
+      "summary": "First touch on every FNOL. Triages new claims by line of business + severity + coverage type. Captures complete loss details. Routes to the right adjuster track.",
+      "color": "#06b6d4",
+      "voice": "calm, methodical, never rushes a stressed claimant",
+      "expertise": ["FNOL", "claim triage", "coverage identification", "loss details capture"],
+      "handles": ["claims_intake", "fnol_triage"],
+      "runtime_hint": "hermes",
+      "skill_ids": ["claim-intake-form", "fnol-classify", "coverage-lookup", "claim-create", "claimant-first-contact"]
+    },
+    {
+      "id": "malcolm-price",
+      "name": "Malcolm Price",
+      "role": "Adjuster Coordination Lead",
+      "summary": "Routes claims to the right adjuster, schedules inspections, tracks SLA, escalates the stuck. Knows which adjuster handles which loss type.",
+      "color": "#f59e0b",
+      "voice": "direct, ownership-focused, calm under deadline",
+      "expertise": ["adjuster routing", "inspection scheduling", "SLA tracking", "escalation"],
+      "handles": ["adjuster_scheduling", "claim_status_followup"],
+      "runtime_hint": "claude-code",
+      "skill_ids": ["adjuster-assign", "inspection-schedule", "claim-sla-track", "adjuster-escalate", "claim-status-log"]
+    },
+    {
+      "id": "nina-flores",
+      "name": "Nina Flores",
+      "role": "Policyholder Follow-Up Specialist",
+      "summary": "Owns post-FNOL communication. Status updates, document requests, expectation setting. Reads tone, escalates to a human when the policyholder is upset.",
+      "color": "#22c55e",
+      "voice": "warm, plainspoken, never patronizing",
+      "expertise": ["policyholder comms", "status updates", "claim explanation", "empathy escalation"],
+      "handles": ["policyholder_followup", "escalated_complaint_routing"],
+      "runtime_hint": "hermes",
+      "skill_ids": ["policyholder-update-draft", "policyholder-status-send", "complaint-log", "escalation-route"]
+    },
+    {
+      "id": "grant-mercer",
+      "name": "Grant Mercer",
+      "role": "Compliance Review Analyst",
+      "summary": "Reviews coverage interpretations, claim denial language, and customer-facing claim updates for policy + regulatory risk before they ship.",
+      "color": "#a855f7",
+      "voice": "precise, conservative, evidence-first",
+      "expertise": ["compliance review", "claim denial language", "regulatory check", "documentation audit"],
+      "handles": ["compliance_exception_review"],
+      "runtime_hint": "claude-code",
+      "skill_ids": ["compliance-check", "denial-language-review", "regulatory-flag", "audit-trail-log"]
+    },
+    {
+      "id": "sofia-lane",
+      "name": "Sofia Lane",
+      "role": "Renewal Operations Coordinator",
+      "summary": "Owns the renewal calendar. 60/30/14-day prep cascade, producer follow-up queue, renewal pricing comms (draft only — operator approves before send).",
+      "color": "#8b5cf6",
+      "voice": "organized, commercial, retention-aware",
+      "expertise": ["renewal calendar", "producer coordination", "renewal pricing draft", "retention plays"],
+      "handles": ["renewal_preparation", "producer_followup_queue"],
+      "runtime_hint": "claude-code",
+      "skill_ids": ["renewal-prep-checklist", "renewal-pricing-draft", "producer-update-draft", "loss-run-request"]
+    },
+    {
+      "id": "theo-brooks",
+      "name": "Theo Brooks",
+      "role": "Document Collection Specialist",
+      "summary": "Chases every doc the claim needs — police reports, photos, repair estimates, COIs, loss runs. Sends reminders, tracks receipt, surfaces stalled requests.",
+      "color": "#ec4899",
+      "voice": "polite, persistent, never desperate",
+      "expertise": ["document chase", "OCR + checklist", "intake binder", "COI tracking"],
+      "handles": ["policyholder_document_collection", "loss_run_request_processing", "certificate_of_insurance_request"],
+      "runtime_hint": "hermes",
+      "skill_ids": ["document-request-send", "document-receipt-track", "document-checklist", "coi-request", "loss-run-request"]
+    }
+  ],
+
+  "workflows": [
+    { "id": "claims_intake",                    "name": "New Claim Intake (FNOL)",                "employee_id": "iris-bennett",   "cadence": "event-driven",                "trigger": "FNOL received via phone / email / web / partner",          "skill_ids": ["claim-intake-form","fnol-classify","coverage-lookup","claim-create"], "outcome": "claim opened with full loss details, claimant first-contacted, routed to adjuster track" },
+    { "id": "fnol_triage",                      "name": "FNOL Triage",                            "employee_id": "iris-bennett",   "cadence": "event-driven",                "trigger": "new claim intake completed",                                "skill_ids": ["fnol-classify","coverage-lookup"], "outcome": "claim severity + line-of-business + coverage type identified; SLA clock starts" },
+    { "id": "policyholder_document_collection", "name": "Document Collection Cascade",            "employee_id": "theo-brooks",    "cadence": "daily 8:00 local",            "trigger": "open claim needs documents",                                "skill_ids": ["document-request-send","document-receipt-track","document-checklist"], "outcome": "every required doc received or escalated with a clear next step" },
+    { "id": "adjuster_scheduling",              "name": "Adjuster Scheduling + Routing",          "employee_id": "malcolm-price",  "cadence": "event-driven",                "trigger": "claim triaged, ready for adjuster",                         "skill_ids": ["adjuster-assign","inspection-schedule"], "outcome": "claim assigned, inspection scheduled, claimant + adjuster notified" },
+    { "id": "claim_status_followup",            "name": "Claim Status Follow-Up",                 "employee_id": "malcolm-price",  "cadence": "daily 10:00 local",           "trigger": "scheduled",                                                  "skill_ids": ["claim-sla-track","adjuster-escalate","claim-status-log"], "outcome": "stalled claims surfaced, escalations sent, status posted to claimant" },
+    { "id": "coverage_verification",            "name": "Coverage Verification",                  "employee_id": "iris-bennett",   "cadence": "event-driven",                "trigger": "claim line-of-business identified",                         "skill_ids": ["coverage-lookup","compliance-check"], "outcome": "coverage limits + exclusions confirmed before adjuster touches it" },
+    { "id": "renewal_preparation",              "name": "Renewal Prep Cascade (60/30/14)",        "employee_id": "sofia-lane",     "cadence": "daily 8:00 local",            "trigger": "policy end_date within rolling 60/30/14 day window",        "skill_ids": ["renewal-prep-checklist","loss-run-request"], "outcome": "renewal binder prepared, producer + policyholder notified per cascade" },
+    { "id": "producer_followup_queue",          "name": "Producer Follow-Up Queue",               "employee_id": "sofia-lane",     "cadence": "daily 9:00 local",            "trigger": "scheduled",                                                  "skill_ids": ["producer-update-draft"], "outcome": "producers receive a draft update for every account that needs one" },
+    { "id": "compliance_exception_review",      "name": "Compliance Exception Review",            "employee_id": "grant-mercer",   "cadence": "event-driven",                "trigger": "outbound claim communication needs compliance check",       "skill_ids": ["compliance-check","denial-language-review","regulatory-flag","audit-trail-log"], "outcome": "flagged comms either approved with audit note or returned with required edit" },
+    { "id": "loss_run_request_processing",      "name": "Loss Run Request Processing",            "employee_id": "theo-brooks",    "cadence": "event-driven",                "trigger": "broker or carrier requests a loss run",                     "skill_ids": ["loss-run-request","document-request-send"], "outcome": "loss run drafted and queued for operator approval" },
+    { "id": "certificate_of_insurance_request", "name": "Certificate of Insurance Request",       "employee_id": "theo-brooks",    "cadence": "event-driven",                "trigger": "policyholder or vendor requests a COI",                     "skill_ids": ["coi-request","document-receipt-track"], "outcome": "COI generated or queued for the producer to issue" },
+    { "id": "escalated_complaint_routing",      "name": "Escalated Complaint Routing",            "employee_id": "nina-flores",    "cadence": "event-driven 24/7",           "trigger": "policyholder complaint scored high-emotion or regulatory",  "skill_ids": ["complaint-log","escalation-route"], "outcome": "right human paged, draft acknowledgement queued for approval" }
+  ],
+
+  "skills": [
+    { "id": "claim-intake-form",        "name": "Claim intake form",         "tool_id": "memo",     "verb": "log",       "args_template": { "topic": "claim-intake:${claim_id}", "body": "${rendered}" }, "risk_level": "LOW",    "proof_contract": "stdout+exit" },
+    { "id": "fnol-classify",            "name": "FNOL classifier",           "tool_id": "memo",     "verb": "log",       "args_template": { "topic": "fnol:${claim_id}", "body": "${rendered}" },         "risk_level": "LOW",    "proof_contract": "stdout+exit" },
+    { "id": "coverage-lookup",          "name": "Coverage lookup",           "tool_id": "notion-q", "verb": "search",    "args_template": { "query": "coverage:${policy_id}" },                            "risk_level": "LOW",    "proof_contract": "stdout+exit" },
+    { "id": "claim-create",             "name": "Claim record create",       "tool_id": "memo",     "verb": "log",       "args_template": { "topic": "claim:${claim_id}", "body": "${rendered}" },        "risk_level": "MEDIUM", "proof_contract": "stdout+exit" },
+    { "id": "claimant-first-contact",   "name": "Claimant first contact",    "tool_id": "comms",    "verb": "send-email","args_template": { "to": "${claimant_email}", "subject": "Claim ${claim_id} opened", "body": "${rendered}" }, "risk_level": "HIGH",   "proof_contract": "stdout+exit+log" },
+
+    { "id": "adjuster-assign",          "name": "Adjuster assignment",       "tool_id": "memo",     "verb": "log",       "args_template": { "topic": "adjuster:${claim_id}", "body": "${rendered}" },     "risk_level": "MEDIUM", "proof_contract": "stdout+exit" },
+    { "id": "inspection-schedule",      "name": "Inspection schedule",       "tool_id": "memo",     "verb": "log",       "args_template": { "topic": "inspection:${claim_id}", "body": "${rendered}" },   "risk_level": "MEDIUM", "proof_contract": "stdout+exit" },
+    { "id": "claim-sla-track",          "name": "Claim SLA track",           "tool_id": "memo",     "verb": "log",       "args_template": { "topic": "sla:${claim_id}", "body": "${rendered}" },          "risk_level": "LOW",    "proof_contract": "stdout+exit" },
+    { "id": "adjuster-escalate",        "name": "Adjuster escalate",         "tool_id": "comms",    "verb": "send-email","args_template": { "to": "${supervisor_email}", "subject": "Escalation: ${claim_id}", "body": "${rendered}" }, "risk_level": "HIGH",   "proof_contract": "stdout+exit+log" },
+    { "id": "claim-status-log",         "name": "Claim status log",          "tool_id": "memo",     "verb": "log",       "args_template": { "topic": "status:${claim_id}", "body": "${rendered}" },       "risk_level": "LOW",    "proof_contract": "stdout+exit" },
+
+    { "id": "policyholder-update-draft","name": "Policyholder update draft", "tool_id": "memo",     "verb": "log",       "args_template": { "topic": "update-draft:${claim_id}", "body": "${rendered}" }, "risk_level": "MEDIUM", "proof_contract": "stdout+exit" },
+    { "id": "policyholder-status-send", "name": "Policyholder status send",  "tool_id": "comms",    "verb": "send-email","args_template": { "to": "${claimant_email}", "subject": "Claim ${claim_id} update", "body": "${rendered}" }, "risk_level": "HIGH",   "proof_contract": "stdout+exit+log" },
+    { "id": "complaint-log",            "name": "Complaint log",             "tool_id": "memo",     "verb": "log",       "args_template": { "topic": "complaint:${claim_id}", "body": "${rendered}" },    "risk_level": "LOW",    "proof_contract": "stdout+exit" },
+    { "id": "escalation-route",         "name": "Escalation route",          "tool_id": "comms",    "verb": "send-sms",  "args_template": { "to": "${on_call_phone}", "body": "${rendered}" },           "risk_level": "HIGH",   "proof_contract": "stdout+exit+log" },
+
+    { "id": "compliance-check",         "name": "Compliance check",          "tool_id": "notion-q", "verb": "search",    "args_template": { "query": "compliance:${claim_id}" },                          "risk_level": "LOW",    "proof_contract": "stdout+exit" },
+    { "id": "denial-language-review",   "name": "Denial language review",    "tool_id": "memo",     "verb": "log",       "args_template": { "topic": "denial-review:${claim_id}", "body": "${rendered}" },"risk_level": "MEDIUM", "proof_contract": "stdout+exit" },
+    { "id": "regulatory-flag",          "name": "Regulatory flag",           "tool_id": "memo",     "verb": "log",       "args_template": { "topic": "reg-flag:${claim_id}", "body": "${rendered}" },     "risk_level": "MEDIUM", "proof_contract": "stdout+exit" },
+    { "id": "audit-trail-log",          "name": "Audit trail log",           "tool_id": "memo",     "verb": "log",       "args_template": { "topic": "audit:${claim_id}", "body": "${rendered}" },       "risk_level": "LOW",    "proof_contract": "stdout+exit" },
+
+    { "id": "renewal-prep-checklist",   "name": "Renewal prep checklist",    "tool_id": "memo",     "verb": "log",       "args_template": { "topic": "renewal:${policy_id}", "body": "${rendered}" },    "risk_level": "MEDIUM", "proof_contract": "stdout+exit" },
+    { "id": "renewal-pricing-draft",    "name": "Renewal pricing draft",     "tool_id": "memo",     "verb": "log",       "args_template": { "topic": "renewal-pricing:${policy_id}", "body": "${rendered}" }, "risk_level": "HIGH", "proof_contract": "stdout+exit+log" },
+    { "id": "producer-update-draft",    "name": "Producer update draft",     "tool_id": "comms",    "verb": "send-email","args_template": { "to": "${producer_email}", "subject": "Update on ${policy_id}", "body": "${rendered}" }, "risk_level": "HIGH",  "proof_contract": "stdout+exit+log" },
+    { "id": "loss-run-request",         "name": "Loss run request",          "tool_id": "memo",     "verb": "log",       "args_template": { "topic": "loss-run:${policy_id}", "body": "${rendered}" },   "risk_level": "MEDIUM", "proof_contract": "stdout+exit" },
+    { "id": "coi-request",              "name": "Certificate of Insurance",  "tool_id": "memo",     "verb": "log",       "args_template": { "topic": "coi:${policy_id}", "body": "${rendered}" },        "risk_level": "MEDIUM", "proof_contract": "stdout+exit" },
+
+    { "id": "document-request-send",    "name": "Document request",          "tool_id": "comms",    "verb": "send-email","args_template": { "to": "${claimant_email}", "subject": "Documents needed for claim ${claim_id}", "body": "${rendered}" }, "risk_level": "HIGH", "proof_contract": "stdout+exit+log" },
+    { "id": "document-receipt-track",   "name": "Document receipt track",    "tool_id": "memo",     "verb": "log",       "args_template": { "topic": "doc-receipt:${claim_id}", "body": "${rendered}" }, "risk_level": "LOW",    "proof_contract": "stdout+exit" },
+    { "id": "document-checklist",       "name": "Document checklist",        "tool_id": "memo",     "verb": "log",       "args_template": { "topic": "doc-checklist:${claim_id}", "body": "${rendered}" },"risk_level": "LOW",    "proof_contract": "stdout+exit" }
+  ],
+
+  "new_tools": [],
+
+  "approval_policy_overrides": [
+    { "tool_id": "comms",     "verb": "send-email", "risk_level": "HIGH",   "reason": "outbound policyholder/producer/adjuster email — operator co-signs" },
+    { "tool_id": "comms",     "verb": "send-sms",   "risk_level": "HIGH",   "reason": "outbound SMS for escalated complaints — operator co-signs" },
+    { "tool_id": "memo",      "verb": "log",        "risk_level": "LOW",    "reason": "local-only journal entries" }
+  ],
+
+  "approval_summary": {
+    "auto": [
+      "status lookups · claim-status-log · sla-track",
+      "internal task updates · audit-trail-log",
+      "document checklist creation · document-checklist",
+      "calendar lookups · inspection-schedule (internal)"
+    ],
+    "medium_optional_approval": [
+      "policyholder follow-up drafts · policyholder-update-draft",
+      "producer update drafts · producer-update-draft (draft only)",
+      "adjuster coordination drafts · adjuster-assign",
+      "renewal reminder drafts · renewal-prep-checklist"
+    ],
+    "high_required_approval": [
+      "claim denial language · denial-language-review",
+      "coverage interpretation · coverage-lookup (when surfaced as a customer answer)",
+      "compliance-sensitive responses · compliance-check (flagged)",
+      "customer-facing claim updates · policyholder-status-send",
+      "renewal pricing communication · renewal-pricing-draft → producer-update-draft",
+      "escalated complaint response · escalation-route"
+    ],
+    "blocked": [
+      "unauthorized claim approval/denial · any verb attempting to mark a claim approved/denied without operator sign-off",
+      "issuing binding coverage · any verb that attempts to bind",
+      "changing policy terms · any policy-mutation verb",
+      "deleting customer records · delete-customer pattern",
+      "exposing PII/secrets · expose-secret pattern",
+      "financial transfers · transfer-funds pattern"
+    ]
+  },
+
+  "seed_tasks": [
+    { "title": "Demo · New auto claim — rear-end, parking lot, no injuries",          "description": "FNOL from policyholder Emma Voss. Auto policy AU-117-552. Loss: rear-end in parking lot, no injuries. Triage, identify coverage, assign adjuster.",                                "employee_id": "iris-bennett",   "workflow_id": "claims_intake",                    "priority": "high"   },
+    { "title": "Demo · Homeowners FNOL — water damage, kitchen pipe burst",          "description": "FNOL from policyholder Marcus Ojo. HO policy HO-44-119. Pipe burst overnight, kitchen + basement affected. Estimated $18k. Triage + emergency mitigation referral.",        "employee_id": "iris-bennett",   "workflow_id": "claims_intake",                    "priority": "high"   },
+    { "title": "Demo · Document chase — 4 items outstanding on claim CL-9821",       "description": "Police report + 2 estimate quotes + W-9 outstanding on auto claim CL-9821. Send chase + track receipt.",                                                                  "employee_id": "theo-brooks",    "workflow_id": "policyholder_document_collection", "priority": "high"   },
+    { "title": "Demo · Document chase — homeowners receipts on claim CL-9847",       "description": "Receipts for 3 emergency repairs outstanding on homeowners claim CL-9847. Send polite chase + track receipt.",                                                            "employee_id": "theo-brooks",    "workflow_id": "policyholder_document_collection", "priority": "medium" },
+    { "title": "Demo · Adjuster schedule — 3 inspections this week",                 "description": "Three open claims need inspections scheduled this week — assign to Adjuster Park (auto), Adjuster Romero (property), Adjuster Khan (commercial).",                            "employee_id": "malcolm-price",  "workflow_id": "adjuster_scheduling",              "priority": "medium" },
+    { "title": "Demo · Renewal prep — 7 policies in the 60-day window",              "description": "Seven commercial policies have renewal due in the 60-day window. Pull loss runs, prep binder, queue producer updates.",                                                    "employee_id": "sofia-lane",     "workflow_id": "renewal_preparation",              "priority": "medium" },
+    { "title": "Demo · Renewal prep — 4 personal lines in 30-day window",            "description": "Four personal lines policies due in 30 days. Prep renewal binder + draft producer comms.",                                                                                 "employee_id": "sofia-lane",     "workflow_id": "renewal_preparation",              "priority": "medium" },
+    { "title": "Demo · Compliance exception — denial language flagged",              "description": "Draft denial letter for claim CL-9803 was flagged by the compliance check (regulatory tone). Review + suggest edit before send.",                                            "employee_id": "grant-mercer",   "workflow_id": "compliance_exception_review",      "priority": "high"   },
+    { "title": "Demo · Compliance exception — coverage explanation tone",            "description": "Draft customer-facing coverage explanation flagged for tone. Soften + escalate to operator review.",                                                                       "employee_id": "grant-mercer",   "workflow_id": "compliance_exception_review",      "priority": "medium" },
+    { "title": "Demo · Escalated complaint — claimant frustrated with delay",        "description": "Claimant called twice angry about delay on auto claim CL-9821. Page on-call + draft empathetic acknowledgement for operator review.",                                       "employee_id": "nina-flores",    "workflow_id": "escalated_complaint_routing",      "priority": "high"   },
+    { "title": "Demo · COI request — vendor needs proof of liability",               "description": "Vendor Lighthouse Detailing requested a current COI for the auto-liability program. Draft + queue for producer to issue.",                                                  "employee_id": "theo-brooks",    "workflow_id": "certificate_of_insurance_request", "priority": "medium" },
+    { "title": "Demo · Loss run request — broker prepping bid",                      "description": "Broker McKinney + Stout requested a 5-year loss run for the Marlowe Logistics account. Draft + queue for operator approval.",                                              "employee_id": "theo-brooks",    "workflow_id": "loss_run_request_processing",      "priority": "medium" }
+  ],
+
+  "dashboards": [
+    { "title": "Mission Control",   "route": "/mission-control",  "description": "Every seed task above lives here. Operators triage, route, supervise." },
+    { "title": "Approvals",         "route": "/approvals",        "description": "HIGH-tier ops (send claim email, renewal pricing comms, escalations) queue here for operator sign-off." },
+    { "title": "CLI Tools",         "route": "/cli",              "description": "The 27 skills bound to memo / comms / notion-q tools." },
+    { "title": "Runtime Registry",  "route": "/runtime-registry", "description": "Sees which AI runtime each employee maps to (hermes / claude-code)." },
+    { "title": "Personas",          "route": "/personas",         "description": "Optional — if the Hermes pantheon is installed, the 6 employees register as personas." }
+  ],
+
+  "proof_expectations": [
+    { "milestone": "post-install state ready",  "criteria": "GET /api/workforces/insurance/status returns installed_at + 6 employees + 12 workflows + ≥27 skills + ≥12 seed tasks" },
+    { "milestone": "Mission Control visible",   "criteria": "GET /api/tasks shows 12 insurance seed tasks linked to the workforce + employee fields" },
+    { "milestone": "Approval policy applied",   "criteria": "GET /api/tools/comms shows approval_policy=approval-required and risk_level=HIGH; sending a claim email queues an approval" },
+    { "milestone": "Demo data faithful",        "criteria": "All seed-task names + descriptions are clearly fictional (no real customer data); demo narrative copy renders without contradicting carrier-integration disclaimer" },
+    { "milestone": "Uninstall reverses",        "criteria": "POST /api/workforces/insurance/uninstall removes seed tasks + workforces.json entry; the registry returns to its pre-install state" }
+  ],
+
+  "narrative": {
+    "headline": "Insurance Operations Workforce",
+    "subheadline": "Claims, renewals, documents, and follow-ups handled through one supervised AI workforce.",
+    "executive_briefing": "Your insurance workforce has triaged new claims, flagged compliance-sensitive items, queued policyholder follow-ups, and prepared renewal tasks. Three items require human approval before customer-facing communication goes out.",
+    "value_highlights": [
+      "claim intake triaged faster",
+      "documents chased automatically",
+      "adjusters coordinated",
+      "renewal prep organized",
+      "compliance exceptions surfaced",
+      "every action logged with proof"
+    ],
+    "carrier_disclaimer": "Demo data only. No carrier integrations and no claims-management sync in this build."
+  }
+}

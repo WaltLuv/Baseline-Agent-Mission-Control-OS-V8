@@ -1,0 +1,63 @@
+Baseline Agent OS — Personal & Commercial Use License with Attribution
+========================================================================
+
+Copyright (c) 2026 Walter Thornton. All rights reserved.
+
+This software is distributed to operators in the Baseline Agent OS
+community for personal use AND commercial use in their own work
+(including client projects, freelance deliverables, and internal company
+tooling), subject to the conditions below.
+
+YOU MAY:
+  ✓ Use this software on machines you own or control
+  ✓ Modify it for your own use
+  ✓ Use it in commercial work — client projects, freelance jobs,
+    your day job, your own startup's internal tooling
+  ✓ Run it indefinitely on any number of personal or work machines
+
+YOU MUST:
+  ★ Provide visible attribution to "Baseline Agent OS" in any
+    public deliverable, presentation, blog post, video, social-media
+    post, or product page where this software materially contributed
+    to the work, with a link to:
+       https://github.com/WaltLuv/baseline-agent-os
+    A single line in the README, footer, credits screen, or
+    description is sufficient. Internal-only use (purely within your
+    own organisation, not shown to the public) does not require
+    attribution but it is appreciated.
+
+YOU MAY NOT:
+  ✗ Sell, rent, sublicense, or otherwise charge anyone for this
+    software (modified or unmodified)
+  ✗ Redistribute this software to anyone outside your own organisation
+    (whether publicly, privately, modified, or unmodified)
+  ✗ Re-upload this software to GitHub, GitLab, Bitbucket, package
+    registries (npm, pip, etc.), marketplaces, course platforms, or
+    any public or third-party source
+  ✗ Repackage this software — in whole or in substantial part — as a
+    product, course, template, starter kit, boilerplate, or similar
+    offering for distribution (free or paid)
+  ✗ Provide this software as a hosted/SaaS service to third parties
+  ✗ Remove this license notice or claim authorship of the software
+  ✗ Use the name "Baseline Agent OS" or the maintainer's name to
+    market your own product, service, course, or community
+  ✗ Use this software to build, train, or improve a competing
+    operator dashboard or AI-stack-observability product intended for
+    redistribution
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHOR OR COPYRIGHT HOLDER BE LIABLE FOR ANY
+CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+────────────────────────────────────────────────────────────────────
+Plain-English summary (not legally binding — see terms above):
+
+  Use it on every machine you own. Use it for client work and your
+  day job. Modify it however you want. Just credit Baseline Agent OS
+  where the work is shown publicly, and don't repackage it to sell or
+  redistribute.
+────────────────────────────────────────────────────────────────────

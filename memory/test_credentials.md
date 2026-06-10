@@ -16,9 +16,18 @@ AUTH_PASS=admin12345
 NEXT_PUBLIC_GATEWAY_OPTIONAL=true
 ```
 
-## API Key (auto-generated, headless access)
-Stored in `/app/.data/.auto-generated` after the first DB init.
+## API Key (headless access + Baseline OS sync)
+Configured in `/app/.env` as `API_KEY` and mirrored in `/app/baseline-os/.env.local` as `MC_API_KEY`:
+```
+mc_live_eba04a5e7773dc6901cb2699750c4c738ffd85ad5c33ac15
+```
 Use via `x-api-key` header for programmatic API calls.
+
+## Baseline OS ↔ Mission Control sync (June 2026)
+- Baseline OS console: `http://127.0.0.1:4173` (internal, started by `/app/baseline-os/launch.sh`)
+- Sync heartbeat loop: `mc sync watch --interval 60` (auto-started with the frontend)
+- Verify: `cd /app/baseline-os && bun run scripts/mc.ts sync doctor` (bun at `/app/.bun/bin/bun`)
+- MC runtime registry: `GET /api/runtime/handshake` with the `x-api-key` above
 
 ## Stripe
 **Mock / test mode** — no live keys configured.
@@ -34,7 +43,7 @@ Use via `x-api-key` header for programmatic API calls.
 Local fallback: use `AUTH_USER` / `AUTH_PASS` above.
 
 ## OpenClaw runtime (verified live)
-- External runtime URL: `https://keen-matsumoto-2.preview.emergentagent.com`
+- External runtime URL: `https://mission-control-v8.preview.emergentagent.com`
 - WebSocket: `wss://keen-matsumoto-2.preview.emergentagent.com/api/openclaw/ws`
 - Gateway token: `aee22098773e796a3fdf9bf1f3660a0635a08fdf7f3241add58714ceb549fd16`
 - Connector script: `/app/scripts/connect-runtime.mjs` — now supports BOTH `MC_SESSION` (cookie) AND `MC_API_KEY` (header `x-api-key`).

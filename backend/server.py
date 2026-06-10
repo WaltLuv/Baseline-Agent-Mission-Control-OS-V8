@@ -133,6 +133,14 @@ def _build_upstream_headers(request: Request) -> dict[str, str]:
         headers["x-forwarded-for"] = f"{prior}, {client_host}" if prior else client_host
     headers.setdefault("x-forwarded-proto", request.url.scheme)
     headers.setdefault("x-forwarded-host", request.url.netloc)
+    # Preserve the ORIGINAL Host header so Next.js' CSRF origin check
+    # (Origin host must equal Host header) passes when the platform
+    # ingress routes external traffic through this shim. Without this,
+    # httpx would set Host to 127.0.0.1:3000 and every mutating request
+    # would be rejected with "CSRF origin mismatch".
+    original_host = request.headers.get("host", "").strip()
+    if original_host:
+        headers["host"] = original_host
     return headers
 
 

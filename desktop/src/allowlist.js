@@ -22,7 +22,7 @@
 export const MODES = {
   emergent:     '',                              // filled in by operator after Emergent Deploy
   digitalocean: 'https://baseline-agents.com',   // canonical DO production host
-  staging:      'https://token-monetization.preview.emergentagent.com',
+  staging:      'https://mission-control-v8.preview.emergentagent.com',
   localhost:    'http://localhost:3000',
 }
 

@@ -1,0 +1,52 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <defs>
+    <linearGradient id="bos-gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fde68a"/>
+      <stop offset="55%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#b45309"/>
+    </linearGradient>
+    <linearGradient id="bos-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1c0f2e"/>
+      <stop offset="100%" stop-color="#0a0612"/>
+    </linearGradient>
+    <radialGradient id="bos-glow" cx="0.5" cy="0.35" r="0.7">
+      <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#fbbf24" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Rounded badge backdrop -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#bos-bg)" stroke="#fbbf24" stroke-opacity="0.35" stroke-width="1"/>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#bos-glow)"/>
+
+  <!-- King's crown: 3 points (middle tallest), each topped with a jewel -->
+  <g transform="translate(0,1)">
+    <!-- Crown base band -->
+    <path d="M 17 21 L 17 17 L 22 13 L 22 19 L 27 13 L 32 9 L 37 13 L 42 19 L 42 13 L 47 17 L 47 21 Z"
+          fill="url(#bos-gold)" stroke="#92400e" stroke-width="0.6" stroke-linejoin="round"/>
+    <!-- Band trim -->
+    <rect x="17" y="20.5" width="30" height="2.2" fill="#92400e" opacity="0.35" rx="0.5"/>
+    <!-- Jewels -->
+    <circle cx="22" cy="13" r="1.6" fill="#fee2a8" stroke="#92400e" stroke-width="0.4"/>
+    <circle cx="32" cy="9"  r="2.1" fill="#fee2a8" stroke="#92400e" stroke-width="0.5"/>
+    <circle cx="42" cy="13" r="1.6" fill="#fee2a8" stroke="#92400e" stroke-width="0.4"/>
+    <!-- Tiny highlight on the center jewel -->
+    <circle cx="31.4" cy="8.4" r="0.55" fill="#fff" opacity="0.85"/>
+  </g>
+
+  <!-- Letter B (Bricolage-ish, two stacked half-circles) -->
+  <g transform="translate(0,2)">
+    <path d="M 19 26
+             L 19 54
+             L 36 54
+             A 8 8 0 0 0 36 38
+             L 30 38
+             A 7 7 0 0 0 30 26 Z"
+          fill="url(#bos-gold)" stroke="#7c2d12" stroke-width="0.8" stroke-linejoin="round"/>
+    <!-- Carve out the two interior bowls so B reads cleanly -->
+    <path d="M 27 30 L 30 30 A 4 4 0 0 1 30 38 L 27 38 Z" fill="url(#bos-bg)"/>
+    <path d="M 27 42 L 35 42 A 5 5 0 0 1 35 50 L 27 50 Z" fill="url(#bos-bg)"/>
+    <!-- Subtle inner highlight on the front edge of B -->
+    <path d="M 19 27 L 19 53" stroke="#fde68a" stroke-width="1.2" opacity="0.55" stroke-linecap="round"/>
+  </g>
+</svg>

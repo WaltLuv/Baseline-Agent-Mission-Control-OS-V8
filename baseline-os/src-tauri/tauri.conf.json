@@ -1,0 +1,60 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Baseline Flight Deck",
+  "version": "0.1.0",
+  "identifier": "com.baseline.flightdeck",
+  "build": {
+    "frontendDist": "ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "Baseline Flight Deck",
+        "label": "main",
+        "width": 1120,
+        "height": 780,
+        "minWidth": 860,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    },
+    "trayIcon": {
+      "id": "main",
+      "iconPath": "icons/32x32.png",
+      "iconAsTemplate": false,
+      "tooltip": "Baseline Flight Deck"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "createUpdaterArtifacts": true,
+    "targets": ["app", "dmg"],
+    "category": "DeveloperTool",
+    "shortDescription": "Desktop cockpit for Baseline OS, Mission Control & local runtimes.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEYxMzE3ODc2OTNFRkUyNDAKUldSQTR1K1Rkbmd4OFhaQW5FWS9yQnM1Tlc3NTlGR3QvblE5ZUFhMW1hYjlRQU4wVWxUVTNnK3AK",
+      "endpoints": [
+        "https://releases.baseline-agents.com/flight-deck/{{target}}/{{arch}}/{{current_version}}"
+      ]
+    }
+  }
+}

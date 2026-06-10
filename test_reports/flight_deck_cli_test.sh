@@ -3,7 +3,7 @@
 set +e
 
 BASE_LOCAL="http://localhost:3000"
-BASE_PUB="${REACT_APP_BACKEND_URL:-https://token-monetization.preview.emergentagent.com}"
+BASE_PUB="${REACT_APP_BACKEND_URL:-https://mission-control-v8.preview.emergentagent.com}"
 
 PASS=0
 FAIL=0

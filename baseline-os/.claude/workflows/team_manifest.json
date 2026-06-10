@@ -1,0 +1,368 @@
+{
+  "$schema": "./schema/team_manifest.schema.json",
+  "version": 1,
+  "name": "12-Person Specialist Team",
+  "owner": "Walter Thornton",
+  "updated_at": "2026-06-04",
+  "patterns_supported": [
+    "classify_and_act",
+    "fan_out_and_synthesize",
+    "adversarial_verification",
+    "generate_and_filter",
+    "tournament",
+    "loop_until_done"
+  ],
+  "agents": [
+    {
+      "id": "receptionist",
+      "name": "Receptionist",
+      "domain": "front desk intake + classification",
+      "primary_model": "claude-sonnet-4-6",
+      "tools": [
+        "telegram-gateway",
+        "obsidian-capture",
+        "mc-router"
+      ],
+      "trigger_keywords": [
+        "inbound",
+        "new message",
+        "client said",
+        "telegram"
+      ],
+      "patterns": [
+        "classify_and_act"
+      ],
+      "owns_outputs": [
+        "intake_classification.json"
+      ]
+    },
+    {
+      "id": "dispatcher",
+      "name": "Dispatcher",
+      "domain": "work order generation + assignment",
+      "primary_model": "claude-sonnet-4-6",
+      "tools": [
+        "work-order-schema",
+        "tasks-api",
+        "personas-router"
+      ],
+      "trigger_keywords": [
+        "work order",
+        "maintenance",
+        "service request",
+        "WO"
+      ],
+      "patterns": [
+        "classify_and_act",
+        "loop_until_done"
+      ],
+      "owns_outputs": [
+        "work_order.json"
+      ]
+    },
+    {
+      "id": "account_manager",
+      "name": "Account Manager",
+      "domain": "client relationship + status updates",
+      "primary_model": "claude-sonnet-4-6",
+      "tools": [
+        "crm-readwrite",
+        "email-resend",
+        "obsidian-capture"
+      ],
+      "trigger_keywords": [
+        "client update",
+        "renewal",
+        "check-in",
+        "status"
+      ],
+      "patterns": [
+        "classify_and_act",
+        "generate_and_filter"
+      ],
+      "owns_outputs": [
+        "client_update.md"
+      ]
+    },
+    {
+      "id": "compliance_officer",
+      "name": "Compliance Officer",
+      "domain": "legal + operational risk audit",
+      "primary_model": "claude-opus-4-7",
+      "tools": [
+        "llm-wiki",
+        "policy-docs",
+        "audit-log"
+      ],
+      "trigger_keywords": [
+        "compliance",
+        "policy",
+        "legal"
+      ],
+      "patterns": [
+        "adversarial_verification"
+      ],
+      "owns_outputs": [
+        "compliance_audit.md"
+      ]
+    },
+    {
+      "id": "cfo",
+      "name": "CFO",
+      "domain": "pricing + margin + financial guardrails",
+      "primary_model": "claude-opus-4-7",
+      "tools": [
+        "pricing-engine",
+        "ledger-readonly",
+        "billing-events"
+      ],
+      "trigger_keywords": [
+        "pricing",
+        "margin",
+        "quote",
+        "discount"
+      ],
+      "patterns": [
+        "adversarial_verification"
+      ],
+      "owns_outputs": [
+        "financial_audit.md"
+      ]
+    },
+    {
+      "id": "sloane_kim",
+      "name": "Sloane Kim",
+      "domain": "Chief of Staff \u2014 strategic synthesis",
+      "primary_model": "claude-opus-4-7",
+      "tools": [
+        "board-deck",
+        "weekly-review",
+        "fan-out-controller"
+      ],
+      "trigger_keywords": [
+        "board deck",
+        "weekly review",
+        "strategy",
+        "goal"
+      ],
+      "patterns": [
+        "fan_out_and_synthesize",
+        "tournament"
+      ],
+      "owns_outputs": [
+        "board_deck.md",
+        "weekly_review.md"
+      ]
+    },
+    {
+      "id": "vanessa_holt",
+      "name": "Vanessa Holt",
+      "domain": "Marketing \u2014 copy + positioning",
+      "primary_model": "claude-sonnet-4-6",
+      "tools": [
+        "copy-generator",
+        "brand-guardrails",
+        "ad-templates"
+      ],
+      "trigger_keywords": [
+        "ad copy",
+        "headline",
+        "positioning",
+        "campaign"
+      ],
+      "patterns": [
+        "generate_and_filter",
+        "fan_out_and_synthesize"
+      ],
+      "owns_outputs": [
+        "ad_copy_variations.md",
+        "positioning_brief.md"
+      ]
+    },
+    {
+      "id": "mason_park",
+      "name": "Mason Park",
+      "domain": "Engineering \u2014 code review + architecture",
+      "primary_model": "claude-opus-4-7",
+      "tools": [
+        "code-review",
+        "bug-triage",
+        "architecture-diff"
+      ],
+      "trigger_keywords": [
+        "code review",
+        "architecture",
+        "bug",
+        "refactor"
+      ],
+      "patterns": [
+        "loop_until_done",
+        "adversarial_verification"
+      ],
+      "owns_outputs": [
+        "code_review.md",
+        "architecture_diff.md"
+      ]
+    },
+    {
+      "id": "rio_aoyama",
+      "name": "Rio Aoyama",
+      "domain": "Design \u2014 UI flows + visual systems",
+      "primary_model": "claude-sonnet-4-6",
+      "tools": [
+        "ui-flow-generator",
+        "design-tokens",
+        "screen-mock"
+      ],
+      "trigger_keywords": [
+        "UI",
+        "design",
+        "mockup",
+        "flow"
+      ],
+      "patterns": [
+        "generate_and_filter",
+        "fan_out_and_synthesize"
+      ],
+      "owns_outputs": [
+        "ui_flow_variations.md"
+      ]
+    },
+    {
+      "id": "dev_iyer",
+      "name": "Dev Iyer",
+      "domain": "Data \u2014 SQL + metric trees + filtering",
+      "primary_model": "claude-sonnet-4-6",
+      "tools": [
+        "sql-readwrite",
+        "metric-trees",
+        "churn-cohort-analysis"
+      ],
+      "trigger_keywords": [
+        "data",
+        "SQL",
+        "metric",
+        "cohort",
+        "churn"
+      ],
+      "patterns": [
+        "generate_and_filter",
+        "tournament"
+      ],
+      "owns_outputs": [
+        "data_filter_result.md",
+        "tournament_rankings.md"
+      ]
+    },
+    {
+      "id": "marco_deluca",
+      "name": "Marco DeLuca",
+      "domain": "Sales \u2014 outbound + closes",
+      "primary_model": "claude-sonnet-4-6",
+      "tools": [
+        "sales-sequencer",
+        "crm-readwrite",
+        "objection-handler"
+      ],
+      "trigger_keywords": [
+        "sales",
+        "outbound",
+        "close",
+        "pitch"
+      ],
+      "patterns": [
+        "classify_and_act",
+        "generate_and_filter"
+      ],
+      "owns_outputs": [
+        "sales_proposal.md"
+      ]
+    },
+    {
+      "id": "pia_sandoval",
+      "name": "Pia Sandoval",
+      "domain": "Support \u2014 customer issues + retention",
+      "primary_model": "claude-sonnet-4-6",
+      "tools": [
+        "support-inbox",
+        "knowledge-base",
+        "ticket-triage"
+      ],
+      "trigger_keywords": [
+        "support",
+        "issue",
+        "complaint",
+        "bug report"
+      ],
+      "patterns": [
+        "classify_and_act"
+      ],
+      "owns_outputs": [
+        "support_resolution.md"
+      ]
+    }
+  ],
+  "routing_table": {
+    "classify_and_act": [
+      {
+        "from": "receptionist",
+        "to": [
+          "dispatcher",
+          "account_manager",
+          "marco_deluca",
+          "pia_sandoval"
+        ]
+      }
+    ],
+    "fan_out_and_synthesize": [
+      {
+        "coordinator": "sloane_kim",
+        "workers": [
+          "vanessa_holt",
+          "rio_aoyama",
+          "dev_iyer"
+        ],
+        "synthesizer": "sloane_kim"
+      }
+    ],
+    "tournament": [
+      {
+        "coordinator": "sloane_kim",
+        "competitors": [
+          "vanessa_holt",
+          "rio_aoyama"
+        ],
+        "judge": "dev_iyer"
+      }
+    ],
+    "generate_and_filter": [
+      {
+        "generator": "vanessa_holt",
+        "filter": "dev_iyer",
+        "filter_count": 3
+      },
+      {
+        "generator": "rio_aoyama",
+        "filter": "dev_iyer",
+        "filter_count": 3
+      }
+    ],
+    "loop_until_done": [
+      {
+        "executor": "mason_park",
+        "verifier": "mason_park",
+        "max_iterations": 5,
+        "exit_condition": "zero_defects"
+      }
+    ],
+    "adversarial_verification": [
+      {
+        "auditors": [
+          "compliance_officer",
+          "cfo"
+        ],
+        "bounce_target": "originator"
+      }
+    ]
+  }
+}

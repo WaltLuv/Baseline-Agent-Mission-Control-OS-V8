@@ -1,5 +1,5 @@
 === Runtime Validation Proof — 20260529T085302Z ===
-Target: https://token-monetization.preview.emergentagent.com
+Target: https://mission-control-v8.preview.emergentagent.com
 
 PASS  login as admin
 
@@ -24,4 +24,4 @@ PASS  billing idempotent (1st=200, 2nd=200)
 PASS  telemetry session:start=200 session:end=200
 PASS  cleanup agent 6 HTTP 200
 
-All three runtime contracts verified against https://token-monetization.preview.emergentagent.com
+All three runtime contracts verified against https://mission-control-v8.preview.emergentagent.com

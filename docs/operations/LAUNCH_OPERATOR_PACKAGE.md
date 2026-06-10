@@ -42,7 +42,7 @@ MC_URL=https://baseline-agents.com \
 MC_SESSION="<copy mc-session cookie from your browser after logging in>" \
 RUNTIME_NAME=openclaw-prod-1 \
 RUNTIME_TYPE=openclaw \
-RUNTIME_URL=https://keen-matsumoto-2.preview.emergentagent.com \
+RUNTIME_URL=https://mission-control-v8.preview.emergentagent.com \
 RUNTIME_TOKEN=aee22098773e796a3fdf9bf1f3660a0635a08fdf7f3241add58714ceb549fd16 \
 RUNTIME_CAPABILITIES=browser,tool,execute \
 HEARTBEAT_MS=30000 \
@@ -237,7 +237,7 @@ Go to: https://console.cloud.google.com/apis/credentials → click the OAuth 2.0
 
 | Field | Value |
 |---|---|
-| Authorized JavaScript origins | `https://baseline-agents.com` <br/>`https://www.baseline-agents.com` <br/>`https://e3fc518c-8e0a-4829-ab12-14c781079505.preview.emergentagent.com` (current Emergent preview — add for dev testing; remove later) <br/>(optional) `http://localhost:3000` for local dev |
+| Authorized JavaScript origins | `https://baseline-agents.com` <br/>`https://www.baseline-agents.com` <br/>`https://mission-control-v8.preview.emergentagent.com` (current Emergent preview — add for dev testing; remove later) <br/>(optional) `http://localhost:3000` for local dev |
 | Authorized redirect URIs | `https://baseline-agents.com/api/auth/google/callback` |
 | OAuth consent screen — Publishing status | **In production** (not "Testing", which caps at 100 users) |
 | OAuth consent screen — User type | **External** |

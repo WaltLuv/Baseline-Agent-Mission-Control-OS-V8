@@ -9,7 +9,7 @@ import re
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://token-monetization.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://mission-control-v8.preview.emergentagent.com").rstrip("/")
 ADMIN_USER = "admin"
 ADMIN_PASS = "admin12345"
 UA = {"User-Agent": "Mozilla/5.0 (compatible; ActivationPassTest/1.0)"}

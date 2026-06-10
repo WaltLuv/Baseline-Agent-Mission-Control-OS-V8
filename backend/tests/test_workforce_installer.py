@@ -16,7 +16,7 @@ import pytest
 import requests
 
 BASE_URL = os.environ.get(
-    "REACT_APP_BACKEND_URL", "https://token-monetization.preview.emergentagent.com"
+    "REACT_APP_BACKEND_URL", "https://mission-control-v8.preview.emergentagent.com"
 ).rstrip("/")
 ADMIN_USER = "admin"
 ADMIN_PASS = "admin12345"

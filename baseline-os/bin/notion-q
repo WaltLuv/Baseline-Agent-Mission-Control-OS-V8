@@ -1,0 +1,85 @@
+#!/usr/bin/env bun
+/**
+ * notion-q — token-safe Notion API shim used by the Phase 3 Tool Registry.
+ *
+ * Why this exists:
+ *   The directive forbids "another framework / dashboard / orchestrator". It
+ *   also forbids exposing secrets via argv. The Notion CLI in CLI-Anything
+ *   isn't installed, so we ship a 60-line shim that:
+ *     · reads NOTION_TOKEN from env (never argv)
+ *     · supports 3 verbs: whoami, search <query>, page-get <id>
+ *     · prints JSON to stdout, exits 0 on success
+ *
+ * Tool Registry entry "notion-q" → cli_name = this script.
+ */
+
+const NOTION_TOKEN = (process.env.NOTION_TOKEN || "").trim();
+if (!NOTION_TOKEN) {
+  process.stderr.write("notion-q: NOTION_TOKEN missing from env\n");
+  process.exit(64);
+}
+
+const NOTION_VERSION = "2022-06-28";
+const BASE = "https://api.notion.com/v1";
+
+async function api(method: "GET" | "POST", path: string, body?: unknown): Promise<unknown> {
+  const r = await fetch(`${BASE}${path}`, {
+    method,
+    headers: {
+      "Authorization": `Bearer ${NOTION_TOKEN}`,
+      "Notion-Version": NOTION_VERSION,
+      "Content-Type": "application/json",
+    },
+    body: body == null ? undefined : JSON.stringify(body),
+  });
+  const text = await r.text();
+  let json: unknown = text;
+  try { json = JSON.parse(text); } catch { /* keep text */ }
+  if (!r.ok) {
+    process.stderr.write(`notion-q: HTTP ${r.status}: ${typeof json === "string" ? json.slice(0, 240) : JSON.stringify(json).slice(0, 240)}\n`);
+    process.exit(1);
+  }
+  return json;
+}
+
+async function main(): Promise<void> {
+  const [verb, ...rest] = process.argv.slice(2);
+
+  if (verb === "whoami") {
+    const out = await api("GET", "/users/me");
+    process.stdout.write(JSON.stringify(out, null, 2) + "\n");
+    return;
+  }
+
+  if (verb === "search") {
+    const query = rest.join(" ").trim();
+    if (!query) { process.stderr.write("notion-q: search requires a query\n"); process.exit(64); }
+    const out = await api("POST", "/search", { query, page_size: 10 });
+    // Surface a slimmer payload for operators while keeping the raw shape predictable
+    const results = ((out as any)?.results ?? []).map((r: any) => ({
+      id: r.id,
+      object: r.object,
+      title: (r.properties?.Name?.title?.[0]?.plain_text) ?? (r.properties?.title?.title?.[0]?.plain_text) ?? r.title?.[0]?.plain_text ?? null,
+      url: r.url ?? null,
+      last_edited_time: r.last_edited_time,
+    }));
+    process.stdout.write(JSON.stringify({ count: results.length, results }, null, 2) + "\n");
+    return;
+  }
+
+  if (verb === "page-get") {
+    const id = (rest[0] ?? "").trim();
+    if (!id) { process.stderr.write("notion-q: page-get requires <id>\n"); process.exit(64); }
+    const out = await api("GET", `/pages/${encodeURIComponent(id)}`);
+    process.stdout.write(JSON.stringify(out, null, 2) + "\n");
+    return;
+  }
+
+  process.stderr.write(`notion-q: unknown verb "${verb}"\nUsage: notion-q <whoami|search <query>|page-get <id>>\n`);
+  process.exit(64);
+}
+
+main().catch((e) => {
+  process.stderr.write(`notion-q: fatal: ${e?.message ?? String(e)}\n`);
+  process.exit(1);
+});

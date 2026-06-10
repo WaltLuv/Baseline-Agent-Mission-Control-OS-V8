@@ -1,0 +1,47 @@
+{
+  "summary": "Integration smoke testing of Mission Control v8 ↔ Baseline OS deployment setup. All 8 review-request scenarios verified. 12/12 pytest cases pass; browser login flow proven end-to-end (admin → /app dashboard, no CSRF mismatch). Backend proxy, API-key gate, runtime handshake, sync doctor + push, public marketing pages, and unauthenticated 401 all green.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "/api/runtime/handshake",
+        "issue": "Runtime health flips to 'red' between heartbeats (heartbeat interval is 60s, threshold appears <60s). After a fresh `bun run scripts/mc.ts sync push` both runtimes report health=green; ~60s later they may show red until the watch loop fires again. Not blocking but the review request expected steady green — consider tightening heartbeat interval to 30s or relaxing the green threshold to ≥90s."
+      },
+      {
+        "endpoint": "/login (HTML)",
+        "issue": "CSP violation in console: 'Executing inline script violates ... script-src self nonce-... strict-dynamic ...'. Coming from the Google Sign-In bootstrap. Login still works via username/password; cosmetic but worth fixing the nonce propagation on the GIS script tag."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_mc_baseline_integration.py",
+    "/app/test_reports/pytest/iteration_11_results.xml"
+  ],
+  "action_items": [
+    "(Optional) Tighten Baseline OS heartbeat cadence or relax the runtime 'green' staleness threshold so the handshake doesn't flip red between 60s pings.",
+    "(Optional) Add nonce to the Google Identity Services inline bootstrap so CSP doesn't warn on /login."
+  ],
+  "critical_code_review_comments": [
+    "Backend shim /app/backend/server.py reverse-proxy correctly preserves Host header for CSRF — login from external preview URL works as advertised.",
+    "API key gate in /app/src/proxy.ts accepts x-api-key for /api/runtime/handshake AND /api/agents (validated both 200 with key, 401 without).",
+    "Baseline OS sync CLI (/app/baseline-os/scripts/mc.ts) is the right shape: doctor returns structured JSON with ok-per-check; push returns pushed/failed/queued. Both consumed cleanly by pytest.",
+    "Standalone Next.js process is correctly launched via /app/.node22/bin/node /app/.next/standalone/server.js — supervisor logs show clean startup, migrations applied, scheduler running."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_mc_baseline_integration.py (new)",
+    "/app/test_reports/iteration_11.json (new)",
+    "/app/test_reports/pytest/iteration_11_results.xml (new)"
+  ],
+  "success_rate": {"backend": "100% (12/12)", "frontend": "100% (login + dashboard render verified)"},
+  "test_credentials": "admin / admin12345 (per /app/memory/test_credentials.md). x-api-key: mc_live_eba04a5e7773dc6901cb2699750c4c738ffd85ad5c33ac15.",
+  "seed_data_creation": "None — used existing seeded admin + the two Baseline OS runtimes already registered (claude-code@..., hermes@..., workspace_id=1).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Integration suite lives at /app/backend/tests/test_mc_baseline_integration.py — runs in ~2s and covers login, auth gates, x-api-key, public pages, baseline console (internal :4173), and the bun sync CLI doctor+push. Use REACT_APP_BACKEND_URL from /app/frontend/.env. If the Baseline OS watch loop dies, the handshake will return runtimes with health=red — fix is to relaunch via `cd /app/baseline-os && PATH=/app/.bun/bin:$PATH bun run scripts/mc.ts sync push`.",
+  "rca of the issue": "No blocking issues found. The previously reported CSRF origin mismatch (review-request item #7) is resolved — verified by both curl POST /api/auth/login (HTTP 200) and a real browser submission landing on /app. The fix in /app/backend/server.py preserving the original Host header is doing its job."
+}

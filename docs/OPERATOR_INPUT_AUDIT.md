@@ -11,12 +11,12 @@
 | 2 | **Stripe webhook secret** | ❌ NO | nowhere in repo / .env / memory | ❌ | ❌ | `whsec_*` |
 | 3 | **Google Client ID** | ✅ YES | `/app/.env` → `GOOGLE_CLIENT_ID=271101705254-...` + `NEXT_PUBLIC_GOOGLE_CLIENT_ID=` | ✅ wired | ✅ GIS button renders on `/login` | — |
 | 4 | **Google Client Secret** | ✅ YES | `/app/.env` → `GOOGLE_CLIENT_SECRET=GOCSPX-...` | ✅ wired | ✅ used by `/api/auth/google` id_token verify path | — |
-| 5 | **Google authorized origin** | ⚠️ Partial | `GOOGLE_REDIRECT_URI=https://baseline-agents.com/api/auth/google/callback` set; popup GIS flow doesn't use the redirect URI | ✅ wired | 🟡 button loads on preview URL `https://token-monetization.preview.emergentagent.com`. Full sign-in not exercised (would require a real Google account). | (operator) Confirm `https://baseline-agents.com` is in GCP Console → Credentials → "Authorized JavaScript origins" for production sign-ins from that host |
+| 5 | **Google authorized origin** | ⚠️ Partial | `GOOGLE_REDIRECT_URI=https://baseline-agents.com/api/auth/google/callback` set; popup GIS flow doesn't use the redirect URI | ✅ wired | 🟡 button loads on preview URL `https://mission-control-v8.preview.emergentagent.com`. Full sign-in not exercised (would require a real Google account). | (operator) Confirm `https://baseline-agents.com` is in GCP Console → Credentials → "Authorized JavaScript origins" for production sign-ins from that host |
 | 6 | **Resend API key** | ✅ YES | `/app/.env` → `MC_RESEND_API_KEY=re_8z35Lnyu_...` | ✅ wired | ✅ HTTP call made to Resend API, **403 returned by Resend** due to sandbox domain | — (key works) |
 | 7 | **Resend verified sender domain** | ❌ NOT YET | `/app/.env` → `MC_EMAIL_FROM=Baseline OS <onboarding@resend.dev>` (sandbox sender) | ✅ code path works | ❌ Resend rejects sends to anyone other than `newmoney2217@gmail.com` (the Resend account's own email). | (operator) Verify a domain at https://resend.com/domains, then set `MC_EMAIL_FROM=Baseline OS <hello@<verified-domain>>` in `/app/.env` |
 | 8 | **Flight Deck release tag** | ⚠️ Workflow exists, **tag not pushed** | `.github/workflows/flight-deck-release.yml` is production-ready (matrix now covers mac arm/x64, win-x64, linux-x64, linux-arm64) | ✅ workflow wired | ❌ no tag pushed yet | (operator) **I cannot push from this sandbox — no `origin` git remote**. Operator must run `git tag flight-deck-v0.1.0 && git push origin flight-deck-v0.1.0` from a local clone or use Emergent's "Save to Github" feature, then verify the matrix run |
 | 9 | **Runtime API key** | ✅ YES (multiple) | Workspace key in `/app/.data/.auto-generated`; agent-scoped `mca_` key (iter_4) `mca_ddbb4e8e5d31610b0f5b44162c16cc12a34b0d9ea8244a24` | ✅ wired | ✅ proved: 4 runtimes registered + heartbeated (iter_4); curl `-H "x-api-key: mca_..." /api/agents` returns 200 | — |
-| 10 | **OpenClaw token** | ✅ YES | `/app/.env` → `OPENCLAW_GATEWAY_TOKEN=aee22098...`, `OPENCLAW_GATEWAY_URL=https://keen-matsumoto-2.preview.emergentagent.com`, host/port/ws_url all set | ✅ wired | ✅ OpenClaw `/health` returned HTTP 200 just now | — |
+| 10 | **OpenClaw token** | ✅ YES | `/app/.env` → `OPENCLAW_GATEWAY_TOKEN=aee22098...`, `OPENCLAW_GATEWAY_URL=https://mission-control-v8.preview.emergentagent.com`, host/port/ws_url all set | ✅ wired | ✅ OpenClaw `/health` returned HTTP 200 just now | — |
 | 11 | **Hermes token** | ✅ N/A — uses shared `MC_API_KEY` | `connect-runtime.mjs` accepts the same mca_ key, RUNTIME_TYPE=hermes | ✅ wired | ✅ `proof-hermes-runtime` (agent id 3) registered + heartbeated in iter_4 | — |
 
 ## Verifications done in this pass
@@ -68,7 +68,7 @@ What WAS done in this pass: added Linux ARM64 to the workflow matrix
 
 ```bash
 $ curl -I -H "Authorization: Bearer aee22098..." \
-       https://keen-matsumoto-2.preview.emergentagent.com/health
+       https://mission-control-v8.preview.emergentagent.com/health
 HTTP/2 200 ✓
 ```
 

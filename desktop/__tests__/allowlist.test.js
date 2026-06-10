@@ -29,7 +29,7 @@ describe('Flight Deck — URL allowlist', () => {
   })
 
   it('accepts any *.emergentagent.com preview', () => {
-    expect(isAllowedUrl('https://abc123.preview.emergentagent.com')).toBe(true)
+    expect(isAllowedUrl('https://mission-control-v8.preview.emergentagent.com')).toBe(true)
     expect(isAllowedUrl('https://some-app.emergentagent.com')).toBe(true)
   })
 

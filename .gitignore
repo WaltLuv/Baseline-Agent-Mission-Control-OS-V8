@@ -108,3 +108,4 @@ scripts/seed-walt-admin.cjs
 
 # generated structural graph (regenerated on demand)
 graphify-out/
+.bun/

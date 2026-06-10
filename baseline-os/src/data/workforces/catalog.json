@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "generated_at": "2026-06-02T00:00:00.000Z",
+  "workforces": [
+    {
+      "id": "property-management",
+      "name": "Property Management Workforce",
+      "tagline": "Tenants happy. Owners informed. Maintenance handled.",
+      "vertical": "real-estate",
+      "color": "#22d3ee",
+      "icon": "Building2",
+      "status": "ready",
+      "headline_count": { "employees": 6, "workflows": 12, "skills": 15 },
+      "ready_in_minutes": 3
+    },
+    {
+      "id": "insurance",
+      "name": "Insurance Operations Workforce",
+      "tagline": "Claims triaged. Documents collected. Renewals prepped.",
+      "vertical": "insurance",
+      "color": "#06b6d4",
+      "icon": "Shield",
+      "status": "ready",
+      "headline_count": { "employees": 6, "workflows": 12, "skills": 27 },
+      "ready_in_minutes": 3
+    },
+    {
+      "id": "general-contractor",
+      "name": "General Contractor Workforce",
+      "tagline": "Bids out. Crews dispatched. Change orders tracked.",
+      "vertical": "construction",
+      "color": "#f59e0b",
+      "icon": "HardHat",
+      "status": "coming_soon",
+      "headline_count": { "employees": 0, "workflows": 0, "skills": 0 },
+      "ready_in_minutes": null
+    },
+    {
+      "id": "home-services",
+      "name": "Home Services Workforce",
+      "tagline": "Scheduling, dispatch, invoicing for residential trades.",
+      "vertical": "home-services",
+      "color": "#10b981",
+      "icon": "Wrench",
+      "status": "coming_soon",
+      "headline_count": { "employees": 0, "workflows": 0, "skills": 0 },
+      "ready_in_minutes": null
+    },
+    {
+      "id": "real-estate",
+      "name": "Real Estate Workforce",
+      "tagline": "Listings, leads, showings, closings — coordinated.",
+      "vertical": "real-estate",
+      "color": "#8b5cf6",
+      "icon": "Home",
+      "status": "coming_soon",
+      "headline_count": { "employees": 0, "workflows": 0, "skills": 0 },
+      "ready_in_minutes": null
+    },
+    {
+      "id": "mortgage",
+      "name": "Mortgage Workforce",
+      "tagline": "Pipeline triage, doc collection, lender comms.",
+      "vertical": "finance",
+      "color": "#f43f5e",
+      "icon": "Banknote",
+      "status": "coming_soon",
+      "headline_count": { "employees": 0, "workflows": 0, "skills": 0 },
+      "ready_in_minutes": null
+    },
+    {
+      "id": "cpa",
+      "name": "CPA Workforce",
+      "tagline": "Client books, deadlines, quarterly filings — handled.",
+      "vertical": "accounting",
+      "color": "#3b82f6",
+      "icon": "Calculator",
+      "status": "coming_soon",
+      "headline_count": { "employees": 0, "workflows": 0, "skills": 0 },
+      "ready_in_minutes": null
+    },
+    {
+      "id": "law-firm",
+      "name": "Law Firm Workforce",
+      "tagline": "Intake, conflicts, docs, billing — courtroom-ready.",
+      "vertical": "legal",
+      "color": "#a855f7",
+      "icon": "Scale",
+      "status": "coming_soon",
+      "headline_count": { "employees": 0, "workflows": 0, "skills": 0 },
+      "ready_in_minutes": null
+    },
+    {
+      "id": "agency",
+      "name": "Agency Workforce",
+      "tagline": "Pitches, briefs, content, client reporting.",
+      "vertical": "marketing",
+      "color": "#ec4899",
+      "icon": "Megaphone",
+      "status": "coming_soon",
+      "headline_count": { "employees": 0, "workflows": 0, "skills": 0 },
+      "ready_in_minutes": null
+    }
+  ]
+}

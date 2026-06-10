@@ -70,7 +70,7 @@ Flight Deck supports four presets plus a free-form custom URL.
 |---|---|---|
 | **Emergent Production** | (blank — paste your URL into Custom) | You deployed Mission Control via Emergent. Your URL looks like `https://your-app.emergent.host`. Paste it into the Custom URL field once; Flight Deck saves it. |
 | **DigitalOcean Production** | `https://baseline-agents.com` | Walter's canonical production deployment on DigitalOcean App Platform. |
-| **Staging / Preview** | `https://token-monetization.preview.emergentagent.com` | The active Emergent preview while iterating before launch. |
+| **Staging / Preview** | `https://mission-control-v8.preview.emergentagent.com` | The active Emergent preview while iterating before launch. |
 | **Localhost** | `http://localhost:3000` | Local dev. Custom port? Override via Custom URL — `http://localhost:3001` etc. are accepted. |
 | **Custom URL** | — | Any host in the allowlist (`*.emergent.host`, `*.emergentagent.com`, `baseline-agents.com`, `localhost`, `127.0.0.1`). Loopback may use http; everything else must be https. |
 
