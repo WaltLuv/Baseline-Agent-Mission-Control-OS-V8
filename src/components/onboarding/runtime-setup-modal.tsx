@@ -569,12 +569,11 @@ function HermesSetup({ onClose, onComplete }: { onClose: () => void; onComplete:
 
           {(() => {
             const PROVIDERS = [
-              { id: 'anthropic', label: 'Anthropic', hint: 'Claude', env: 'ANTHROPIC_API_KEY', hermesProvider: 'anthropic', models: ['claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5', 'claude-sonnet-4-5'] },
-              { id: 'openai', label: 'OpenAI', hint: 'GPT / o-series / Codex', env: 'OPENAI_API_KEY', hermesProvider: 'openai-codex', oauthHermesProvider: 'openai-codex', supportsDeviceCode: true, models: ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'o3', 'o4-mini', 'codex-mini-latest', 'gpt-5.3-codex'] },
-              { id: 'openrouter', label: 'OpenRouter', hint: '200+ models', env: 'OPENROUTER_API_KEY', hermesProvider: 'openrouter', models: ['anthropic/claude-sonnet-4-6', 'openai/gpt-4.1', 'google/gemini-2.5-pro', 'meta-llama/llama-4-maverick', 'deepseek/deepseek-r1'] },
-              { id: 'google', label: 'Google AI', hint: 'Gemini', env: 'GOOGLE_API_KEY', hermesProvider: 'google', models: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'] },
-              { id: 'nous', label: 'Nous Portal', hint: 'Free tier', env: 'NOUS_API_KEY', hermesProvider: 'nous', models: ['hermes-3-llama-3.1-70b', 'hermes-3-llama-3.1-8b', 'deephermes-3-llama-3.3-70b'] },
-              { id: 'xai', label: 'xAI', hint: 'Grok', env: 'XAI_API_KEY', hermesProvider: 'xai', models: ['grok-3', 'grok-3-mini', 'grok-2'] },
+              { id: 'anthropic', label: 'Anthropic', hint: 'Claude', env: 'ANTHROPIC_API_KEY', hermesProvider: 'anthropic', models: ['claude-opus-4-8', 'claude-sonnet-4-6', 'claude-haiku-4-5'] },
+              { id: 'openai', label: 'OpenAI', hint: 'GPT', env: 'OPENAI_API_KEY', hermesProvider: 'openai-codex', oauthHermesProvider: 'openai-codex', supportsDeviceCode: true, models: ['gpt-5.5'] },
+              { id: 'openrouter', label: 'OpenRouter', hint: '200+ models', env: 'OPENROUTER_API_KEY', hermesProvider: 'openrouter', models: ['anthropic/claude-opus-4-8', 'openai/gpt-5.5', 'google/gemini-3.5', 'qwen/qwen-3.7'] },
+              { id: 'google', label: 'Google AI', hint: 'Gemini', env: 'GOOGLE_API_KEY', hermesProvider: 'google', models: ['gemini-3.5', 'gemini-3.5-flash'] },
+              { id: 'xai', label: 'xAI', hint: 'Grok', env: 'XAI_API_KEY', hermesProvider: 'xai', models: ['grok-4'] },
             ] as const
             const currentProvider = PROVIDERS.find(p => p.id === providerType)
             const providerModels = currentProvider?.models || []

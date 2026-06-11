@@ -42,7 +42,13 @@ async function adminSession(): Promise<{ cookie: string; workspaceId: number }> 
   if (!m) throw new Error('no session cookie')
   // Email-verify the user so the verification gate on /api/workforce/install
   // (a sensitive action) admits this admin.
-  getDatabase().prepare('UPDATE users SET email_verified_at = unixepoch() WHERE email = ?').run(`wf_${ts}@acme.test`)
+  const db = getDatabase()
+  db.prepare('UPDATE users SET email_verified_at = unixepoch() WHERE email = ?').run(`wf_${ts}@acme.test`)
+  // Signup auto-provisions the PM demo workforce; these tests assert a CLEAN
+  // first install, so reset the auto-provisioned workforce-template state.
+  db.prepare(`DELETE FROM agents WHERE workspace_id = ? AND source LIKE 'workforce-template:%'`).run(data.workspace.id)
+  db.prepare(`DELETE FROM settings WHERE key LIKE ?`).run(`ws.${data.workspace.id}.workforce.%`)
+  db.prepare(`DELETE FROM tasks WHERE workspace_id = ? AND metadata LIKE '%"workforce_template"%'`).run(data.workspace.id)
   return { cookie: `mc-session=${m[1]}`, workspaceId: data.workspace.id }
 }
 

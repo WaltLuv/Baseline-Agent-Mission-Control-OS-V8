@@ -2,7 +2,12 @@
  * Token Cost Calculator - converts raw LLM token usage into wholesale cost,
  * applies markup, and converts to retail credits.
  * This is the missing link between provider billing and user-facing credits.
+ *
+ * LLM rates are DERIVED from the canonical provider-cost catalog
+ * (src/lib/billing/provider-cost-catalog.ts) — there is no separate hardcoded
+ * model price table here.
  */
+import { MODEL_COSTS } from '@/lib/billing/provider-cost-catalog'
 
 const DEFAULT_MARKUP = 2.5
 const CREDIT_DOLLAR = 0.01   // 1 credit = $0.01 retail equivalent
@@ -34,20 +39,25 @@ export interface CostResult {
   }
 }
 
-const PROVIDER_RATES: Record<string, { input1k: number; output1k: number; cache1k?: number }> = {
-  "anthropic/claude-sonnet-4":     { input1k: 0.003, output1k: 0.015 },
-  "anthropic/claude-opus-4":       { input1k: 0.015, output1k: 0.075 },
-  "anthropic/claude-3.5-sonnet":   { input1k: 0.003, output1k: 0.015 },
-  "anthropic/claude-haiku-3":      { input1k: 0.0008, output1k: 0.004 },
-  "openai/gpt-4o":                 { input1k: 0.0025, output1k: 0.01 },
-  "openai/gpt-4-turbo":            { input1k: 0.01, output1k: 0.03 },
-  "gemini/gemini-2.5-flash":       { input1k: 0.00015, output1k: 0.0006 },
-  "gemini/gemini-2.5-pro":         { input1k: 0.00125, output1k: 0.01 },
-  "qwen/qwen3-235b":               { input1k: 0.0002, output1k: 0.001 },
-  "groq/whisper":                  { input1k: 0.001, output1k: 0 },
-  "elevenlabs":                    { input1k: 0, output1k: 0 },
-  "default":                       { input1k: 0.003, output1k: 0.015 },
-}
+// Derived from the canonical catalog (per-1M → per-1k). Single source of truth.
+const PROVIDER_RATES: Record<string, { input1k: number; output1k: number; cache1k?: number }> = (() => {
+  const rates: Record<string, { input1k: number; output1k: number; cache1k?: number }> = {}
+  for (const m of MODEL_COSTS) {
+    const row = {
+      input1k: m.inputPerM / 1000,
+      output1k: m.outputPerM / 1000,
+      ...(m.cachedInputPerM != null ? { cache1k: m.cachedInputPerM / 1000 } : {}),
+    }
+    rates[m.model] = row
+    rates[m.model.split('/').pop()!] = row // bare-name key too
+  }
+  // Non-LLM + safe default (most-expensive current model so unknowns never under-charge).
+  rates['groq/whisper'] = { input1k: 0.001, output1k: 0 }
+  rates['elevenlabs'] = { input1k: 0, output1k: 0 }
+  const dearest = MODEL_COSTS.reduce((a, b) => (b.outputPerM > a.outputPerM ? b : a))
+  rates['default'] = { input1k: dearest.inputPerM / 1000, output1k: dearest.outputPerM / 1000 }
+  return rates
+})()
 
 function normalizeModel(model: string): string {
   if (!model) return "default"

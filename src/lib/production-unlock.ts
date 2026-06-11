@@ -202,7 +202,7 @@ export const UNLOCK_ITEMS: UnlockItem[] = [
     ['ollama'],
     'low',
     'Optional local/offline fallback engine for Agent Factory. Never required.',
-    'Install Ollama and pull a model (e.g. `ollama pull llama3.1`). Set the endpoint in Credentials → Ollama. This is an optional fallback only — Agent Factory builds through Claude Code by default.',
+    'Install Ollama and pull a model (e.g. `ollama pull qwen3`). Set the endpoint in Credentials → Ollama. This is an optional fallback only — Agent Factory builds through Claude Code by default.',
   ),
 ]
 

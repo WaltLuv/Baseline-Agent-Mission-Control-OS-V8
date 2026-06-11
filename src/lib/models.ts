@@ -6,27 +6,24 @@ export interface ModelConfig {
   costPer1k: number
 }
 
+// Current best-in-class (2026) premium models only — no deprecated families.
+// The featured/curated catalogue lives in src/lib/models/featured.ts; this
+// alias map mirrors the same current slugs for legacy alias→model lookups.
 export const MODEL_CATALOG: ModelConfig[] = [
   // Anthropic
-  { alias: 'haiku', name: 'anthropic/claude-haiku-4-5', provider: 'anthropic', description: 'Ultra-cheap, simple tasks', costPer1k: 0.25 },
-  { alias: 'sonnet', name: 'anthropic/claude-sonnet-4-6', provider: 'anthropic', description: 'Standard workhorse', costPer1k: 3.0 },
-  { alias: 'opus', name: 'anthropic/claude-opus-4-6', provider: 'anthropic', description: 'Premium quality', costPer1k: 15.0 },
+  { alias: 'opus', name: 'anthropic/claude-opus-4-8', provider: 'anthropic', description: 'Flagship reasoning, 1M context', costPer1k: 15.0 },
+  { alias: 'sonnet', name: 'anthropic/claude-sonnet-4-6', provider: 'anthropic', description: 'Fast high-quality workhorse / coding', costPer1k: 3.0 },
+  { alias: 'haiku', name: 'anthropic/claude-haiku-4-5', provider: 'anthropic', description: 'Fast, low-cost current Haiku', costPer1k: 0.8 },
   // OpenAI
-  { alias: 'gpt-4.1', name: 'openai/gpt-4.1', provider: 'openai', description: 'GPT-4.1 flagship', costPer1k: 2.0 },
-  { alias: 'gpt-4.1-mini', name: 'openai/gpt-4.1-mini', provider: 'openai', description: 'GPT-4.1 Mini, fast + cheap', costPer1k: 0.4 },
-  { alias: 'gpt-4.1-nano', name: 'openai/gpt-4.1-nano', provider: 'openai', description: 'GPT-4.1 Nano, ultra-fast', costPer1k: 0.1 },
-  { alias: 'codex-mini', name: 'openai/codex-mini-latest', provider: 'openai', description: 'Codex Mini, optimized for code', costPer1k: 1.5 },
+  { alias: 'gpt', name: 'openai/gpt-5.5', provider: 'openai', description: 'GPT-5.5 multimodal flagship (text/vision/voice)', costPer1k: 2.0 },
   // Google
-  { alias: 'gemini-2.5-pro', name: 'google/gemini-2.5-pro', provider: 'google', description: 'Gemini 2.5 Pro', costPer1k: 1.25 },
-  { alias: 'gemini-2.5-flash', name: 'google/gemini-2.5-flash', provider: 'google', description: 'Gemini 2.5 Flash, fast', costPer1k: 0.15 },
-  // Local / open-source
-  { alias: 'deepseek', name: 'ollama/deepseek-r1:14b', provider: 'ollama', description: 'Local reasoning (free)', costPer1k: 0.0 },
-  // Groq (hosted inference)
-  { alias: 'groq-fast', name: 'groq/llama-3.1-8b-instant', provider: 'groq', description: '840 tok/s, ultra fast', costPer1k: 0.05 },
-  { alias: 'groq', name: 'groq/llama-3.3-70b-versatile', provider: 'groq', description: 'Fast + quality balance', costPer1k: 0.59 },
+  { alias: 'gemini', name: 'google/gemini-3.5', provider: 'google', description: 'Gemini 3.5 — frontier multimodal', costPer1k: 1.25 },
+  { alias: 'gemini-flash', name: 'google/gemini-3.5-flash', provider: 'google', description: 'Gemini 3.5 Flash — fast + cheap', costPer1k: 0.15 },
+  // Open-weight (current)
+  { alias: 'qwen', name: 'qwen/qwen-3.7', provider: 'qwen', description: 'Qwen 3.7 — strong reasoning, large context', costPer1k: 0.6 },
+  { alias: 'qwen-fast', name: 'qwen/qwen-3.6', provider: 'qwen', description: 'Qwen 3.6 — fast + cheap', costPer1k: 0.3 },
   // Other providers
-  { alias: 'kimi', name: 'moonshot/kimi-k2.5', provider: 'moonshot', description: 'Alternative provider', costPer1k: 1.0 },
-  { alias: 'venice-llama-3.3-70b', name: 'venice/llama-3.3-70b', provider: 'venice', description: 'Venice AI Llama 3.3 70B', costPer1k: 0.7 },
+  { alias: 'kimi', name: 'moonshot/kimi-2.6', provider: 'moonshot', description: 'Kimi 2.6 — very long context', costPer1k: 1.0 },
   { alias: 'minimax', name: 'minimax/minimax-m2.1', provider: 'minimax', description: 'Cost-effective, strong coding', costPer1k: 0.3 },
 ]
 

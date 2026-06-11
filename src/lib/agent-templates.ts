@@ -102,27 +102,22 @@ export function getEffectiveToolGroups(): Record<string, readonly string[]> {
 
 const COMMON_DENY = ['clawhub', 'cron', 'gateway', 'nodes']
 
+// Current premium fallbacks only — used when the primary model is unavailable.
 const SONNET_FALLBACKS = [
-  'openrouter/anthropic/claude-sonnet-4',
-  'moonshot/kimi-k2-thinking',
-  'openrouter/moonshotai/kimi-k2.5',
-  'nvidia/moonshotai/kimi-k2-instruct',
-  'openai/codex-mini-latest',
-  'ollama/qwen2.5-coder:14b',
+  'anthropic/claude-sonnet-4-6',
+  'openrouter/anthropic/claude-sonnet-4-6',
+  'qwen/qwen-3.7',
 ]
 
 const OPUS_FALLBACKS = [
-  'anthropic/claude-sonnet-4-20250514',
-  'moonshot/kimi-k2-thinking',
-  'nvidia/moonshotai/kimi-k2-instruct',
-  'openrouter/moonshotai/kimi-k2.5',
-  'openai/codex-mini-latest',
+  'anthropic/claude-opus-4-8',
+  'openrouter/anthropic/claude-opus-4-8',
+  'qwen/qwen-3.7',
 ]
 
 const HAIKU_FALLBACKS = [
-  'anthropic/claude-sonnet-4-20250514',
-  'ollama/qwen2.5-coder:14b',
-  'openai/codex-mini-latest',
+  'anthropic/claude-haiku-4-5',
+  'google/gemini-3.5-flash',
 ]
 
 export const AGENT_TEMPLATES: AgentTemplate[] = [
@@ -135,7 +130,7 @@ export const AGENT_TEMPLATES: AgentTemplate[] = [
     toolCount: 23,
     config: {
       model: {
-        primary: 'anthropic/claude-opus-4-5',
+        primary: 'anthropic/claude-opus-4-8',
         fallbacks: OPUS_FALLBACKS,
       },
       identity: {
@@ -177,7 +172,7 @@ export const AGENT_TEMPLATES: AgentTemplate[] = [
     toolCount: 21,
     config: {
       model: {
-        primary: 'anthropic/claude-sonnet-4-20250514',
+        primary: 'anthropic/claude-sonnet-4-6',
         fallbacks: SONNET_FALLBACKS,
       },
       identity: {
@@ -187,7 +182,7 @@ export const AGENT_TEMPLATES: AgentTemplate[] = [
       },
       subagents: {
         allowAgents: [],
-        model: 'openai/codex-mini-latest',
+        model: 'anthropic/claude-sonnet-4-6',
       },
       sandbox: {
         mode: 'all',
@@ -221,7 +216,7 @@ export const AGENT_TEMPLATES: AgentTemplate[] = [
     toolCount: 15,
     config: {
       model: {
-        primary: 'anthropic/claude-sonnet-4-20250514',
+        primary: 'anthropic/claude-sonnet-4-6',
         fallbacks: SONNET_FALLBACKS,
       },
       identity: {
@@ -230,7 +225,7 @@ export const AGENT_TEMPLATES: AgentTemplate[] = [
         emoji: '\u2699\ufe0f',
       },
       subagents: {
-        model: 'openai/codex-mini-latest',
+        model: 'anthropic/claude-sonnet-4-6',
       },
       sandbox: {
         mode: 'all',
@@ -301,7 +296,7 @@ export const AGENT_TEMPLATES: AgentTemplate[] = [
     toolCount: 8,
     config: {
       model: {
-        primary: 'anthropic/claude-sonnet-4-20250514',
+        primary: 'anthropic/claude-sonnet-4-6',
         fallbacks: SONNET_FALLBACKS,
       },
       identity: {
@@ -382,7 +377,7 @@ export const AGENT_TEMPLATES: AgentTemplate[] = [
     toolCount: 10,
     config: {
       model: {
-        primary: 'anthropic/claude-sonnet-4-20250514',
+        primary: 'anthropic/claude-sonnet-4-6',
         fallbacks: SONNET_FALLBACKS,
       },
       identity: {

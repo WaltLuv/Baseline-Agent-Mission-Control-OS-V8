@@ -2,7 +2,7 @@
  * OpenRouter model sync.
  *
  * GET https://openrouter.ai/api/v1/models returns the full live catalogue
- * — provider-prefixed slugs (e.g. `openai/gpt-4o`), context window,
+ * — provider-prefixed slugs (e.g. `openai/gpt-5.5`), context window,
  * pricing, modality. We hit this every sync, upsert each row into
  * `model_catalog (source='openrouter')`, and mark missing rows
  * 'deprecated' so they stop showing up as selectable.

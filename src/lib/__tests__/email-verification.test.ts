@@ -60,7 +60,7 @@ async function signupSession(): Promise<{ cookie: string; userId: number; email:
 beforeAll(() => { runMigrations(getDatabase()) })
 
 describe('email verification — token lifecycle', () => {
-  it('1. signup creates an UNVERIFIED user and routes to /verify-email', async () => {
+  it('1. signup creates an UNVERIFIED user and routes to the demo workspace (verification in background)', async () => {
     uniq += 1
     const email = `s_${Date.now()}_${uniq}@acme.test`
     const res = await signupPOST(
@@ -71,7 +71,7 @@ describe('email verification — token lifecycle', () => {
       }),
     )
     const data = (await res.json()) as { user: { id: number }; next: string }
-    expect(data.next).toBe('/verify-email')
+    expect(data.next).toBe('/app/overview?activated=1&source=signup')
     const u = getUserById(data.user.id)!
     expect(u.email_verified_at == null).toBe(true)
     expect(isEmailVerified(u)).toBe(false)

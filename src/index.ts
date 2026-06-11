@@ -538,14 +538,15 @@ export const useMissionControl = create<MissionControlStore>()(
 
     // Model Configuration
     availableModels: [
-      { alias: 'haiku', name: 'anthropic/claude-3-5-haiku-latest', provider: 'anthropic', description: 'Ultra-cheap, simple tasks', costPer1k: 0.25 },
-      { alias: 'sonnet', name: 'anthropic/claude-sonnet-4-20250514', provider: 'anthropic', description: 'Standard workhorse', costPer1k: 3.0 },
-      { alias: 'opus', name: 'anthropic/claude-opus-4-5', provider: 'anthropic', description: 'Premium quality', costPer1k: 15.0 },
-      { alias: 'deepseek', name: 'ollama/deepseek-r1:14b', provider: 'ollama', description: 'Local reasoning (free)', costPer1k: 0.0 },
-      { alias: 'groq-fast', name: 'groq/llama-3.1-8b-instant', provider: 'groq', description: '840 tok/s, ultra fast', costPer1k: 0.05 },
-      { alias: 'groq', name: 'groq/llama-3.3-70b-versatile', provider: 'groq', description: 'Fast + quality balance', costPer1k: 0.59 },
-      { alias: 'kimi', name: 'moonshot/kimi-k2.5', provider: 'moonshot', description: 'Alternative provider', costPer1k: 1.0 },
-      { alias: 'minimax', name: 'minimax/minimax-m2.1', provider: 'minimax', description: 'Cost-effective (1/10th price), strong coding', costPer1k: 0.3 },
+      { alias: 'opus', name: 'anthropic/claude-opus-4-8', provider: 'anthropic', description: 'Flagship reasoning, 1M context', costPer1k: 15.0 },
+      { alias: 'sonnet', name: 'anthropic/claude-sonnet-4-6', provider: 'anthropic', description: 'Fast high-quality workhorse / coding', costPer1k: 3.0 },
+      { alias: 'haiku', name: 'anthropic/claude-haiku-4-5', provider: 'anthropic', description: 'Fast, low-cost current Haiku', costPer1k: 0.8 },
+      { alias: 'gpt', name: 'openai/gpt-5.5', provider: 'openai', description: 'GPT-5.5 multimodal flagship', costPer1k: 2.0 },
+      { alias: 'gemini', name: 'google/gemini-3.5', provider: 'google', description: 'Gemini 3.5 — frontier multimodal', costPer1k: 1.25 },
+      { alias: 'gemini-flash', name: 'google/gemini-3.5-flash', provider: 'google', description: 'Gemini 3.5 Flash — fast + cheap', costPer1k: 0.15 },
+      { alias: 'qwen', name: 'qwen/qwen-3.7', provider: 'qwen', description: 'Qwen 3.7 — strong reasoning', costPer1k: 0.6 },
+      { alias: 'kimi', name: 'moonshot/kimi-2.6', provider: 'moonshot', description: 'Kimi 2.6 — very long context', costPer1k: 1.0 },
+      { alias: 'minimax', name: 'minimax/minimax-m2.1', provider: 'minimax', description: 'Cost-effective, strong coding', costPer1k: 0.3 },
     ],
     setAvailableModels: (models) => set({ availableModels: models }),
 

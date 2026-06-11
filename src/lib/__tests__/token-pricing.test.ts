@@ -9,7 +9,7 @@ describe('token pricing', () => {
   })
 
   it('matches model aliases by short model name', () => {
-    const pricing = getModelPricing('gateway::claude-opus-4-6')
+    const pricing = getModelPricing('gateway::claude-opus-4-8')
     expect(pricing.inputPerMTok).toBe(15.0)
     expect(pricing.outputPerMTok).toBe(75.0)
   })
@@ -20,7 +20,7 @@ describe('token pricing', () => {
   })
 
   it('keeps local models at zero cost', () => {
-    const cost = calculateTokenCost('ollama/qwen2.5-coder:14b', 50_000, 50_000)
+    const cost = calculateTokenCost('ollama/qwen3', 50_000, 50_000)
     expect(cost).toBe(0)
   })
 

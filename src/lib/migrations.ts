@@ -1668,12 +1668,12 @@ const migrations: Migration[] = [
 
       // Seed pricing configs with real provider costs and 2.5x markup (14 entries)
       const pricingSeeds: Array<[string, string, string, number, number, number]> = [
-        ['llm_inference', 'openrouter', 'anthropic/claude-sonnet-4', 300, 750, 8],
-        ['llm_inference', 'openrouter', 'anthropic/claude-opus-4', 1500, 3750, 38],
-        ['llm_inference', 'openrouter', 'anthropic/claude-haiku', 80, 200, 3],
-        ['llm_inference', 'openrouter', 'openai/gpt-4o', 250, 625, 7],
-        ['llm_inference', 'openrouter', 'gemini/gemini-2.5-flash', 15, 38, 1],
-        ['llm_inference', 'openrouter', 'qwen/qwen3-235b', 20, 50, 1],
+        ['llm_inference', 'openrouter', 'anthropic/claude-opus-4-8', 1500, 3750, 38],
+        ['llm_inference', 'openrouter', 'anthropic/claude-sonnet-4-6', 300, 750, 8],
+        ['llm_inference', 'openrouter', 'anthropic/claude-haiku-4-5', 80, 200, 3],
+        ['llm_inference', 'openrouter', 'openai/gpt-5.5', 250, 625, 7],
+        ['llm_inference', 'openrouter', 'google/gemini-3.5-flash', 15, 38, 1],
+        ['llm_inference', 'openrouter', 'qwen/qwen-3.7', 20, 50, 1],
         ['tts_generation', 'elevenlabs', 'default', 500, 1250, 13],
         ['voice_transcription', 'groq', 'whisper', 50, 125, 2],
         ['image_generation', 'fal', 'default', 400, 1000, 10],

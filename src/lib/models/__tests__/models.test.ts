@@ -117,10 +117,10 @@ describe('featured + alias resolution', () => {
     const catalog = listModels()
     const featured = resolveFeatured(catalog)
     const claudeBestCoding = featured.find(
-      (f) => f.tier === 'best_coding' && f.model_slug === 'anthropic/claude-3.5-sonnet',
+      (f) => f.tier === 'best_coding' && f.model_slug === 'anthropic/claude-opus-4-8',
     )
     expect(claudeBestCoding).toBeDefined()
-    // If claude-3.5-sonnet has not been synced yet, it must be 'unavailable',
+    // If the current flagship has not been synced yet, it must be 'unavailable',
     // not silently hidden.
     if (!claudeBestCoding!.resolved) {
       expect(claudeBestCoding!.status).toBe('unavailable')
@@ -128,17 +128,17 @@ describe('featured + alias resolution', () => {
   })
 
   it('resolves an alias to the first available candidate slug', async () => {
-    // Plant gpt-4o-mini so latest-openai can resolve to it.
+    // Plant the current OpenAI flagship so latest-openai can resolve to it.
     await syncOpenRouterModels({
       fetcher: stubFetcher({
-        data: [{ id: 'openai/gpt-4o-mini', pricing: { prompt: '0.00000015', completion: '0.0000006' } }],
+        data: [{ id: 'openai/gpt-5.5', pricing: { prompt: '0.000002', completion: '0.000008' } }],
       }),
     })
     const aliases = resolveAliases(listModels())
     const latestOpenai = aliases.find((a) => a.alias === 'latest-openai')!
     expect(latestOpenai.status).toBe('available')
-    expect(latestOpenai.resolved?.model_slug).toBe('openai/gpt-4o-mini')
-    deleteModel('openrouter', 'openai/gpt-4o-mini')
+    expect(latestOpenai.resolved?.model_slug).toBe('openai/gpt-5.5')
+    deleteModel('openrouter', 'openai/gpt-5.5')
   })
 })
 

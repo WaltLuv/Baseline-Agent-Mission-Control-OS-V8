@@ -4,7 +4,7 @@ import { calculateTokenCosts } from '../token-cost-calculator'
 describe('token-cost-calculator', () => {
   it('applies the default 2.5x markup', () => {
     const r = calculateTokenCosts({
-      model: 'anthropic/claude-sonnet-4',
+      model: 'anthropic/claude-sonnet-4-6',
       provider: 'openrouter',
       inputTokens: 10_000,
       outputTokens: 5_000,
@@ -20,7 +20,7 @@ describe('token-cost-calculator', () => {
 
   it('never returns zero credits (Math.max(1, ...) safeguard)', () => {
     const r = calculateTokenCosts({
-      model: 'gemini/gemini-2.5-flash',
+      model: 'google/gemini-3.5-flash',
       inputTokens: 1,
       outputTokens: 1,
     })
@@ -41,7 +41,7 @@ describe('token-cost-calculator', () => {
 
   it('honors an explicit markup override', () => {
     const r = calculateTokenCosts({
-      model: 'openai/gpt-4o',
+      model: 'openai/gpt-5.5',
       inputTokens: 1000,
       outputTokens: 1000,
       markupMultiplier: 5,
@@ -52,16 +52,16 @@ describe('token-cost-calculator', () => {
 
   it('correctly prices each LLM provider in the table', () => {
     // Spot-check three providers to confirm correct rate lookup.
-    const sonnet = calculateTokenCosts({ model: 'anthropic/claude-sonnet-4', inputTokens: 1000, outputTokens: 1000 })
-    const opus = calculateTokenCosts({ model: 'anthropic/claude-opus-4', inputTokens: 1000, outputTokens: 1000 })
-    const flash = calculateTokenCosts({ model: 'gemini/gemini-2.5-flash', inputTokens: 1000, outputTokens: 1000 })
+    const sonnet = calculateTokenCosts({ model: 'anthropic/claude-sonnet-4-6', inputTokens: 1000, outputTokens: 1000 })
+    const opus = calculateTokenCosts({ model: 'anthropic/claude-opus-4-8', inputTokens: 1000, outputTokens: 1000 })
+    const flash = calculateTokenCosts({ model: 'google/gemini-3.5-flash', inputTokens: 1000, outputTokens: 1000 })
     expect(opus.wholesaleCostUsd).toBeGreaterThan(sonnet.wholesaleCostUsd)
     expect(flash.wholesaleCostUsd).toBeLessThan(sonnet.wholesaleCostUsd)
   })
 
   it('exposes a breakdown with input/output components', () => {
     const r = calculateTokenCosts({
-      model: 'openai/gpt-4o',
+      model: 'openai/gpt-5.5',
       inputTokens: 2000,
       outputTokens: 1000,
     })

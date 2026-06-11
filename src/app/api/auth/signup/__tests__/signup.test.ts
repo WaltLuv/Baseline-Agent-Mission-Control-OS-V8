@@ -50,8 +50,9 @@ describe('POST /api/auth/signup — customer self-signup', () => {
     expect(data.user.email).toBe(email)
     expect(data.user.role).toBe('admin')
     expect(data.workspace.id).toBeGreaterThan(1) // not the default workspace
-    // Email-verification P0: new signups must verify before activation.
-    expect(data.next).toBe('/verify-email')
+    // New signups land directly in the provisioned PM demo workspace; email
+    // verification happens in the background (sensitive features stay gated).
+    expect(data.next).toBe('/app/overview?activated=1&source=signup')
 
     // Session cookie set
     const setCookie = res.headers.get('set-cookie') || ''
@@ -154,9 +155,12 @@ describe('POST /api/auth/signup — customer self-signup', () => {
     expect(res.status).toBe(200)
     const { user, workspace } = await res.json()
 
-    // The new workspace must not see admin's task at all.
-    const visible = db.prepare(`SELECT id FROM tasks WHERE workspace_id = ?`).all(workspace.id) as Array<{ id: number }>
-    expect(visible).toHaveLength(0)
+    // The new workspace gets its OWN PM-demo tasks, but must not see ANY of
+    // workspace 1's tasks (no cross-tenant leakage).
+    const leaked = db
+      .prepare(`SELECT id FROM tasks WHERE workspace_id = ? AND title = 'ADMIN_PRIVATE'`)
+      .all(workspace.id) as Array<{ id: number }>
+    expect(leaked).toHaveLength(0)
 
     // And the new user is bound to the new workspace, not workspace 1.
     const dbUser = db.prepare(`SELECT workspace_id FROM users WHERE id = ?`).get(user.id) as { workspace_id: number }

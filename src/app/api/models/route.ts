@@ -35,7 +35,27 @@ export async function GET(request: NextRequest) {
   const featured = resolveFeatured(fullCatalog)
   const aliases = resolveAliases(fullCatalog)
 
+  // Provider internals (raw slugs, provider/source, sync counts, aliases) are
+  // advanced detail. Customers (viewer) see only friendly tier labels +
+  // display names; operator/admin get the full catalogue. Baseline OS, a
+  // separate product, always shows advanced detail.
+  const isAdvanced = auth.user.role === 'admin' || auth.user.role === 'operator'
+  if (!isAdvanced) {
+    return NextResponse.json({
+      view: 'customer',
+      summary: { available: fullCatalog.filter((r) => r.status === 'available').length },
+      featured: featured.map((f) => ({
+        tier: f.tier,
+        label: TIER_LABELS[f.tier] ?? f.tier,
+        display_name: f.resolved?.display_name ?? friendlyName(f.model_slug),
+        rationale: f.rationale,
+        status: f.status,
+      })),
+    })
+  }
+
   return NextResponse.json({
+    view: 'advanced',
     summary: {
       total: fullCatalog.length,
       by_source: bySource(fullCatalog),
@@ -46,6 +66,25 @@ export async function GET(request: NextRequest) {
     featured,
     aliases,
   })
+}
+
+/** Friendly tier labels shown to customers (no provider internals). */
+const TIER_LABELS: Record<string, string> = {
+  best_overall: 'Best overall',
+  best_reasoning: 'Best reasoning',
+  best_coding: 'Best coding',
+  best_cheap_fast: 'Best fast / cheap',
+  best_multimodal: 'Best multimodal',
+  best_voice_realtime: 'Best voice / realtime',
+  best_long_context: 'Best long-context',
+}
+
+/** Derive a human display name from a provider/slug without exposing the slug. */
+function friendlyName(slug: string): string {
+  const tail = slug.split('/').pop() ?? slug
+  return tail
+    .replace(/[-_]/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 function bySource(rows: ReturnType<typeof listModels>): Record<string, number> {

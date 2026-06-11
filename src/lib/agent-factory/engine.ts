@@ -71,8 +71,8 @@ export function deriveFactoryStatus(s: FactorySignals): FactoryStatus {
 
 /** Recommended local fallback models (only relevant if Walt opts into Ollama). */
 export const OLLAMA_RECOMMENDED_MODELS = [
-  { id: 'gemma2', note: 'solid all-rounder (~5 GB)' },
-  { id: 'qwen2.5-coder:14b', note: 'sharper code (16 GB+ RAM)' },
+  { id: 'gemma3', note: 'solid all-rounder (~5 GB)' },
+  { id: 'qwen3', note: 'sharper code + reasoning (16 GB+ RAM)' },
 ]
 
 /** Detect a connected Claude Code coding runtime from the runtime registry list. */

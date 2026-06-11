@@ -81,3 +81,14 @@ MC workflow estimates (show these, not model credits): Maintenance Request · Ow
 | `billing-panel.tsx` | Shows credits + model detail. | Fine as operator billing; ensure customer view rolls up to workflows. |
 
 **Next reconciliation pass (not done here — audit only):** build MC outcome-tier pricing page + workflow credit estimates; gate provider/model rate displays to Baseline OS / operator role; convert marketplace $ labels to credits.
+
+---
+
+## Single source of truth for cost (added 2026-06-11)
+
+Provider costs are centralized in `src/lib/billing/provider-cost-catalog.ts`
+and credit/margin math in `src/lib/billing/credit-pricing.ts`. No module
+hardcodes model prices anymore. See `docs/launch/PRICING_MODEL.md` for the
+source list, verification date, markup formula, margin guard, workflow pricing,
+and deprecated-model policy. Revenue-safety tests live in
+`src/lib/billing/__tests__/credit-pricing.test.ts`.

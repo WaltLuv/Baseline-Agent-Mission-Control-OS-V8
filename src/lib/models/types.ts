@@ -58,8 +58,11 @@ export type FeaturedTier =
   | 'best_coding'
   | 'best_reasoning'
   | 'best_cheap_fast'
-  | 'best_long_context'
   | 'best_multimodal'
+  | 'best_voice_realtime'
+  | 'best_long_context'
+  // Retained for back-compat with older rows; NOT populated by the current
+  // (current-premium-only) curated catalogue.
   | 'best_local'
   | 'best_free'
 

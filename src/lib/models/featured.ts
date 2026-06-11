@@ -1,153 +1,107 @@
 /**
- * Curated featured-model list — operator's manual override.
+ * Curated featured-model list — THE single source of truth for which models
+ * Mission Control features. Current best-in-class (2026) premium models only.
  *
- * Rule (Walt's spec): we DO NOT invent rumored slugs. Each entry below is
- * either an actually-released model id known to the operator OR an
- * OpenRouter alias that OpenRouter itself documents. If a slug stops being
- * available, the catalogue read marks it `unavailable` instead of hiding
- * the gap.
+ * Rules (Walt's spec):
+ *   · CURRENT, premium models only — no deprecated families (no GPT-3.5/4/4o,
+ *     no Claude 2/3/3.5, no Gemini 1.x/pro, no Llama/Mixtral/PaLM, no o1).
+ *   · We DO NOT invent rumored slugs. Each entry is an actually-released model
+ *     id OR an OpenRouter alias OpenRouter documents.
+ *   · Availability is resolved against the synced provider catalogue at read
+ *     time; an unsynced slug renders as `unavailable` (setup-needed), never
+ *     hidden — so the operator sees provider-access gaps honestly.
+ *   · No stale Haiku / silent down-routing.
+ *
+ * Deprecated slugs are enumerated in DEPRECATED_MODEL_PATTERNS below and
+ * guarded by a test so they cannot reappear anywhere in the codebase.
  */
 
 import type { FeaturedEntry } from './types'
 
 export const FEATURED_CATALOG: FeaturedEntry[] = [
-  // ── 2026 flagship models (added per operator instruction — high context,
-  //    reasoning, vision, voice, multimodal; for the complex workflows MC runs) ──
-  { tier: 'best_overall', source: 'openrouter', model_slug: 'anthropic/claude-opus-4-8', rationale: 'Claude Opus 4.8 — flagship reasoning, 1M context, vision + tool use. Default for complex execution.' },
-  { tier: 'best_overall', source: 'openrouter', model_slug: 'anthropic/claude-opus-4-7', rationale: 'Claude Opus 4.7 — high-reasoning predecessor, long context.' },
-  { tier: 'best_overall', source: 'openrouter', model_slug: 'openai/gpt-5.5', rationale: 'OpenAI GPT-5.5 — multimodal flagship (text/vision/voice).' },
-  { tier: 'best_reasoning', source: 'openrouter', model_slug: 'anthropic/claude-opus-4-8', rationale: 'Opus 4.8 deliberate reasoning for multi-step workflows.' },
-  { tier: 'best_reasoning', source: 'openrouter', model_slug: 'qwen/qwen-3.7', rationale: 'Qwen 3.7 — strong open-weight reasoning, large context.' },
-  { tier: 'best_cheap_fast', source: 'openrouter', model_slug: 'qwen/qwen-3.6', rationale: 'Qwen 3.6 — fast, capable, low cost.' },
-  { tier: 'best_multimodal', source: 'openrouter', model_slug: 'google/gemini-3.5', rationale: 'Gemini 3.5 — vision/voice/text multimodal, very large context.' },
-  { tier: 'best_cheap_fast', source: 'openrouter', model_slug: 'google/gemini-3.5-flash', rationale: 'Gemini 3.5 Flash — fast frontier, cheap; great for triage + intake.' },
-  { tier: 'best_long_context', source: 'openrouter', model_slug: 'moonshot/kimi-2.6', rationale: 'Kimi 2.6 — very long context for big-document workflows.' },
-  { tier: 'best_long_context', source: 'openrouter', model_slug: 'moonshot/kimi-2.5', rationale: 'Kimi 2.5 — long-context predecessor.' },
-
   // ── Best overall ────────────────────────────────────────────────
-  {
-    tier: 'best_overall',
-    source: 'openrouter',
-    model_slug: 'openai/gpt-4o',
-    rationale: 'OpenAI flagship multimodal; broad tool + image support, well-known reliability.',
-  },
-  {
-    tier: 'best_overall',
-    source: 'openrouter',
-    model_slug: 'anthropic/claude-3.5-sonnet',
-    rationale: 'Anthropic balanced flagship; strong tool use + long context.',
-  },
-
-  // ── Best coding ─────────────────────────────────────────────────
-  {
-    tier: 'best_coding',
-    source: 'openrouter',
-    model_slug: 'anthropic/claude-3.5-sonnet',
-    rationale: 'Top coding benchmark performer; preferred Claude Code default.',
-  },
-  {
-    tier: 'best_coding',
-    source: 'openrouter',
-    model_slug: 'deepseek/deepseek-chat',
-    rationale: 'High-quality code generation at low cost.',
-  },
+  { tier: 'best_overall', source: 'openrouter', model_slug: 'anthropic/claude-opus-4-8', rationale: 'Claude Opus 4.8 — flagship reasoning, 1M context, vision + tool use. Default for complex execution.' },
+  { tier: 'best_overall', source: 'openrouter', model_slug: 'openai/gpt-5.5', rationale: 'OpenAI GPT-5.5 — multimodal flagship (text / vision / voice).' },
+  { tier: 'best_overall', source: 'openrouter', model_slug: 'google/gemini-3.5', rationale: 'Gemini 3.5 — frontier multimodal, very large context.' },
 
   // ── Best reasoning ──────────────────────────────────────────────
-  {
-    tier: 'best_reasoning',
-    source: 'openrouter',
-    model_slug: 'openai/o1-preview',
-    rationale: 'OpenAI o1 family — deliberate chain-of-thought.',
-  },
-  {
-    tier: 'best_reasoning',
-    source: 'openrouter',
-    model_slug: 'deepseek/deepseek-r1',
-    rationale: 'Open-weight reasoning model with strong math/logic.',
-  },
+  { tier: 'best_reasoning', source: 'openrouter', model_slug: 'anthropic/claude-opus-4-8', rationale: 'Opus 4.8 — deliberate multi-step reasoning for complex workflows.' },
+  { tier: 'best_reasoning', source: 'openrouter', model_slug: 'qwen/qwen-3.7', rationale: 'Qwen 3.7 — strong open-weight reasoning, large context.' },
 
-  // ── Best cheap / fast ───────────────────────────────────────────
-  {
-    tier: 'best_cheap_fast',
-    source: 'openrouter',
-    model_slug: 'openai/gpt-4o-mini',
-    rationale: 'Cheap, fast, capable enough for most agent loops.',
-  },
-  {
-    tier: 'best_cheap_fast',
-    source: 'openrouter',
-    model_slug: 'google/gemini-flash-1.5',
-    rationale: 'Inexpensive Gemini variant — solid for triage + summarization.',
-  },
+  // ── Best coding ─────────────────────────────────────────────────
+  { tier: 'best_coding', source: 'openrouter', model_slug: 'anthropic/claude-opus-4-8', rationale: 'Top coding model — preferred Claude Code default.' },
+  { tier: 'best_coding', source: 'openrouter', model_slug: 'anthropic/claude-sonnet-4-6', rationale: 'Claude Sonnet 4.6 — fast, high-quality coding for high-volume PR/diff work.' },
 
-  // ── Best long context ───────────────────────────────────────────
-  {
-    tier: 'best_long_context',
-    source: 'openrouter',
-    model_slug: 'google/gemini-pro-1.5',
-    rationale: 'Multi-million-token context window for whole-codebase tasks.',
-  },
-  {
-    tier: 'best_long_context',
-    source: 'openrouter',
-    model_slug: 'anthropic/claude-3.5-sonnet',
-    rationale: 'Reliable 200k context with high-quality retrieval.',
-  },
+  // ── Best fast / cheap ───────────────────────────────────────────
+  { tier: 'best_cheap_fast', source: 'openrouter', model_slug: 'google/gemini-3.5-flash', rationale: 'Gemini 3.5 Flash — fast frontier, cheap; great for triage + intake.' },
+  { tier: 'best_cheap_fast', source: 'openrouter', model_slug: 'qwen/qwen-3.6', rationale: 'Qwen 3.6 — fast, capable, low cost.' },
 
   // ── Best multimodal ─────────────────────────────────────────────
-  {
-    tier: 'best_multimodal',
-    source: 'openrouter',
-    model_slug: 'openai/gpt-4o',
-    rationale: 'Strong image + audio handling alongside text.',
-  },
-  {
-    tier: 'best_multimodal',
-    source: 'openrouter',
-    model_slug: 'google/gemini-pro-1.5',
-    rationale: 'Native multimodal across image / audio / video.',
-  },
+  { tier: 'best_multimodal', source: 'openrouter', model_slug: 'google/gemini-3.5', rationale: 'Gemini 3.5 — native image / audio / video + text.' },
+  { tier: 'best_multimodal', source: 'openrouter', model_slug: 'openai/gpt-5.5', rationale: 'GPT-5.5 — strong multimodal (image + audio) alongside text.' },
 
-  // ── Best local ──────────────────────────────────────────────────
-  {
-    tier: 'best_local',
-    source: 'ollama',
-    model_slug: 'qwen2.5-coder:32b',
-    rationale: 'Strong local coding model. Requires Ollama configured.',
-  },
-  {
-    tier: 'best_local',
-    source: 'ollama',
-    model_slug: 'llama3.3:70b',
-    rationale: 'High-capability general local model. Requires Ollama configured.',
-  },
+  // ── Best voice / realtime ───────────────────────────────────────
+  { tier: 'best_voice_realtime', source: 'openrouter', model_slug: 'openai/gpt-5.5', rationale: 'GPT-5.5 — realtime voice + low-latency multimodal turns.' },
+  { tier: 'best_voice_realtime', source: 'openrouter', model_slug: 'google/gemini-3.5-flash', rationale: 'Gemini 3.5 Flash — low-latency realtime / voice.' },
 
-  // ── Best free / OpenRouter free ─────────────────────────────────
-  {
-    tier: 'best_free',
-    source: 'openrouter',
-    model_slug: 'meta-llama/llama-3.3-70b-instruct:free',
-    rationale: 'OpenRouter free-tier Llama 3.3 70B variant.',
-  },
-  {
-    tier: 'best_free',
-    source: 'openrouter',
-    model_slug: 'google/gemini-flash-1.5:free',
-    rationale: 'OpenRouter free-tier Gemini Flash.',
-  },
+  // ── Best long context ───────────────────────────────────────────
+  { tier: 'best_long_context', source: 'openrouter', model_slug: 'anthropic/claude-opus-4-8', rationale: 'Opus 4.8 — 1M-token context for large-document workflows.' },
+  { tier: 'best_long_context', source: 'openrouter', model_slug: 'moonshot/kimi-2.6', rationale: 'Kimi 2.6 — very long context for big-document workflows.' },
 ]
 
 /**
- * Alias resolution. For each alias we name two or three candidate slugs in
- * priority order; the resolver picks the first one present in the synced
- * catalogue.
+ * Alias resolution — each alias names candidate slugs in priority order; the
+ * resolver picks the first present in the synced catalogue. Current models only.
  */
 export const ALIASES: Record<string, string[]> = {
-  'latest-openai': ['openai/gpt-4o', 'openai/gpt-4o-mini', 'openai/gpt-4-turbo'],
-  'latest-anthropic': ['anthropic/claude-3.5-sonnet', 'anthropic/claude-3-opus'],
-  'latest-google': ['google/gemini-pro-1.5', 'google/gemini-flash-1.5'],
-  'best-coding': ['anthropic/claude-3.5-sonnet', 'deepseek/deepseek-chat', 'openai/gpt-4o'],
-  'best-reasoning': ['openai/o1-preview', 'deepseek/deepseek-r1', 'anthropic/claude-3.5-sonnet'],
-  'cheapest-fast': ['openai/gpt-4o-mini', 'google/gemini-flash-1.5', 'mistralai/mistral-small'],
-  'local-default': ['qwen2.5-coder:32b', 'llama3.3:70b'],
+  'latest-openai': ['openai/gpt-5.5'],
+  'latest-anthropic': ['anthropic/claude-opus-4-8', 'anthropic/claude-sonnet-4-6'],
+  'latest-google': ['google/gemini-3.5', 'google/gemini-3.5-flash'],
+  'best-coding': ['anthropic/claude-opus-4-8', 'anthropic/claude-sonnet-4-6'],
+  'best-reasoning': ['anthropic/claude-opus-4-8', 'qwen/qwen-3.7'],
+  'cheapest-fast': ['google/gemini-3.5-flash', 'qwen/qwen-3.6'],
+}
+
+/**
+ * Deprecated model families — must NOT appear anywhere customer-facing in
+ * Mission Control. Enforced by the no-deprecated-models test.
+ * (Substring/regex fragments; matched case-insensitively.)
+ */
+export const DEPRECATED_MODEL_PATTERNS: RegExp[] = [
+  /gpt-3\.5/i,
+  /gpt-4o/i, // gpt-4o, gpt-4o-mini
+  /gpt-4\.1/i,
+  /gpt-4-turbo/i,
+  /gpt-4-32k/i,
+  /\bo1-(preview|mini)\b/i,
+  /claude-2/i,
+  /claude-instant/i,
+  /claude-3[.\-]/i, // claude-3-*, claude-3.5-*, claude-3-5-*
+  /gemini-1\.[05]/i,
+  /gemini-pro/i,
+  /gemini-flash-1\.5/i,
+  /text-davinci/i,
+  /\bpalm-?2?\b/i,
+  /chat-bison/i,
+  /\bmixtral\b/i,
+  /llama-?[23][.\d-]/i, // llama-2 / 3 / 3.1 / 3.3
+  /llama3[.:]/i, // llama3.3:70b, llama3.1
+  /deepseek-(chat|r1)/i,
+  /qwen2\.5/i,
+]
+
+/** The canonical set of current model slugs MC features (for assertions/UX). */
+export const CURRENT_MODEL_SLUGS: string[] = Array.from(
+  new Set(FEATURED_CATALOG.map((e) => e.model_slug)),
+)
+
+/** Canonical default model slugs — every seeded agent / default reads these,
+ *  so there is one place to bump when the flagship changes. */
+export const DEFAULT_MODEL_SLUG = 'anthropic/claude-opus-4-8'
+export const DEFAULT_CODING_MODEL_SLUG = 'anthropic/claude-sonnet-4-6'
+export const DEFAULT_FAST_MODEL_SLUG = 'google/gemini-3.5-flash'
+
+/** True if a model slug/name belongs to a deprecated family. */
+export function isDeprecatedModel(slug: string): boolean {
+  return DEPRECATED_MODEL_PATTERNS.some((re) => re.test(slug))
 }
