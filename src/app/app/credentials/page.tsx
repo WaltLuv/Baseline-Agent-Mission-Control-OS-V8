@@ -144,6 +144,8 @@ export default function CredentialsPage() {
   const [publicConfig, setPublicConfig] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null)
 
   const reload = useCallback(async () => {
     setError(null)
@@ -200,6 +202,26 @@ export default function CredentialsPage() {
       setSaveError(e instanceof Error ? e.message : 'save failed')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function testActive() {
+    if (!active) return
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const res = await fetch(`/api/credentials/${active.id}/test`, { method: 'POST' })
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; status?: string; error?: string; hint?: string }
+      if (res.ok && json.ok) {
+        setTestResult({ ok: true, msg: 'Connection verified' })
+      } else {
+        setTestResult({ ok: false, msg: json.error ?? json.hint ?? `HTTP ${res.status}` })
+      }
+      await reload()
+    } catch (e) {
+      setTestResult({ ok: false, msg: e instanceof Error ? e.message : 'test failed' })
+    } finally {
+      setTesting(false)
     }
   }
 
@@ -329,6 +351,7 @@ export default function CredentialsPage() {
                   setSecrets({})
                   setPublicConfig(p.saved?.public_config ?? {})
                   setSaveError(null)
+                  setTestResult(null)
                 }}
                 className="text-left rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 hover:border-white/[0.18] transition-colors"
               >
@@ -471,6 +494,15 @@ export default function CredentialsPage() {
                 </div>
               )}
 
+              {testResult && (
+                <div
+                  data-testid="credentials-test-result"
+                  className={`mt-4 rounded-lg border px-3 py-2 text-sm ${testResult.ok ? 'border-emerald-500/30 bg-emerald-500/[0.06] text-emerald-200' : 'border-red-500/30 bg-red-500/[0.06] text-red-200'}`}
+                >
+                  {testResult.ok ? '✓ ' : '✗ '}{testResult.msg}
+                </div>
+              )}
+
               <div className="mt-6 flex items-center justify-between gap-3">
                 <button
                   type="button"
@@ -481,6 +513,18 @@ export default function CredentialsPage() {
                 >
                   {GOOGLE_SERVICES.has(active.id) && active.saved ? 'Disconnect' : 'Delete'}
                 </button>
+                {active.test_connection_supported && !GOOGLE_SERVICES.has(active.id) && (
+                  <button
+                    type="button"
+                    disabled={!active.saved || testing}
+                    onClick={testActive}
+                    data-testid="credentials-test"
+                    title={active.saved ? 'Test the saved credential against the provider' : 'Save a credential first'}
+                    className="h-10 px-4 rounded-lg border border-white/15 text-sm font-medium text-white/90 hover:bg-white/5 disabled:opacity-40"
+                  >
+                    {testing ? 'Testing…' : 'Test connection'}
+                  </button>
+                )}
                 <button
                   type="button"
                   disabled={saving || (encryptionWarning ?? false) || GOOGLE_SERVICES.has(active.id)}

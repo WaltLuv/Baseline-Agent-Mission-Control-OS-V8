@@ -69,23 +69,36 @@ test.describe('Credentials page scrolling', () => {
         .catch(() => false)
 
       if (hydrated) {
+        // Last provider below the fold is reachable (no overflow-hidden trap)…
         const lastCard = cards.last()
         await lastCard.scrollIntoViewIfNeeded()
         await expect(lastCard).toBeVisible()
-        await lastCard.click()
+        // …and document scroll genuinely exceeds the viewport.
+        expect(await page.evaluate(() => {
+          const el = document.scrollingElement as HTMLElement
+          return el.scrollHeight > el.clientHeight
+        })).toBe(true)
+
+        // Full lower-page input → save → mask → Test Connection on a
+        // test-supported provider (OpenAI).
+        const oa = page.getByTestId('credential-card-openai')
+        await oa.scrollIntoViewIfNeeded()
+        await oa.click()
         await expect(page.getByTestId('credentials-drawer')).toBeVisible()
-        const secret = page.locator('[data-testid^="credentials-secret-"]').first()
-        if (await secret.count()) {
-          await expect(secret).toHaveAttribute('type', 'password') // masked
-          await secret.fill('e2e-test-secret-value-123')
-          await expect(secret).toHaveValue('e2e-test-secret-value-123')
-          const save = page.getByTestId('credentials-save')
-          await save.scrollIntoViewIfNeeded()
-          await expect(save).toBeVisible()
-          if (await save.isEnabled()) {
-            await save.click()
-            await expect(page.getByTestId('credentials-drawer')).toBeHidden({ timeout: 10000 })
-          }
+        const secret = page.getByTestId('credentials-secret-api_key')
+        await expect(secret).toHaveAttribute('type', 'password') // masked input
+        await secret.fill('e2e-test-secret-value-123')
+        await expect(secret).toHaveValue('e2e-test-secret-value-123')
+        const save = page.getByTestId('credentials-save')
+        await save.scrollIntoViewIfNeeded()
+        await expect(save).toBeVisible()
+        if (await save.isEnabled()) {
+          await save.click()
+          await page.waitForTimeout(1000)
+          // Raw secret must NEVER be exposed in the DOM after save.
+          expect(await page.content()).not.toContain('e2e-test-secret-value-123')
+          // Test Connection control is reachable once a credential is saved.
+          await expect(page.getByTestId('credentials-test')).toBeVisible()
         }
       } else {
         console.warn('[credentials-scroll] catalog did not hydrate (e2e static-asset MIME) — scroll P0 still verified via SSR')
