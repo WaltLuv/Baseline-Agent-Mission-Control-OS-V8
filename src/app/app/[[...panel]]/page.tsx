@@ -82,6 +82,7 @@ import { ChatPanel } from '@/components/chat/chat-panel'
 import { HelpPanel } from '@/components/help/help-panel'
 import { FirstRunTour } from '@/components/help/first-run-tour'
 import { SetupChecklist } from '@/components/help/setup-checklist'
+import { PmOpsStrip } from '@/components/pm/pm-ops-strip'
 import { GuidedDemoTour } from '@/components/demo/guided-demo-tour'
 import { DemoShareGate } from '@/components/demo/demo-share-gate'
 import { DemoWatermark } from '@/components/demo/demo-watermark'
@@ -612,6 +613,7 @@ function ContentRouter({ tab }: { tab: string }) {
           <div className="p-4 space-y-4">
             <SetupChecklist />
             <BaselineSystemIdentityStrip />
+            <PmOpsStrip />
             <DailyBriefPanel />
             <ExecutiveBriefing />
             <AIEmployeeLifeRoster />

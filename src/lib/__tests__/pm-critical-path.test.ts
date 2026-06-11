@@ -127,8 +127,10 @@ describe('panels + APIs wired', () => {
   it('owner-approvals inbox renders pending + approve/deny/info', () => {
     expect(appr).toContain('data-testid="owner-approvals-panel"')
     expect(appr).toContain('data-testid="approvals-pending"')
-    expect(appr).toContain("decide(a.id, 'approved')")
-    expect(appr).toContain("decide(a.id, 'denied')")
-    expect(appr).toContain("decide(a.id, 'info_requested')")
+    expect(appr).toContain("decide(a, 'approved')")
+    expect(appr).toContain("decide(a, 'denied')")
+    expect(appr).toContain("decide(a, 'info_requested')")
+    // approval success sequence wired to the real decision response
+    expect(appr).toContain('ApprovalSuccessSequence')
   })
 })

@@ -7,6 +7,7 @@ import { logger } from '@/lib/logger'
 import { sendVerificationEmail } from '@/lib/email-verification'
 import { getBusinessTemplate, BUSINESS_TEMPLATES } from '@/lib/business-templates'
 import { upsertMembership } from '@/lib/memberships'
+import { provisionFirstRunDemo } from '@/lib/pm/first-run-demo'
 
 /**
  * Customer self-signup.
@@ -153,6 +154,12 @@ export async function POST(request: Request) {
 
     const { user, workspaceId } = txn()
 
+    // Default onboarding experience: provision the Property Management demo
+    // workspace so the new user lands in a business that is ALREADY RUNNING
+    // (work orders, vendor dispatches, owner approvals, replays, proof,
+    // active AI workforce). Best-effort — never fails the signup.
+    const firstRun = await provisionFirstRunDemo(workspaceId, user.username)
+
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
     const userAgent = request.headers.get('user-agent') || undefined
 
@@ -190,9 +197,12 @@ export async function POST(request: Request) {
         tenant_id: defaultTenantId,
       },
       workspace: { id: workspaceId, slug, name: companyName },
-      // Land on the "verify your email" page — onboarding/activation unlocks
-      // after verification.
-      next: '/verify-email',
+      demo: firstRun,
+      // Land directly in the active demo environment — the workspace is
+      // already running (PM demo provisioned above). Email verification
+      // still happens in the background; sensitive features stay locked
+      // until verified.
+      next: '/app/overview?activated=1&source=signup',
     })
 
     const isSecureRequest = isRequestSecure(request)

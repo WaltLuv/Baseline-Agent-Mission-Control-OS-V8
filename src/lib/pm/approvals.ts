@@ -4,7 +4,7 @@
  * work order, proof package (replay), and communication log. Approving triggers
  * the (live or dry-run) vendor dispatch. Workspace-scoped.
  */
-import { getDatabase } from '@/lib/db'
+import { getDatabase, db_helpers } from '@/lib/db'
 import { recordReplayEvent } from '@/lib/replay/store'
 import { dispatchWorkOrder, getWorkOrder } from '@/lib/pm/maintenance'
 
@@ -39,7 +39,13 @@ export function getApproval(ws: number, idv: string): OwnerApproval | null {
 }
 
 /** Decide an approval. approved → dispatch; denied → block WO; info_requested → log. */
-export async function decide(ws: number, idv: string, decision: Decision, by: string, note: string, now: number): Promise<{ ok: boolean; approval?: OwnerApproval; dispatch?: { status: string; reason?: string }; error?: string }> {
+export async function decide(ws: number, idv: string, decision: Decision, by: string, note: string, now: number): Promise<{
+  ok: boolean
+  approval?: OwnerApproval
+  dispatch?: { status: string; reason?: string; comms_id?: string }
+  work_order?: { id: string; status: string; replay_id: string | null }
+  error?: string
+}> {
   const db = getDatabase()
   const cur = getApproval(ws, idv)
   if (!cur) return { ok: false, error: 'approval not found' }
@@ -54,12 +60,31 @@ export async function decide(ws: number, idv: string, decision: Decision, by: st
   const wo = getWorkOrder(ws, cur.work_order_id)
   if (wo?.replay_id) recordReplayEvent(ws, wo.replay_id, { ts: now, kind: 'approval', label: `Owner ${decision} by ${by}`, detail: note || undefined })
 
-  let dispatch: { status: string; reason?: string } | undefined
+  const request = String((cur.context as Record<string, unknown>).request ?? cur.work_order_id)
+  const vendor = String((cur.context as Record<string, unknown>).vendor ?? 'vendor')
+
+  let dispatch: { status: string; reason?: string; comms_id?: string } | undefined
   if (decision === 'approved') {
     dispatch = await dispatchWorkOrder(ws, cur.work_order_id, now)
+    // Agent Activity: the real decision + the real dispatch, in the feed.
+    db_helpers.logActivity('owner_approval_decided', 'work_order', 0, by,
+      `Owner approved $${cur.cost} spend — "${request}"`,
+      { approval_id: idv, work_order_id: cur.work_order_id, decision, cost: cur.cost }, ws)
+    db_helpers.logActivity('work_order_dispatched', 'work_order', 0, 'Vince Cardella · Vendor Coordinator',
+      `Dispatched ${vendor} — work order ${cur.work_order_id} (${dispatch.status})`,
+      { work_order_id: cur.work_order_id, dispatch_status: dispatch.status, comms_id: dispatch.comms_id ?? null, replay_id: wo?.replay_id ?? null }, ws)
   } else if (decision === 'denied') {
     db.prepare("UPDATE work_orders SET status = 'blocked' WHERE id = ? AND workspace_id = ?").run(cur.work_order_id, ws)
     if (wo?.replay_id) recordReplayEvent(ws, wo.replay_id, { ts: now, kind: 'output', label: 'Work order blocked — owner denied spend' })
+    db_helpers.logActivity('owner_approval_decided', 'work_order', 0, by,
+      `Owner denied $${cur.cost} spend — "${request}"`,
+      { approval_id: idv, work_order_id: cur.work_order_id, decision, cost: cur.cost }, ws)
   }
-  return { ok: true, approval: getApproval(ws, idv) ?? undefined, dispatch }
+  const after = getWorkOrder(ws, cur.work_order_id)
+  return {
+    ok: true,
+    approval: getApproval(ws, idv) ?? undefined,
+    dispatch,
+    work_order: after ? { id: after.id, status: after.status, replay_id: after.replay_id ?? null } : undefined,
+  }
 }

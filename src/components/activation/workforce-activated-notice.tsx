@@ -14,6 +14,8 @@ const SOURCE_COPY: Record<string, string> = {
   onboarding:
     'Workforce activated from your starter template. Today’s briefing is below.',
   setup: 'Account created. Your AI workforce is online and reporting in.',
+  signup:
+    'Welcome aboard. Your AI property workforce is already running — live work orders, approvals, and replays below.',
   manual: 'Workforce reactivated. Reading today’s briefing.',
 }
 
