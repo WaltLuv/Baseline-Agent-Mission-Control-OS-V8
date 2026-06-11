@@ -13,10 +13,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
 import { PROVIDER_CATALOG } from '@/lib/credentials/catalog'
 import { isEncryptionConfigured, listCredentials } from '@/lib/credentials/store'
+import { ensureEnvCredentialsSynced } from '@/lib/credentials/env-sync'
 
 export async function GET(request: NextRequest) {
   const auth = requireRole(request, 'viewer')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+
+  // Import any env-provided keys (.env.local etc.) into the store, once per
+  // process per workspace, and verify them — so configured keys show as
+  // connected instead of "missing" without manual re-entry.
+  await ensureEnvCredentialsSynced(auth.user.workspace_id, true)
 
   const rows = listCredentials(auth.user.workspace_id)
   const byProvider = new Map(rows.map((r) => [r.provider_id, r]))

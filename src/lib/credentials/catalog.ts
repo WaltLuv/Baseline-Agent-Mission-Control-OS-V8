@@ -878,7 +878,7 @@ const billing: ProviderEntry[] = [
     env_var_names: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'],
     secret_fields: [
       SECRET('secret_key', 'Secret API key', { placeholder: 'sk_live_…' }),
-      SECRET('webhook_secret', 'Webhook signing secret', { placeholder: 'whsec_…' }),
+      SECRET('webhook_secret', 'Webhook signing secret', { placeholder: 'whsec_…', optional: true }),
     ],
     public_config_fields: [TEXT('publishable_key', 'Publishable key', { placeholder: 'pk_live_…' })],
     setup_url: 'https://dashboard.stripe.com/apikeys',
