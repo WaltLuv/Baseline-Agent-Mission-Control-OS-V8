@@ -34,6 +34,7 @@ interface OpsCard {
 
 export function PmOpsStrip() {
   const [panels, setPanels] = useState<FlightDeckPanels | null>(null)
+  const [resetting, setResetting] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -43,6 +44,22 @@ export function PmOpsStrip() {
       .catch(() => {})
     return () => { cancelled = true }
   }, [])
+
+  async function resetDemo() {
+    if (resetting) return
+    if (!window.confirm(
+      'Reset the demo workspace?\n\nThis wipes your changes to the seeded data (work orders, approvals, replays) and restores a fresh, already-running Property Management demo. Your account and settings are not affected.',
+    )) return
+    setResetting(true)
+    try {
+      const res = await fetch('/api/demo/reset', { method: 'POST' })
+      if (res.ok) window.location.reload()
+      else { setResetting(false); window.alert('Reset failed. Please try again.') }
+    } catch {
+      setResetting(false)
+      window.alert('Reset failed. Please try again.')
+    }
+  }
 
   if (!panels) return null
 
@@ -71,7 +88,19 @@ export function PmOpsStrip() {
         <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
           Live operations
         </span>
-        <span className="text-[10px] text-muted-foreground/70">real-time · workspace-scoped</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-muted-foreground/70">real-time · workspace-scoped</span>
+          <button
+            type="button"
+            onClick={resetDemo}
+            disabled={resetting}
+            data-testid="reset-demo-button"
+            title="Wipe your changes and restore a fresh, already-running demo workspace"
+            className="rounded border border-border/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground disabled:opacity-50"
+          >
+            {resetting ? 'Resetting…' : '↻ Reset demo'}
+          </button>
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {cards.map((c) => (
