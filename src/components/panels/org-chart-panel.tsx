@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { OrgAgent, OrgNode } from '@/lib/org-chart/types'
 import { ORG_DEPARTMENTS, buildHierarchy } from '@/lib/org-chart/types'
 import { AgentActivity } from '@/components/agent-activity'
+import { AgentReadinessBadge } from '@/components/agents/readiness-badge'
 
 type Draft = {
   name: string; role: string; department: string; category: string
@@ -153,7 +154,7 @@ export function OrgChartPanel() {
                 {agents.map((a) => (
                   <div key={a.id} className="rounded-lg border border-border bg-card p-3 flex items-start justify-between" data-testid={`org-agent-${a.id}`}>
                     <div>
-                      <div className="text-sm font-semibold">{a.name} <span className="text-xs text-muted-foreground">· {a.role || 'no role'}</span></div>
+                      <div className="text-sm font-semibold flex items-center gap-2 flex-wrap">{a.name} <span className="text-xs text-muted-foreground">· {a.role || 'no role'}</span> <AgentReadinessBadge name={a.name} role={a.role} /></div>
                       <div className="text-[11px] text-muted-foreground">{a.department || 'Unassigned'} · reports to {nameOf(a.managerId)} · runtime {a.runtime || '—'}</div>
                       <div className="text-[11px] text-muted-foreground/80 mt-0.5">skills: {a.skills.join(', ') || '—'} · memory: {a.memoryAccess.join(', ') || '—'} · perms: {a.permissions.join(', ') || '—'}</div>
                     </div>

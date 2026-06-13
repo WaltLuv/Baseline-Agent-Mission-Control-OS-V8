@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
 import { createClientLogger } from '@/lib/client-logger'
 import Link from 'next/link'
+import { AgentReadinessPanel } from '@/components/agents/readiness-badge'
 
 const log = createClientLogger('AgentDetailTabs')
 
@@ -135,6 +136,10 @@ export function OverviewTab({
 
   return (
     <div className="p-5">
+      {/* Execution readiness — backed by computeAgentReadiness / capability matrix */}
+      <div className="mb-4">
+        <AgentReadinessPanel name={agent.name} role={agent.role} />
+      </div>
       <div className="grid md:grid-cols-[1fr_1fr] gap-5">
         {/* Left Column — Agent Details */}
         <div className="space-y-4">

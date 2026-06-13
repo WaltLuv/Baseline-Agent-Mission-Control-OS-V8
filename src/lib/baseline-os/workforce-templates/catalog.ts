@@ -15,6 +15,8 @@ import { EXTENDED_VERTICALS } from './extended-verticals'
 
 export type WorkforceRisk = 'low' | 'medium' | 'high' | 'blocked'
 
+export type WorkforceTeam = 'Executive' | 'Operations' | 'Finance' | 'AI Systems'
+
 export interface WorkforcePersona {
   /** Stable slug used for idempotency. */
   slug: string
@@ -22,6 +24,8 @@ export interface WorkforcePersona {
   role: string
   description: string
   capabilities: string[]
+  /** Team grouping for the org chart / agent directory. */
+  team?: WorkforceTeam
 }
 
 export interface WorkforceWorkflow {
@@ -89,60 +93,40 @@ export interface WorkforceTemplate {
 const PROPERTY_MGMT: WorkforceTemplate = {
   slug: 'property-management',
   vertical: 'Property Management',
-  headline: 'Tessa, Marcus, and 4 more — ready to work the moment you install.',
+  headline: 'A full property-management org — Executive, Operations, Finance, and AI Systems — ready on install.',
   tagline:
-    'A six-person AI workforce that triages maintenance, drafts tenant replies, chases rent, and flags vendor risk before it costs you a unit.',
+    'A grouped AI workforce: leadership, operations, finance, and AI-systems agents. Level-2 workflow agents work immediately; Level-3 runtime agents show Needs Runtime until connected.',
   install_seconds: 60,
   status: 'ready',
   personas: [
-    {
-      slug: 'tessa-reyes-tenant-relations',
-      name: 'Tessa Reyes',
-      role: 'Tenant Relations Lead',
-      description:
-        'Drafts replies, triages inbound complaints, monitors satisfaction signals, and escalates anything that needs a human.',
-      capabilities: ['draft-reply', 'tenant-triage', 'sentiment-flag', 'escalation'],
-    },
-    {
-      slug: 'marcus-doyle-maintenance-dispatch',
-      name: 'Marcus Doyle',
-      role: 'Maintenance Dispatcher',
-      description:
-        'Receives work orders, classifies urgency, picks the right vendor, and tracks the job from intake to sign-off.',
-      capabilities: ['work-order-intake', 'urgency-classify', 'vendor-dispatch', 'job-tracking'],
-    },
-    {
-      slug: 'rena-patel-leasing',
-      name: 'Rena Patel',
-      role: 'Leasing Coordinator',
-      description:
-        'Runs lease renewals on the 60/30/14 cadence, screens applications, and refreshes listings the second a unit vacates.',
-      capabilities: ['lease-renewal', 'application-screening', 'listing-refresh', 'tour-scheduling'],
-    },
-    {
-      slug: 'owen-whitfield-owner-relations',
-      name: 'Owen Whitfield',
-      role: 'Owner Relations',
-      description:
-        'Prepares owner statements, drafts month-end summaries, and answers owner questions in the voice you trained him in.',
-      capabilities: ['owner-statement', 'monthly-summary', 'owner-comm', 'roi-rollup'],
-    },
-    {
-      slug: 'vince-cardella-vendor-coordinator',
-      name: 'Vince Cardella',
-      role: 'Vendor Coordinator',
-      description:
-        'Tracks vendor insurance, COI expiry, performance scores, and never lets a non-compliant vendor onto your properties.',
-      capabilities: ['vendor-onboard', 'coi-expiry-watch', 'performance-track', 'payment-prep'],
-    },
-    {
-      slug: 'quinn-hartley-inspections',
-      name: 'Quinn Hartley',
-      role: 'Inspections & Compliance',
-      description:
-        'Schedules move-ins, move-outs, annuals, and habitability inspections; flags compliance gaps before they become fines.',
-      capabilities: ['inspection-schedule', 'compliance-watch', 'habitability-flag', 'punch-list'],
-    },
+    // ── Executive ──
+    { slug: 'pm-coo', name: 'Dana Whitmore', role: 'COO / Operations Director', team: 'Executive', description: 'Owns operational oversight, approvals within delegated limits, and cross-team reporting.', capabilities: ['oversight', 'approvals', 'reporting'] },
+    { slug: 'pm-portfolio-manager', name: 'Garrett Cole', role: 'Portfolio Manager', team: 'Executive', description: 'Tracks portfolio performance, occupancy, NOI, and asset-level decisions.', capabilities: ['portfolio-perf', 'occupancy', 'noi-rollup'] },
+    { slug: 'pm-chief-of-staff', name: 'Priya Anand', role: 'Chief of Staff', team: 'Executive', description: 'Coordinates priorities across teams, prepares executive briefings, drives follow-through.', capabilities: ['coordination', 'briefings', 'follow-through'] },
+
+    // ── Operations ──
+    { slug: 'marcus-doyle-maintenance-dispatch', name: 'Marcus Doyle', role: 'Maintenance Dispatcher', team: 'Operations', description: 'Receives work orders, classifies urgency, picks the right vendor, tracks jobs to sign-off.', capabilities: ['work-order-intake', 'urgency-classify', 'vendor-dispatch', 'job-tracking'] },
+    { slug: 'vince-cardella-vendor-coordinator', name: 'Vince Cardella', role: 'Vendor Coordinator', team: 'Operations', description: 'Tracks vendor insurance/COI, performance scores, and payment prep; blocks non-compliant vendors.', capabilities: ['vendor-onboard', 'coi-expiry-watch', 'performance-track', 'payment-prep'] },
+    { slug: 'owen-whitfield-owner-relations', name: 'Owen Whitfield', role: 'Owner Relations', team: 'Operations', description: 'Prepares owner statements, month-end summaries, and answers owner questions in your voice.', capabilities: ['owner-statement', 'monthly-summary', 'owner-comm', 'roi-rollup'] },
+    { slug: 'rena-patel-leasing', name: 'Rena Patel', role: 'Leasing Coordinator', team: 'Operations', description: 'Runs lease renewals on the 60/30/14 cadence, screens applications, refreshes listings on vacancy.', capabilities: ['lease-renewal', 'application-screening', 'listing-refresh', 'tour-scheduling'] },
+    { slug: 'tessa-reyes-tenant-relations', name: 'Tessa Reyes', role: 'Resident Success Manager', team: 'Operations', description: 'Drafts replies, triages complaints, monitors satisfaction, escalates anything needing a human.', capabilities: ['draft-reply', 'tenant-triage', 'sentiment-flag', 'escalation'] },
+
+    // ── Finance ──
+    { slug: 'pm-accounts-receivable', name: 'Noor Haddad', role: 'Accounts Receivable', team: 'Finance', description: 'Tracks rent, late fees, and delinquencies; prepares collections follow-up (gated).', capabilities: ['rent-tracking', 'delinquency', 'collections-prep'] },
+    { slug: 'pm-accounts-payable', name: 'Victor Mensah', role: 'Accounts Payable', team: 'Finance', description: 'Processes vendor invoices and payment runs; billing actions require approval.', capabilities: ['invoice-processing', 'payment-runs'] },
+    { slug: 'pm-budget-analyst', name: 'Elena Sokolova', role: 'Budget Analyst', team: 'Finance', description: 'Builds and tracks property budgets, variance reports, and forecasts.', capabilities: ['budgeting', 'variance', 'forecasting'] },
+    { slug: 'pm-asset-manager', name: 'Theo Banks', role: 'Asset Manager', team: 'Finance', description: 'Asset-level performance, capex planning, and disposition analysis.', capabilities: ['asset-perf', 'capex', 'disposition'] },
+
+    // ── AI Systems (PI harness + runtime agents — Needs Runtime until connected) ──
+    { slug: 'pm-pi-agent', name: 'PI Agent', role: 'PI Agent — Context Harness', team: 'AI Systems', description: 'Context/memory harness: retrieves context, enforces policy, routes to specialized agents, indexes proof/replay. Not the worker.', capabilities: ['memory_context', 'graphify_query', 'task_routing', 'proof_index'] },
+    { slug: 'pm-hermes', name: 'Hermes', role: 'Hermes Runtime Agent', team: 'AI Systems', description: 'Long-running orchestration runtime. Requires Hermes connection.', capabilities: ['orchestration', 'scheduling'] },
+    { slug: 'pm-claude-code', name: 'Claude Code', role: 'Claude Code Engineer', team: 'AI Systems', description: 'Code review, refactors, builds, PRs via Claude Code. Requires runtime (Flight Deck).', capabilities: ['code', 'pr', 'tests'] },
+    { slug: 'pm-codex', name: 'Codex', role: 'Codex Engineer', team: 'AI Systems', description: 'OpenAI Codex execution. Requires runtime.', capabilities: ['code'] },
+    { slug: 'pm-openclaw', name: 'OpenClaw', role: 'OpenClaw Automation', team: 'AI Systems', description: 'Swarm/browser automation. Requires OpenClaw runtime.', capabilities: ['swarm', 'automation'] },
+    { slug: 'pm-opencode', name: 'Opencode', role: 'Opencode Runtime Agent', team: 'AI Systems', description: 'Opencode execution runtime. Requires runtime.', capabilities: ['code'] },
+    { slug: 'pm-voiceops', name: 'VoiceOps Agent', role: 'VoiceOps — Voice Intake', team: 'AI Systems', description: 'Voice call logs, follow-ups, escalations. Requires VoiceOps + Twilio.', capabilities: ['call_log', 'follow_up', 'escalate'] },
+    { slug: 'pm-visionops', name: 'VisionOps Agent', role: 'VisionOps — Inspection Analyst', team: 'AI Systems', description: 'Inspection media review + visual proof. Requires VisionOps.', capabilities: ['vision_analysis', 'visual_proof'] },
+    { slug: 'pm-market-swarm', name: 'Market Swarm', role: 'Market Swarm Research', team: 'AI Systems', description: 'Market research swarm. Requires a research/browser runtime.', capabilities: ['web_search', 'synthesis'] },
   ],
   workflows: [
     {
@@ -192,7 +176,7 @@ const PROPERTY_MGMT: WorkforceTemplate = {
       title: 'Move-in workflow',
       description:
         'New tenant move-in: keys, deposit confirmation, inspection scheduling, welcome packet, utility setup checklist.',
-      owner_persona: 'quinn-hartley-inspections',
+      owner_persona: 'pm-visionops',
       tool_hint: 'inspection-cli',
       skill_hint: 'move-in-coord',
       approval_policy: 'medium',
@@ -205,7 +189,7 @@ const PROPERTY_MGMT: WorkforceTemplate = {
       title: 'Move-out workflow',
       description:
         'Tenant 30-day notice received: schedule inspection, prep punch list, calculate deposit refund, draft owner update.',
-      owner_persona: 'quinn-hartley-inspections',
+      owner_persona: 'pm-visionops',
       tool_hint: 'inspection-cli',
       skill_hint: 'move-out-coord',
       approval_policy: 'medium',
@@ -218,7 +202,7 @@ const PROPERTY_MGMT: WorkforceTemplate = {
       title: 'Inspection scheduling',
       description:
         'Quinn looks 14 days ahead, batches inspections by neighborhood, and books them on the calendar.',
-      owner_persona: 'quinn-hartley-inspections',
+      owner_persona: 'pm-visionops',
       tool_hint: 'calendar',
       skill_hint: 'inspection-schedule',
       approval_policy: 'low',

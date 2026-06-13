@@ -112,6 +112,7 @@ export function installWorkforceTemplate(
         persona_slug: p.slug,
         description: p.description,
         capabilities: p.capabilities,
+        team: p.team ?? null,
       })
       const res = db
         .prepare(

@@ -150,7 +150,7 @@ describe('Workforce Templates — catalog + installer', () => {
     }
   })
 
-  it('install Property Management creates 6 personas + 12 tasks + audit rows', async () => {
+  it('install Property Management creates the expanded grouped roster (21 personas) + 12 tasks + audit rows', async () => {
     const { cookie, workspaceId } = await adminSession()
     const res = await installPOST(
       authedReq(cookie, '/api/workforce/install', {
@@ -167,7 +167,7 @@ describe('Workforce Templates — catalog + installer', () => {
       deep_links: Record<string, string>
     }
     expect(data.status).toBe('installed')
-    expect(data.personas.length).toBe(6)
+    expect(data.personas.length).toBe(21)
     expect(data.workflows.length).toBe(12)
     expect(data.tools.length).toBeGreaterThanOrEqual(10)
     expect(data.deep_links.tasks).toBe('/app/tasks')
@@ -178,7 +178,14 @@ describe('Workforce Templates — catalog + installer', () => {
         `SELECT COUNT(*) as n FROM agents WHERE workspace_id = ? AND source = ?`,
       )
       .get(workspaceId, 'workforce-template:property-management') as { n: number }
-    expect(agents.n).toBe(6)
+    expect(agents.n).toBe(21)
+    // roster is grouped into Executive / Operations / Finance / AI Systems
+    const teams = (db
+      .prepare(`SELECT config FROM agents WHERE workspace_id = ? AND source = 'workforce-template:property-management'`)
+      .all(workspaceId) as Array<{ config: string }>)
+      .map((r) => { try { return JSON.parse(r.config).team } catch { return null } })
+      .filter(Boolean)
+    expect(new Set(teams)).toEqual(new Set(['Executive', 'Operations', 'Finance', 'AI Systems']))
     const tasks = db
       .prepare(
         `SELECT COUNT(*) as n FROM tasks
@@ -212,7 +219,7 @@ describe('Workforce Templates — catalog + installer', () => {
     expect(res2.status).toBe(200)
     const data = (await res2.json()) as { status: string; personas: Array<{ id: number }>; workflows: Array<{ id: number }> }
     expect(data.status).toBe('already_installed')
-    expect(data.personas.length).toBe(6)
+    expect(data.personas.length).toBe(21)
     expect(data.workflows.length).toBe(12)
 
     const db = getDatabase()
@@ -222,7 +229,7 @@ describe('Workforce Templates — catalog + installer', () => {
          WHERE workspace_id = ? AND source = 'workforce-template:property-management'`,
       )
       .get(workspaceId) as { n: number }
-    expect(dupAgents.n).toBe(6) // still 6, not 12
+    expect(dupAgents.n).toBe(21) // still 21, no duplicates
     const dupTasks = db
       .prepare(
         `SELECT COUNT(*) as n FROM tasks
