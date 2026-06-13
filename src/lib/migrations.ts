@@ -2791,6 +2791,58 @@ const migrations: Migration[] = [
         CREATE INDEX IF NOT EXISTS idx_paired_devices_token ON paired_devices(device_token_hash);
       `)
     },
+  },
+  {
+    // PI Agent harness — the brain/memory layer that wraps specialized
+    // sub-agents (Hermes / Claude Code / Codex / workflow agents).
+    id: '079_pi_agent_harness',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS pi_context_packages (
+          id TEXT PRIMARY KEY,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          request TEXT NOT NULL,
+          routed_agent TEXT,
+          policy_decision TEXT NOT NULL DEFAULT 'allow',
+          policy_reason TEXT,
+          graph_context_json TEXT NOT NULL DEFAULT '{}',
+          memory_context_json TEXT NOT NULL DEFAULT '{}',
+          workspace_knowledge_json TEXT NOT NULL DEFAULT '{}',
+          replay_id TEXT,
+          proof_ref TEXT,
+          status TEXT NOT NULL DEFAULT 'prepared',
+          created_by TEXT,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_pi_pkg_ws ON pi_context_packages(workspace_id, created_at);
+        CREATE INDEX IF NOT EXISTS idx_pi_pkg_replay ON pi_context_packages(replay_id);
+
+        CREATE TABLE IF NOT EXISTS pi_routing_logs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          package_id TEXT NOT NULL,
+          candidates_json TEXT NOT NULL DEFAULT '[]',
+          chosen_agent TEXT NOT NULL,
+          reason TEXT,
+          created_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_pi_routing_pkg ON pi_routing_logs(package_id);
+        CREATE INDEX IF NOT EXISTS idx_pi_routing_ws ON pi_routing_logs(workspace_id, created_at);
+
+        CREATE TABLE IF NOT EXISTS pi_memory_events (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          package_id TEXT NOT NULL,
+          kind TEXT NOT NULL,
+          summary TEXT NOT NULL,
+          ref TEXT,
+          created_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_pi_mem_pkg ON pi_memory_events(package_id);
+        CREATE INDEX IF NOT EXISTS idx_pi_mem_ws ON pi_memory_events(workspace_id, created_at);
+      `)
+    },
   }
 ]
 
